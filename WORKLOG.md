@@ -125,8 +125,28 @@
 
 ---
 
+## 2026-06-24 · 세션 3
+
+### 마이페이지(/mypage) 구현
+- 7개 섹션 완료:
+  - 계정 정보: 이메일, 가입일 (supabase.auth.getUser().created_at)
+  - 구독 플랜: Free → 업그레이드 CTA, Pro → 결제 정보 placeholder + 해지 문의 링크
+  - 알림 설정: Pro → /alerts 링크, Free → 잠금 + Pro 시작하기
+  - 데이터 내보내기: 와치리스트 CSV 다운로드 (BOM 포함 UTF-8)
+  - 결제 내역: Polar.sh 연동 전 placeholder (아이콘 + 안내 문구)
+  - 문의/피드백: 2열 카드 (문의하기 / 피드백, mailto 링크)
+  - 계정 관리: 로그아웃, 회원 탈퇴 (확인 모달 포함)
+- 회원 탈퇴 모달: bg-black/40 backdrop-blur-sm, 지정 경고 문구, 처리 중 상태
+- /api/delete-account: Supabase Admin API (SUPABASE_SERVICE_ROLE_KEY 필요 — .env.local에 추가 필요)
+
+### 이메일 일괄 변경
+- contact@tickerflow.net → support@tickerflow.net
+- 변경 파일: footer.tsx, terms/page.tsx, privacy/page.tsx
+
+---
+
 ## 다음 작업 예정
-- /mypage 마이페이지 구현
+- .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - 실제 데이터 연동 (SEC EDGAR API, Finnhub, yfinance)
-- Polar.sh 결제 연동
+- Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동
