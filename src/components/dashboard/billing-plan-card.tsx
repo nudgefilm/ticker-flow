@@ -28,7 +28,7 @@ export default function BillingPlanCard({
         <span className="text-lg font-semibold text-white">{name}</span>
         {featured && (
           <span className="rounded-[4px] bg-white px-2 py-0.5 text-xs font-medium text-black">
-            추천
+            인기
           </span>
         )}
       </div>

@@ -88,9 +88,9 @@ const SECTORS = [
 ];
 
 const SUMMARY = [
-  { label: "이번 주 강세 섹터", value: "방산·우주" },
-  { label: "약세 분위기", value: "전기차·에너지" },
-  { label: "분위기 변화 최대", value: "반도체·AI칩" },
+  { label: "이번 주 뉴스 활발 섹터", value: "방산·우주" },
+  { label: "뉴스 감소 섹터", value: "전기차·에너지" },
+  { label: "뉴스 변화 최대", value: "반도체·AI칩" },
 ];
 
 export default function SectorsPreview() {
@@ -131,17 +131,17 @@ export default function SectorsPreview() {
           <div className="mt-4 flex items-center gap-4 border-t border-white/[0.06] pt-4">
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-red-500/60" />
-              <span className="text-xs text-[#a6a6a6]">부정</span>
+              <span className="text-xs text-[#a6a6a6]">뉴스 감소</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-white/10" />
-              <span className="text-xs text-[#a6a6a6]">중립</span>
+              <span className="text-xs text-[#a6a6a6]">보통</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-green-500/60" />
-              <span className="text-xs text-[#a6a6a6]">긍정</span>
+              <span className="text-xs text-[#a6a6a6]">뉴스 증가</span>
             </div>
-            <span className="ml-auto text-xs text-[#a6a6a6]">뉴스 흐름 기반 섹터 분위기</span>
+            <span className="ml-auto text-xs text-[#a6a6a6]">뉴스 흐름 기반 섹터 동향</span>
           </div>
         </div>
 

@@ -48,7 +48,7 @@ export default function CallsPreview() {
                 </span>
                 <p className="text-sm leading-relaxed text-[#cccccc]">
                   3분기 매출 가이던스 $450억~$460억 제시, 전분기 대비 약 5% 상향. 데이터센터
-                  수요 강세를 근거로 마진 가이던스도 소폭 상향.
+                  수요 확대를 근거로 마진 가이던스도 소폭 상향.
                 </p>
               </div>
             </Section>
@@ -81,7 +81,7 @@ export default function CallsPreview() {
           </div>
 
           <div className="mt-4 border-t border-white/[0.06] pt-3">
-            <p className="text-xs text-green-400">전분기 대비 톤: 낙관적 → 매우 낙관적</p>
+            <p className="text-xs text-[#a6a6a6]">전분기 대비 발언 변화: 성장 기조 유지 → 공급 확대 중심 강조</p>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ export default function CallsPreview() {
           </div>
 
           <div className="mt-4 border-t border-white/[0.06] pt-3">
-            <p className="text-xs text-amber-400">전분기 대비 톤: 낙관적 → 신중</p>
+            <p className="text-xs text-[#a6a6a6]">전분기 대비 발언 변화: 생산 확대 강조 → 공급망 불확실성 언급</p>
           </div>
         </div>
       </div>
