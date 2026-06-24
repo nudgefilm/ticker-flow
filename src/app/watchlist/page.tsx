@@ -83,8 +83,13 @@ export default function WatchlistPage() {
 
       {/* 종목 카드 그리드 */}
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        {STOCKS.map((stock) => (
-          <WatchlistCard key={stock.ticker} stock={stock} />
+        {STOCKS.map((stock, i) => (
+          <div
+            key={stock.ticker}
+            className={STOCKS.length % 2 !== 0 && i === STOCKS.length - 1 ? "md:col-span-2" : undefined}
+          >
+            <WatchlistCard stock={stock} />
+          </div>
         ))}
       </div>
 
