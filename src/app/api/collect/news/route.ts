@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
 
     let inserted = 0;
     let skipped = 0;
+    let firstError: string | undefined;
 
     for (const item of items) {
       if (!item.url || !item.headline) { skipped++; continue; }
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       );
 
       if (error) {
+        firstError ??= error.message;
         console.error("[collect/news] upsert:", error.message);
         skipped++;
       } else {
@@ -72,6 +74,7 @@ export async function GET(req: NextRequest) {
       total: items.length,
       inserted,
       skipped,
+      ...(firstError && { firstError }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

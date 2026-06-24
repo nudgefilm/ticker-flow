@@ -63,7 +63,8 @@ export async function GET(req: NextRequest) {
     const secData: { data: SecRow[] } = await secRes.json();
 
     const cikMap = new Map<string, CikEntry>();
-    for (const [cik, ticker, name, exchange] of secData.data) {
+    // company_tickers_exchange.json field order: [cik_str, name, ticker, exchange]
+    for (const [cik, name, ticker, exchange] of secData.data) {
       cikMap.set(String(cik).padStart(10, "0"), { ticker, name, exchange });
     }
 
@@ -94,6 +95,7 @@ export async function GET(req: NextRequest) {
 
     let inserted = 0;
     let skipped = 0;
+    let firstError: string | undefined;
 
     for (const hit of hits) {
       const { _id: accessionId, _source: src } = hit;
@@ -104,14 +106,20 @@ export async function GET(req: NextRequest) {
       const info = cikMap.get(paddedCik);
       if (!info) { skipped++; continue; }
 
-      // 신규 티커는 tickers 테이블에 자동 upsert
+      // 신규 티커는 tickers 테이블에 자동 upsert (에러 시 해당 공시 스킵)
       if (!tickerSet.has(info.ticker)) {
-        await adminClient
+        const { error: tickerErr } = await adminClient
           .from("tickers")
           .upsert(
             { ticker: info.ticker, name_en: info.name, exchange: info.exchange },
             { onConflict: "ticker" }
           );
+        if (tickerErr) {
+          firstError ??= `ticker upsert: ${tickerErr.message}`;
+          console.error("[collect/filings] ticker upsert:", tickerErr.message);
+          skipped++;
+          continue;
+        }
         tickerSet.add(info.ticker);
       }
 
@@ -128,6 +136,7 @@ export async function GET(req: NextRequest) {
       );
 
       if (error) {
+        firstError ??= `filing upsert: ${error.message}`;
         console.error("[collect/filings] upsert:", error.message);
         skipped++;
       } else {
@@ -141,6 +150,7 @@ export async function GET(req: NextRequest) {
       total: hits.length,
       inserted,
       skipped,
+      ...(firstError && { firstError }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

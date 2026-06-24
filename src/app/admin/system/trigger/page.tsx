@@ -12,6 +12,7 @@ interface TriggerResult {
   total?: number;
   tickers?: number;
   error?: string;
+  firstError?: string;
 }
 
 interface Trigger {
@@ -22,6 +23,12 @@ interface Trigger {
 }
 
 const TRIGGERS: Trigger[] = [
+  {
+    id: "seed-tickers",
+    label: "티커 시드 삽입 (NASDAQ + NYSE)",
+    desc: "SEC company_tickers_exchange.json에서 NASDAQ·NYSE 전체 종목을 tickers 테이블에 삽입합니다. 최초 1회 또는 종목 누락 시 실행하세요.",
+    endpoint: "/api/seed/tickers",
+  },
   {
     id: "filings",
     label: "공시 수집 (EDGAR)",
@@ -60,7 +67,8 @@ function resultSummary(result: TriggerResult): string {
   if (result.inserted !== undefined) parts.push(`저장 ${result.inserted}건`);
   if (result.skipped !== undefined) parts.push(`스킵 ${result.skipped}건`);
   if (result.tickers !== undefined) parts.push(`티커 ${result.tickers}개`);
-  return parts.join(" · ") || "완료";
+  const summary = parts.join(" · ") || "완료";
+  return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
 }
 
 export default function TriggerPage() {
