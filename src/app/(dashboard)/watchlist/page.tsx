@@ -94,50 +94,45 @@ async function WatchlistContent() {
     return <WatchlistClient initialStocks={[]} isPro={isPro} />;
   }
 
-  const tickers = rows.map((r) => r.ticker);
+  // 2. 종목별 통계 병렬 조회 (count 쿼리 + 다음 실적)
+  const stocks: WatchlistStock[] = await Promise.all(
+    rows.map(async (row) => {
+      const t = row.tickers as { name_kr: string | null; name_en: string | null } | null;
 
-  // 2. 공시 / 뉴스 / 실적 병렬 조회
-  const [filingsRes, newsRes, earningsRes] = await Promise.all([
-    supabase
-      .from("filings")
-      .select("ticker")
-      .in("ticker", tickers)
-      .gte("filed_at", sevenDaysAgo),
-    supabase
-      .from("news")
-      .select("ticker")
-      .in("ticker", tickers)
-      .gte("published_at", sevenDaysAgo),
-    supabase
-      .from("earnings")
-      .select("ticker, report_date")
-      .in("ticker", tickers)
-      .gte("report_date", today)
-      .order("report_date", { ascending: true }),
-  ]);
+      const [filingsRes, newsRes, earningsRes] = await Promise.all([
+        supabase
+          .from("filings")
+          .select("*", { count: "exact", head: true })
+          .eq("ticker", row.ticker)
+          .gte("filed_at", sevenDaysAgo),
+        supabase
+          .from("news")
+          .select("*", { count: "exact", head: true })
+          .eq("ticker", row.ticker)
+          .gte("published_at", sevenDaysAgo),
+        supabase
+          .from("earnings")
+          .select("report_date")
+          .eq("ticker", row.ticker)
+          .gte("report_date", today)
+          .order("report_date", { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-  // 3. 집계
-  const filingsCount = new Map<string, number>();
-  const newsCount = new Map<string, number>();
-  const nextEarnings = new Map<string, string>();
+      if (filingsRes.error) console.error(`[watchlist] filings count ${row.ticker}:`, filingsRes.error.message);
+      if (newsRes.error)    console.error(`[watchlist] news count ${row.ticker}:`, newsRes.error.message);
+      if (earningsRes.error) console.error(`[watchlist] earnings ${row.ticker}:`, earningsRes.error.message);
 
-  for (const f of filingsRes.data ?? []) {
-    filingsCount.set(f.ticker, (filingsCount.get(f.ticker) ?? 0) + 1);
-  }
-  for (const n of newsRes.data ?? []) {
-    if (n.ticker) newsCount.set(n.ticker, (newsCount.get(n.ticker) ?? 0) + 1);
-  }
-  for (const e of earningsRes.data ?? []) {
-    if (!nextEarnings.has(e.ticker)) nextEarnings.set(e.ticker, e.report_date);
-  }
-
-  const stocks: WatchlistStock[] = rows.map((row) => ({
-    ticker: row.ticker,
-    company: row.tickers?.name_kr ?? row.tickers?.name_en ?? row.ticker,
-    newFilings: filingsCount.get(row.ticker) ?? 0,
-    newNews: newsCount.get(row.ticker) ?? 0,
-    earningsDday: formatDday(nextEarnings.get(row.ticker) ?? null),
-  }));
+      return {
+        ticker: row.ticker,
+        company: t?.name_kr ?? t?.name_en ?? row.ticker,
+        newFilings: filingsRes.count ?? 0,
+        newNews: newsRes.count ?? 0,
+        earningsDday: formatDday(earningsRes.data?.report_date ?? null),
+      };
+    })
+  );
 
   return <WatchlistClient initialStocks={stocks} isPro={isPro} />;
 }
