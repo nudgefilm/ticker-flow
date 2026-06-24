@@ -1,109 +1,98 @@
+import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
-import NewsTodaySummary from "@/components/dashboard/news-today-summary";
 import NewsFilterBar from "@/components/dashboard/news-filter-bar";
 import NewsFeedCard, { type NewsItem } from "@/components/dashboard/news-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import { createClient } from "@/lib/supabase/server";
 
-const NEWS: NewsItem[] = [
-  {
-    category: "가이던스 변경",
-    event: "데이터센터 매출 전망 상향",
-    company: "NVDA · 엔비디아",
-    source: "Reuters",
-    time: "오늘 11:23 KST",
-    summary:
-      "엔비디아가 2분기 실적 발표 후 3분기 데이터센터 매출 전망을 상향 조정했다. 호퍼 아키텍처 수요가 예상을 크게 상회하고 있다.",
-    tag: "NVDA",
-  },
-  {
-    category: "규제 이슈",
-    event: "독점 조사 확대",
-    company: "GOOGL · 구글",
-    source: "WSJ",
-    time: "오늘 08:12 KST",
-    summary:
-      "미국 법무부가 구글의 온라인 광고 시장 독점 행위에 대한 추가 조사를 시작했다. 검색 독점 소송과 별개로 진행된다.",
-    tag: "GOOGL",
-  },
-  {
-    category: "CEO·임원",
-    event: "CEO 주식 매도 계획 공개",
-    company: "PLTR · 팔란티어",
-    source: "CNBC",
-    time: "어제 15:40 KST",
-    summary:
-      "팔란티어의 알렉스 카프 CEO가 향후 12개월간 보유 주식의 일부를 단계적으로 매도할 계획을 밝혔다.",
-    tag: "PLTR",
-  },
-  {
-    category: "가이던스 변경",
-    event: "실적 전망 하향 조정",
-    company: "TSLA · 테슬라",
-    source: "Bloomberg",
-    time: "어제 13:20 KST",
-    summary:
-      "테슬라가 사이버트럭 생산 차질로 인해 연간 차량 인도 목표를 하향 조정했다. 중국 시장 점유율 하락도 영향을 미쳤다.",
-    tag: "TSLA",
-  },
-  {
-    category: "대규모 계약",
-    event: "대규모 클라우드 공급 계약 체결",
-    company: "MSFT · 마이크로소프트",
-    source: "FT",
-    time: "어제 09:05 KST",
-    summary:
-      "마이크로소프트가 미국 정부 기관과 대규모 클라우드 서비스 공급 계약을 체결했다. 계약 규모는 수십억 달러에 달하는 것으로 전해졌다.",
-    tag: "MSFT",
-  },
-  {
-    category: "CEO·임원",
-    event: "신규 CEO 선임",
-    company: "INTC · 인텔",
-    source: "Reuters",
-    time: "2일 전 22:30 KST",
-    summary:
-      "인텔이 새로운 CEO를 선임했다. 신임 CEO는 반도체 제조 경쟁력 회복과 파운드리 사업 확대를 최우선 과제로 밝혔다.",
-    tag: "INTC",
-  },
-  {
-    category: "신제품",
-    event: "신규 이미지 센서 탑재 발표",
-    company: "AAPL · 애플",
-    source: "TechCrunch",
-    time: "2일 전 18:45 KST",
-    summary:
-      "애플이 차기 iPhone에 소니의 최신 이미지 센서를 탑재할 계획인 것으로 알려졌다. 촬영 성능이 대폭 개선될 전망이다.",
-    tag: "AAPL",
-  },
-  {
-    category: "규제 이슈",
-    event: "반독점 합의금 부과",
-    company: "META · 메타",
-    source: "WSJ",
-    time: "3일 전 07:15 KST",
-    summary:
-      "유럽연합이 메타에 반독점법 위반으로 대규모 합의금을 부과했다. 플랫폼 간 데이터 공유 관행이 문제가 됐다.",
-    tag: "META",
-  },
-];
+export const dynamic = "force-dynamic";
+
+// ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
+
+function NewsFeedSkeleton() {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 animate-pulse"
+        >
+          <div className="flex items-center justify-between">
+            <div className="h-3 w-16 rounded bg-white/[0.06]" />
+            <div className="h-3 w-10 rounded bg-white/[0.06]" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="h-4 w-full rounded bg-white/[0.06]" />
+            <div className="h-4 w-3/4 rounded bg-white/[0.06]" />
+          </div>
+          <div className="mt-3 space-y-1.5">
+            <div className="h-3 w-full rounded bg-white/[0.06]" />
+            <div className="h-3 w-5/6 rounded bg-white/[0.06]" />
+          </div>
+          <div className="mt-3 flex justify-between">
+            <div className="h-5 w-12 rounded bg-white/[0.06]" />
+            <div className="h-3 w-14 rounded bg-white/[0.06]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── 실 데이터 피드 ────────────────────────────────────────────────────────────
+
+async function NewsFeedList() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("news")
+    .select("id, ticker, headline, source, published_at, url, summary_kr")
+    .order("published_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+      </p>
+    );
+  }
+
+  const items: NewsItem[] = data ?? [];
+
+  if (items.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        수집된 뉴스가 없습니다.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {items.map((item) => (
+        <NewsFeedCard key={item.id} news={item} />
+      ))}
+    </div>
+  );
+}
+
+// ─── 페이지 ────────────────────────────────────────────────────────────────────
 
 export default function NewsPage() {
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="뉴스 피드" />
       <div className="mt-6">
-        <NewsTodaySummary />
-      </div>
-      <div className="mt-6">
         <NewsFilterBar />
       </div>
-      <div className="mt-5 flex flex-col gap-3">
-        {NEWS.map((news, i) => (
-          <NewsFeedCard key={i} news={news} />
-        ))}
+      <div className="mt-5">
+        <Suspense fallback={<NewsFeedSkeleton />}>
+          <NewsFeedList />
+        </Suspense>
       </div>
       <div className="mt-6">
-        <FeedPagination lastPage={8} />
+        <FeedPagination />
       </div>
       <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
