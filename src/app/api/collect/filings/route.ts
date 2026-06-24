@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { summarizeFilings } from "@/lib/collect/summarize";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
 const EFTS_URL = "https://efts.sec.gov/LATEST/search-index";
@@ -166,12 +167,23 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 4. 한국어 요약 — summary_kr NULL 항목, 최근순 최대 20건
+    let summarized = 0;
+    let summarizeFailed = 0;
+    if (process.env.ANTHROPIC_API_KEY) {
+      const s = await summarizeFilings(adminClient);
+      summarized = s.done;
+      summarizeFailed = s.failed;
+    }
+
     return NextResponse.json({
       ok: true,
       date,
       total: hits.length,
       inserted,
       skipped: skipNoTicker + skipTickerErr + skipFilingErr,
+      summarized,
+      ...(summarizeFailed > 0 && { summarizeFailed }),
       debug: {
         skipNoTicker,
         skipTickerErr,

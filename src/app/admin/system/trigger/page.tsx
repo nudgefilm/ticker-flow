@@ -22,6 +22,7 @@ interface TriggerResult {
   skipped?: number;
   total?: number;
   tickers?: number;
+  summarized?: number;
   error?: string;
   firstError?: string;
   debug?: DebugInfo;
@@ -79,6 +80,7 @@ function resultSummary(result: TriggerResult): string {
   if (result.inserted !== undefined) parts.push(`저장 ${result.inserted}건`);
   if (result.skipped !== undefined) parts.push(`스킵 ${result.skipped}건`);
   if (result.tickers !== undefined) parts.push(`티커 ${result.tickers}개`);
+  if (result.summarized !== undefined) parts.push(`요약 ${result.summarized}건`);
   const summary = parts.join(" · ") || "완료";
   return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
 }

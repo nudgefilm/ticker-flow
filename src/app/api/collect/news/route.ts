@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { summarizeNews } from "@/lib/collect/summarize";
 
 interface FinnhubNewsItem {
   category: string;
@@ -78,11 +79,22 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // 한국어 요약 — summary_kr NULL 항목, 최근순 최대 20건
+    let summarized = 0;
+    let summarizeFailed = 0;
+    if (process.env.ANTHROPIC_API_KEY) {
+      const s = await summarizeNews(adminClient);
+      summarized = s.done;
+      summarizeFailed = s.failed;
+    }
+
     return NextResponse.json({
       ok: true,
       total: items.length,
       inserted,
       skipped,
+      summarized,
+      ...(summarizeFailed > 0 && { summarizeFailed }),
       ...(firstError && { firstError }),
     });
   } catch (err) {
