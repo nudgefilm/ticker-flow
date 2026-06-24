@@ -35,7 +35,7 @@ const menus: {
   },
 ];
 
-export default function Navbar() {
+export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<DropdownKey>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -131,18 +131,20 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-3 border-l border-border pl-4 md:ml-4">
-            <Link
-              href="/dashboard"
+            <button
+              type="button"
+              onClick={onOpenLogin}
               className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
             >
               로그인
-            </Link>
-            <Link
-              href="/dashboard"
-              className="inline-flex h-8 items-center rounded-[6px] border border-foreground px-3 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
+            </button>
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              className="inline-flex h-8 cursor-pointer items-center rounded-[6px] border border-foreground px-3 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
             >
               시작하기
-            </Link>
+            </button>
           </div>
         </div>
       </div>
