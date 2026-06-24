@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { ticker: string } }
+  { params }: { params: Promise<{ ticker: string }> }
 ) {
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -11,7 +11,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ticker = params.ticker.toUpperCase();
+  const { ticker: rawTicker } = await params;
+  const ticker = rawTicker.toUpperCase();
   const { error } = await supabase
     .from("watchlist")
     .delete()
