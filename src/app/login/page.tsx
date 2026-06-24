@@ -19,7 +19,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
       <div
         className="relative w-full max-w-sm rounded-xl border border-border bg-card px-8 pb-8 pt-12"
       >

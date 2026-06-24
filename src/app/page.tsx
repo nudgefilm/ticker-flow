@@ -9,19 +9,13 @@ import Features from "@/components/features";
 import Stats from "@/components/stats";
 import Footer from "@/components/footer";
 import LoginModal from "@/components/login-modal";
-import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [showLogin, setShowLogin] = useState(false);
 
   return (
     <>
-      <div
-        className={cn(
-          "min-h-screen bg-background transition-[filter] duration-200",
-          showLogin && "pointer-events-none blur-sm"
-        )}
-      >
+      <div className="min-h-screen bg-background">
         <Navbar onOpenLogin={() => setShowLogin(true)} />
         <main>
           <Hero />
