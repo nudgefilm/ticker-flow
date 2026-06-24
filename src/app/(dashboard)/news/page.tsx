@@ -69,9 +69,13 @@ async function NewsFeedList() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {items.map((item) => (
-        <NewsFeedCard key={item.id} news={item} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {items.map((item, i) => (
+        <NewsFeedCard
+          key={item.id}
+          news={item}
+          className={items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : undefined}
+        />
       ))}
     </div>
   );

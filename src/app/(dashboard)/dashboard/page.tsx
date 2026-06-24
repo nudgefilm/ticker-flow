@@ -62,9 +62,13 @@ async function FilingFeedList() {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {filings.map((filing) => (
-        <FilingFeedCard key={filing.id} filing={filing} />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {filings.map((filing, i) => (
+        <FilingFeedCard
+          key={filing.id}
+          filing={filing}
+          className={filings.length % 2 !== 0 && i === filings.length - 1 ? "col-span-2" : undefined}
+        />
       ))}
     </div>
   );

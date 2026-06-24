@@ -45,13 +45,13 @@ function formatFiledAt(filedAt: string): string {
   return `${filed.getMonth() + 1}월 ${filed.getDate()}일`;
 }
 
-export default function FilingFeedCard({ filing }: { filing: Filing }) {
+export default function FilingFeedCard({ filing, className }: { filing: Filing; className?: string }) {
   const { ticker, form_type, title, summary_kr, filed_at, url } = filing;
   const { color, label } = getBadge(form_type);
   const content = summary_kr ?? title ?? "";
 
   return (
-    <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#111111] p-5", className)}>
       {/* Row 1: 배지 + 티커 + 날짜 + SEC 링크 */}
       <div className="flex flex-wrap items-center gap-2">
         <span

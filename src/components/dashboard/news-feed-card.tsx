@@ -1,4 +1,5 @@
 import { IconExternalLink } from "@tabler/icons-react";
+import { cn } from "@/lib/utils";
 
 export interface NewsItem {
   id: string;
@@ -23,12 +24,12 @@ function formatPublishedAt(publishedAt: string): string {
   return `${published.getMonth() + 1}월 ${published.getDate()}일`;
 }
 
-export default function NewsFeedCard({ news }: { news: NewsItem }) {
+export default function NewsFeedCard({ news, className }: { news: NewsItem; className?: string }) {
   const { ticker, headline, source, published_at, url, summary_kr } = news;
   const content = summary_kr ?? headline;
 
   return (
-    <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#111111] p-5", className)}>
       {/* Row 1: 출처 + 날짜 */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[#a6a6a6]">{source ?? "—"}</span>
