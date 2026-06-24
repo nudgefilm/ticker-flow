@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { IconX } from "@tabler/icons-react";
@@ -132,6 +133,13 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
 export default function Footer() {
   const [modal, setModal] = useState<ModalType>(null);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+
+  async function handleCopyrightClick() {
+    const res = await fetch("/api/is-admin");
+    const { isAdmin } = await res.json();
+    if (isAdmin) router.push("/admin");
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -193,7 +201,7 @@ export default function Footer() {
             <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
             <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
             <p className="pt-2">
-              <Link href="/admin" className="cursor-default">©</Link>{" "}2026 언폴드랩. All rights reserved.
+              <button type="button" onClick={handleCopyrightClick} className="cursor-default">©</button>{" "}2026 언폴드랩. All rights reserved.
             </p>
           </div>
         </div>
