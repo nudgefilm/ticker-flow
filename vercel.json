@@ -2,19 +2,19 @@
   "crons": [
     {
       "path": "/api/collect/filings",
-      "schedule": "0 * * * *"
+      "schedule": "17 * * * *"
     },
     {
       "path": "/api/collect/news",
-      "schedule": "0 * * * *"
+      "schedule": "23 * * * *"
     },
     {
       "path": "/api/collect/earnings",
-      "schedule": "0 0 * * *"
+      "schedule": "7 0 * * *"
     },
     {
       "path": "/api/collect/macro",
-      "schedule": "0 0 * * *"
+      "schedule": "13 0 * * *"
     }
   ]
 }

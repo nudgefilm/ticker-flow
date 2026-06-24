@@ -31,8 +31,7 @@ export async function GET(req: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // ticker FK 검증용 — news는 ticker nullable이지만
-    // related 값이 있을 때 DB에 존재하는 ticker만 연결
+    // FK 검증용 티커 목록 (루프 안에서 신규 추가 시 tickerSet도 갱신)
     const { data: knownRows } = await adminClient
       .from("tickers")
       .select("ticker");
@@ -45,9 +44,19 @@ export async function GET(req: NextRequest) {
     for (const item of items) {
       if (!item.url || !item.headline) { skipped++; continue; }
 
-      // related가 DB에 없는 티커이면 null로 저장 (FK 위반 방지)
-      const ticker =
-        item.related && tickerSet.has(item.related) ? item.related : null;
+      // related 티커가 DB에 없으면 자동 upsert (이름 정보가 없으므로 ticker를 placeholder로 사용,
+      // ignoreDuplicates: true로 시드된 실제 이름은 덮어쓰지 않음)
+      let ticker: string | null = null;
+      if (item.related) {
+        if (!tickerSet.has(item.related)) {
+          const { error: tickerErr } = await adminClient.from("tickers").upsert(
+            { ticker: item.related, name_en: item.related },
+            { onConflict: "ticker", ignoreDuplicates: true }
+          );
+          if (!tickerErr) tickerSet.add(item.related);
+        }
+        if (tickerSet.has(item.related)) ticker = item.related;
+      }
 
       const { error } = await adminClient.from("news").upsert(
         {

@@ -172,10 +172,10 @@ export default function TriggerPage() {
         </div>
         <div className="divide-y divide-white/[0.04]">
           {[
-            { name: "공시 수집", schedule: "매시간 정각", path: "/api/collect/filings" },
-            { name: "뉴스 수집", schedule: "매시간 정각", path: "/api/collect/news" },
-            { name: "실적 캘린더", schedule: "매일 00:00 UTC (09:00 KST)", path: "/api/collect/earnings" },
-            { name: "경제지표", schedule: "매일 00:00 UTC (09:00 KST)", path: "/api/collect/macro" },
+            { name: "공시 수집", schedule: "매시간 17분", path: "/api/collect/filings" },
+            { name: "뉴스 수집", schedule: "매시간 23분", path: "/api/collect/news" },
+            { name: "실적 캘린더", schedule: "매일 00:07 UTC (09:07 KST)", path: "/api/collect/earnings" },
+            { name: "경제지표", schedule: "매일 00:13 UTC (09:13 KST)", path: "/api/collect/macro" },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
