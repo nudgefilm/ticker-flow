@@ -7,12 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 50;
+
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
 function NewsFeedSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
-      {Array.from({ length: 5 }).map((_, i) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
           className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 animate-pulse"
@@ -41,14 +43,15 @@ function NewsFeedSkeleton() {
 
 // ─── 실 데이터 피드 ────────────────────────────────────────────────────────────
 
-async function NewsFeedList() {
+async function NewsFeedList({ page }: { page: number }) {
   const supabase = await createClient();
+  const offset = (page - 1) * PAGE_SIZE;
 
-  const { data, error } = await supabase
+  const { data, count, error } = await supabase
     .from("news")
-    .select("id, ticker, headline, source, published_at, url, summary_kr")
+    .select("id, ticker, headline, source, published_at, url, summary_kr", { count: "exact" })
     .order("published_at", { ascending: false })
-    .limit(50);
+    .range(offset, offset + PAGE_SIZE - 1);
 
   if (error) {
     return (
@@ -59,6 +62,7 @@ async function NewsFeedList() {
   }
 
   const items: NewsItem[] = data ?? [];
+  const lastPage = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
   if (items.length === 0) {
     return (
@@ -69,21 +73,32 @@ async function NewsFeedList() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {items.map((item, i) => (
-        <NewsFeedCard
-          key={item.id}
-          news={item}
-          className={items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : undefined}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.map((item, i) => (
+          <NewsFeedCard
+            key={item.id}
+            news={item}
+            className={items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : undefined}
+          />
+        ))}
+      </div>
+      <div className="mt-6">
+        <FeedPagination page={page} lastPage={lastPage} />
+      </div>
+    </>
   );
 }
 
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
-export default function NewsPage() {
+export default function NewsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string };
+}) {
+  const page = Math.max(1, parseInt(searchParams?.page ?? "1") || 1);
+
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="뉴스 피드" />
@@ -92,11 +107,8 @@ export default function NewsPage() {
       </div>
       <div className="mt-5">
         <Suspense fallback={<NewsFeedSkeleton />}>
-          <NewsFeedList />
+          <NewsFeedList page={page} />
         </Suspense>
-      </div>
-      <div className="mt-6">
-        <FeedPagination />
       </div>
       <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>

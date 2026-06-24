@@ -1,60 +1,80 @@
-"use client";
-
-import { useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type Page = number | "…";
+type PageEntry = number | "…";
 
-function buildPages(last: number): Page[] {
-  if (last <= 5) return Array.from({ length: last }, (_, i) => i + 1);
-  return [1, 2, 3, "…", last];
+function buildPages(current: number, last: number): PageEntry[] {
+  if (last <= 7) return Array.from({ length: last }, (_, i) => i + 1);
+
+  const pages: PageEntry[] = [1];
+
+  if (current > 3) pages.push("…");
+
+  const lo = Math.max(2, current - 1);
+  const hi = Math.min(last - 1, current + 1);
+  for (let p = lo; p <= hi; p++) pages.push(p);
+
+  if (current < last - 2) pages.push("…");
+
+  pages.push(last);
+  return pages;
 }
 
-export default function FeedPagination({ lastPage = 12 }: { lastPage?: number }) {
-  const [current, setCurrent] = useState(1);
-  const pages = buildPages(lastPage);
+export default function FeedPagination({
+  page = 1,
+  lastPage = 1,
+}: {
+  page?: number;
+  lastPage?: number;
+}) {
+  if (lastPage <= 1) return null;
+
+  const pages = buildPages(page, lastPage);
 
   return (
     <div className="flex items-center justify-center gap-1">
-      <button
-        type="button"
-        onClick={() => setCurrent((p) => Math.max(1, p - 1))}
-        disabled={current === 1}
-        className="rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
+      <Link
+        href={`?page=${Math.max(1, page - 1)}`}
+        aria-disabled={page === 1}
+        className={cn(
+          "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",
+          page === 1 && "pointer-events-none opacity-30"
+        )}
       >
         이전
-      </button>
+      </Link>
 
-      {pages.map((page, i) =>
-        page === "…" ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-sm text-[#a6a6a6]">
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`e-${i}`} className="px-2 text-sm text-[#a6a6a6]">
             …
           </span>
         ) : (
-          <button
-            key={page}
-            type="button"
-            onClick={() => setCurrent(page)}
+          <Link
+            key={p}
+            href={`?page=${p}`}
             className={cn(
-              "min-w-8 rounded-[6px] px-2 py-1.5 text-sm transition-colors",
-              current === page
+              "min-w-8 rounded-[6px] px-2 py-1.5 text-center text-sm transition-colors",
+              p === page
                 ? "bg-[#1a1a1a] text-white"
                 : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-[#cccccc]"
             )}
           >
-            {page}
-          </button>
+            {p}
+          </Link>
         )
       )}
 
-      <button
-        type="button"
-        onClick={() => setCurrent((p) => Math.min(lastPage, p + 1))}
-        disabled={current === lastPage}
-        className="rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
+      <Link
+        href={`?page=${Math.min(lastPage, page + 1)}`}
+        aria-disabled={page === lastPage}
+        className={cn(
+          "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",
+          page === lastPage && "pointer-events-none opacity-30"
+        )}
       >
         다음
-      </button>
+      </Link>
     </div>
   );
 }
