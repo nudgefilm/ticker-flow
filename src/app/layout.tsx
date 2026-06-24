@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import ScrollToTop from "@/components/scroll-to-top";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="ko" className={`${inter.variable} dark`}>
       <body className="min-h-full antialiased">
         <div id="site-content">{children}</div>
+        <ScrollToTop />
       </body>
     </html>
   );

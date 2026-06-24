@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +39,16 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<DropdownKey>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  function handleLogoClick() {
+    if (pathname === "/") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      router.push("/");
+    }
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 8);
@@ -66,7 +76,9 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
     >
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-6">
         {/* 좌측: 로고 */}
-        <Logo />
+        <button type="button" onClick={handleLogoClick} className="cursor-pointer">
+          <Logo />
+        </button>
 
         {/* 우측: 드롭다운 메뉴 + 로그인 + 시작하기 */}
         <div className="flex items-center">
