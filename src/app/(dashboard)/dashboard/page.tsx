@@ -24,7 +24,7 @@ const FILINGS: Filing[] = [
   },
   {
     badgeColor: "amber",
-    badgeLabel: "Form 4 인사이더",
+    badgeLabel: "Form 4 내부자 거래",
     company: "PLTR · 팔란티어",
     time: "2일 전 09:30 KST",
     summary:

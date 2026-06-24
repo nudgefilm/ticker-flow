@@ -175,11 +175,16 @@ export default function EarningsPage() {
 
       <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-3.5">
         <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#a6a6a6]" stroke={1.5} />
-        <div className="text-sm">
+        <div className="space-y-1 text-sm">
           <p className="text-[#cccccc]">모든 시각은 한국 시간(KST) 기준입니다.</p>
           <p className="text-[#a6a6a6]">
             실적 발표 일정은 기업 사정에 따라 변경될 수 있습니다.
           </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-0.5 pt-1 text-xs text-[#a6a6a6]">
+            <span><span className="text-[#cccccc]">EPS</span> — 주당순이익 (Earnings Per Share)</span>
+            <span><span className="text-[#cccccc]">BMO</span> — 개장 전 발표 (Before Market Open)</span>
+            <span><span className="text-[#cccccc]">AMC</span> — 장 마감 후 발표 (After Market Close)</span>
+          </div>
         </div>
       </div>
 

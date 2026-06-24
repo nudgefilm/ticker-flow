@@ -6,6 +6,9 @@ export default function CallsPage() {
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="어닝콜 요약" badge />
+      <p className="mt-2 text-sm text-[#a6a6a6]">
+        어닝콜(실적 발표 컨퍼런스콜)이란 경영진이 투자자·애널리스트에게 실적을 직접 설명하는 자리입니다.
+      </p>
       <div className="mt-6 flex-1">
         <ProGate
           iconName="microphone"

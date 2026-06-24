@@ -5,7 +5,10 @@ import InsiderPreview from "@/components/dashboard/insider-preview";
 export default function InsiderPage() {
   return (
     <div className="flex h-full flex-col">
-      <DashboardHeader title="인사이더" badge />
+      <DashboardHeader title="내부자 거래" badge />
+      <p className="mt-2 text-sm text-[#a6a6a6]">
+        내부자(인사이더)란 임원, 이사, 10% 이상 대주주를 말합니다. SEC Form 4 공시를 기반으로 자사 주식 매수·매도 현황을 확인할 수 있습니다.
+      </p>
       <div className="mt-6 flex-1">
         <ProGate
           iconName="user"
