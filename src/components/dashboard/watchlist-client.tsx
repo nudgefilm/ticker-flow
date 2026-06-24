@@ -8,8 +8,10 @@ const FREE_LIMIT = 5;
 
 export default function WatchlistClient({
   initialStocks,
+  isPro,
 }: {
   initialStocks: WatchlistStock[];
+  isPro: boolean;
 }) {
   const router = useRouter();
   const stocks = initialStocks;
@@ -23,7 +25,7 @@ export default function WatchlistClient({
   const totalFilings = stocks.reduce((sum, s) => sum + s.newFilings, 0);
   const totalNews = stocks.reduce((sum, s) => sum + s.newNews, 0);
   const earningsImminentCount = stocks.filter((s) => s.earningsDday !== "—").length;
-  const atLimit = stocks.length >= FREE_LIMIT;
+  const atLimit = !isPro && stocks.length >= FREE_LIMIT;
 
   async function handleDelete(ticker: string) {
     setDeletingTicker(ticker);
@@ -63,11 +65,13 @@ export default function WatchlistClient({
       <div className="mt-6 flex items-center justify-between gap-4">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-white">
-            {stocks.length} / {FREE_LIMIT} 종목
+            {isPro ? `${stocks.length}종목` : `${stocks.length} / ${FREE_LIMIT} 종목`}
           </span>
-          <span className="text-sm text-[#a6a6a6]">
-            Free 플랜은 최대 {FREE_LIMIT}종목까지 등록 가능합니다.
-          </span>
+          {!isPro && (
+            <span className="text-sm text-[#a6a6a6]">
+              Free 플랜은 최대 {FREE_LIMIT}종목까지 등록 가능합니다.
+            </span>
+          )}
         </div>
         {atLimit ? (
           <button
@@ -173,15 +177,17 @@ export default function WatchlistClient({
         </div>
       )}
 
-      {/* 업그레이드 배너 */}
-      <div className="mt-3 flex items-center justify-between rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
-        <p className="text-sm text-[#cccccc]">
-          Pro로 업그레이드하면 종목 수 제한 없이 등록할 수 있습니다.
-        </p>
-        <button className="h-9 shrink-0 rounded-[6px] border border-white/[0.08] px-3 text-sm text-white transition-colors hover:bg-[#1a1a1a]">
-          Pro 시작하기
-        </button>
-      </div>
+      {/* 업그레이드 배너 — Free 유저에게만 표시 */}
+      {!isPro && (
+        <div className="mt-3 flex items-center justify-between rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
+          <p className="text-sm text-[#cccccc]">
+            Pro로 업그레이드하면 종목 수 제한 없이 등록할 수 있습니다.
+          </p>
+          <button className="h-9 shrink-0 rounded-[6px] border border-white/[0.08] px-3 text-sm text-white transition-colors hover:bg-[#1a1a1a]">
+            Pro 시작하기
+          </button>
+        </div>
+      )}
     </>
   );
 }

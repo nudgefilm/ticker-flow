@@ -63,17 +63,26 @@ async function WatchlistContent() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return <WatchlistClient initialStocks={[]} />;
+  if (!user) return <WatchlistClient initialStocks={[]} isPro={false} />;
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const today = new Date().toISOString().slice(0, 10);
 
-  // 1. watchlist + 회사명
-  const { data: wl } = await supabase
-    .from("watchlist")
-    .select("ticker, tickers(name_kr, name_en)")
-    .eq("user_id", user.id)
-    .order("added_at", { ascending: false });
+  // 1. watchlist + 회사명 + plan 병렬 조회
+  const [{ data: wl }, { data: profile }] = await Promise.all([
+    supabase
+      .from("watchlist")
+      .select("ticker, tickers(name_kr, name_en)")
+      .eq("user_id", user.id)
+      .order("added_at", { ascending: false }),
+    supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", user.id)
+      .single(),
+  ]);
+
+  const isPro = profile?.plan === "pro";
 
   type WlRow = {
     ticker: string;
@@ -82,7 +91,7 @@ async function WatchlistContent() {
   const rows = (wl ?? []) as unknown as WlRow[];
 
   if (rows.length === 0) {
-    return <WatchlistClient initialStocks={[]} />;
+    return <WatchlistClient initialStocks={[]} isPro={isPro} />;
   }
 
   const tickers = rows.map((r) => r.ticker);
@@ -130,7 +139,7 @@ async function WatchlistContent() {
     earningsDday: formatDday(nextEarnings.get(row.ticker) ?? null),
   }));
 
-  return <WatchlistClient initialStocks={stocks} />;
+  return <WatchlistClient initialStocks={stocks} isPro={isPro} />;
 }
 
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
