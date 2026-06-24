@@ -134,9 +134,10 @@ export async function summarizeFilings(
   let failed = 0;
 
   for (const row of rows) {
-    const prompt = `미국 SEC 공시 정보를 한국어로 요약해주세요.
+    const prompt = `미국 SEC 공시 내용을 한국어로 요약해주세요.
 - 분량: 3~5문장, 200자 내외
-- 사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
+- 공시에 기재된 사실만 중립적으로 서술하세요.
+- plain text로만 응답하고 마크다운 기호(#, **, - 등)는 사용하지 마세요.
 
 기업: ${row.ticker}
 공시 유형: ${row.form_type}
@@ -169,7 +170,8 @@ export async function summarizeNews(
   for (const row of rows) {
     const prompt = `다음 영문 뉴스 헤드라인을 한국어로 요약해주세요.
 - 분량: 2~3문장, 100자 내외
-- 사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
+- 기사에 기재된 사실만 중립적으로 서술하세요.
+- plain text로만 응답하고 마크다운 기호(#, **, - 등)는 사용하지 마세요.
 
 헤드라인: ${row.headline}
 출처: ${row.source ?? ""}`;
