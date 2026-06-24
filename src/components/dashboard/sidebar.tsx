@@ -90,14 +90,14 @@ export default function Sidebar() {
       <div className="flex-none px-3 pb-3">
         <div className="relative">
           <IconSearch
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#777777]"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#a6a6a6]"
             size={14}
             stroke={1.5}
           />
           <input
             type="text"
             placeholder="종목 검색... AAPL, NVDA"
-            className="w-full rounded-[6px] border border-white/[0.08] bg-[#0a0a0a] py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-[#777777] outline-none transition-colors focus:border-white/20"
+            className="w-full rounded-[6px] border border-white/[0.08] bg-[#0a0a0a] py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-[#a6a6a6] outline-none transition-colors focus:border-white/20"
           />
         </div>
       </div>
@@ -109,7 +109,7 @@ export default function Sidebar() {
             {gi > 0 && (
               <div className="my-2 border-t border-white/[0.06]" />
             )}
-            <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-[#777777]">
+            <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-[#a6a6a6]">
               {group.label}
             </p>
             <div className="space-y-0.5">
