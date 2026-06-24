@@ -12,7 +12,7 @@ export default function WatchlistChangesSummary() {
         {STATS.map((stat) => (
           <div key={stat.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5 text-center">
             <p className="text-xl font-semibold tabular-nums text-white">{stat.count}</p>
-            <p className="mt-0.5 text-xs text-[#666666]">{stat.label}</p>
+            <p className="mt-0.5 text-xs text-[#a6a6a6]">{stat.label}</p>
           </div>
         ))}
       </div>

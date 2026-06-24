@@ -82,7 +82,7 @@ export default function StockPage() {
           {RECENT_CHANGES.map((item) => (
             <div key={item.label}>
               <p className="text-lg font-semibold text-white">{item.count}</p>
-              <p className="text-xs text-[#666666]">{item.label}</p>
+              <p className="text-xs text-[#a6a6a6]">{item.label}</p>
             </div>
           ))}
         </div>
@@ -109,13 +109,13 @@ export default function StockPage() {
             <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3">
               <a
                 href="/dashboard"
-                className="text-xs text-[#666666] transition-colors hover:text-[#cccccc]"
+                className="text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
               >
                 전체 공시 보기 →
               </a>
               <a
                 href="/billing"
-                className="flex items-center gap-1 text-xs text-[#666666] transition-colors hover:text-[#cccccc]"
+                className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
               >
                 <IconLock className="size-3.5" stroke={1.5} />
                 공시 인사이트 보기
@@ -140,12 +140,12 @@ export default function StockPage() {
             </p>
             <div className="mt-3">
               <p className="text-sm font-medium text-white">2026년 7월 11일 (금)</p>
-              <p className="mt-1 text-xs text-[#666666]">장 마감 후 · 07:00 KST</p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">장 마감 후 · 07:00 KST</p>
               <div className="mt-2 flex items-center gap-2">
                 <span className="rounded-[4px] border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400">
                   D-2
                 </span>
-                <span className="text-xs text-[#666666]">
+                <span className="text-xs text-[#a6a6a6]">
                   EPS 컨센서스{" "}
                   <span className="text-[#cccccc]">$2.80</span>
                 </span>

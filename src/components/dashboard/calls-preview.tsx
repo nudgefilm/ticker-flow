@@ -12,7 +12,7 @@ function Section({ label, children }: { label: string; children: ReactNode }) {
 function QA({ q, a }: { q: string; a: string }) {
   return (
     <div className="mt-2 first:mt-0">
-      <p className="text-xs text-[#666666]">Q: {q}</p>
+      <p className="text-xs text-[#a6a6a6]">Q: {q}</p>
       <p className="mt-0.5 text-sm text-[#cccccc]">A: {a}</p>
     </div>
   );
@@ -34,7 +34,7 @@ export default function CallsPreview() {
               실적
             </span>
             <span className="text-sm font-medium text-white">NVDA · 엔비디아</span>
-            <div className="ml-auto flex items-center gap-2 text-xs text-[#666666]">
+            <div className="ml-auto flex items-center gap-2 text-xs text-[#a6a6a6]">
               <span>Q2 FY2026</span>
               <span>3일 전</span>
             </div>
@@ -92,7 +92,7 @@ export default function CallsPreview() {
               실적
             </span>
             <span className="text-sm font-medium text-white">TSLA · 테슬라</span>
-            <div className="ml-auto flex items-center gap-2 text-xs text-[#666666]">
+            <div className="ml-auto flex items-center gap-2 text-xs text-[#a6a6a6]">
               <span>Q2 FY2026</span>
               <span>1주 전</span>
             </div>

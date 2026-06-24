@@ -16,7 +16,7 @@ export default function MacroKeyEvents() {
           >
             <div className="min-w-0">
               <p className="text-sm text-white">{event.name}</p>
-              <p className="truncate text-xs text-[#666666]">{event.nameEn}</p>
+              <p className="truncate text-xs text-[#a6a6a6]">{event.nameEn}</p>
             </div>
             <span className="shrink-0 text-xs tabular-nums text-[#cccccc]">{event.release}</span>
           </li>

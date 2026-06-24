@@ -69,7 +69,7 @@ export default function StockChart() {
             key={item.label}
             className="rounded-[4px] bg-[#1a1a1a] px-3 py-2 text-xs"
           >
-            <span className="text-[#666666]">{item.label} </span>
+            <span className="text-[#a6a6a6]">{item.label} </span>
             <span className="tabular-nums text-[#cccccc]">{item.value}</span>
           </div>
         ))}

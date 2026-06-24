@@ -25,7 +25,7 @@ function SettingRow({
     <div className="flex items-center justify-between gap-4">
       <div>
         <p className="text-sm text-white">{title}</p>
-        <p className="mt-0.5 text-xs text-[#666666]">{desc}</p>
+        <p className="mt-0.5 text-xs text-[#a6a6a6]">{desc}</p>
       </div>
       <Toggle on={on} />
     </div>

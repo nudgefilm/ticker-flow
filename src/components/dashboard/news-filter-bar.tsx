@@ -22,7 +22,7 @@ export default function NewsFilterBar() {
               "border-b-2 px-3 py-2 text-sm transition-colors",
               activeTab === tab
                 ? "border-white text-white"
-                : "border-transparent text-[#666666] hover:text-[#cccccc]"
+                : "border-transparent text-[#a6a6a6] hover:text-[#cccccc]"
             )}
           >
             {tab}
@@ -36,14 +36,14 @@ export default function NewsFilterBar() {
           className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#1a1a1a]"
         >
           모든 종목
-          <IconChevronDown size={14} stroke={1.5} className="text-[#666666]" />
+          <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
         </button>
         <button
           type="button"
           className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#1a1a1a]"
         >
           오늘
-          <IconChevronDown size={14} stroke={1.5} className="text-[#666666]" />
+          <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
         </button>
       </div>
     </div>

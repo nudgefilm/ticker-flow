@@ -35,7 +35,7 @@ export default function AnalysisPreview() {
               8-K
             </span>
             <span className="text-sm font-medium text-white">NVDA · 엔비디아</span>
-            <span className="ml-auto text-xs text-[#666666]">3일 전</span>
+            <span className="ml-auto text-xs text-[#a6a6a6]">3일 전</span>
           </div>
 
           <div className="mt-4 flex flex-col gap-4">
@@ -85,7 +85,7 @@ export default function AnalysisPreview() {
               10-K
             </span>
             <span className="text-sm font-medium text-white">AAPL · 애플</span>
-            <span className="ml-auto text-xs text-[#666666]">2주 전</span>
+            <span className="ml-auto text-xs text-[#a6a6a6]">2주 전</span>
           </div>
 
           {/* 아코디언 행 */}
@@ -96,7 +96,7 @@ export default function AnalysisPreview() {
                 className="flex items-center justify-between border-t border-white/[0.06] py-3"
               >
                 <span className="text-sm text-[#cccccc]">{row}</span>
-                <IconChevronRight size={16} stroke={1.5} className="text-[#666666]" />
+                <IconChevronRight size={16} stroke={1.5} className="text-[#a6a6a6]" />
               </div>
             ))}
           </div>

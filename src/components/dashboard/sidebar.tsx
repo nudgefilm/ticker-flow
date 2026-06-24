@@ -125,7 +125,7 @@ export default function Sidebar() {
                       "relative flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm transition-colors",
                       isActive
                         ? "bg-[#1a1a1a] text-white"
-                        : "text-[#666666] hover:bg-[#1a1a1a] hover:text-white"
+                        : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-white"
                     )}
                   >
                     {isActive && (
@@ -156,11 +156,11 @@ export default function Sidebar() {
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-white">정코딩</p>
-            <p className="truncate text-xs text-[#666666]">Free 플랜</p>
+            <p className="truncate text-xs text-[#a6a6a6]">Free 플랜</p>
           </div>
           <button
             type="button"
-            className="flex-none text-[#666666] transition-colors hover:text-white"
+            className="flex-none text-[#a6a6a6] transition-colors hover:text-white"
             aria-label="로그아웃"
           >
             <IconLogout size={16} stroke={1.5} />

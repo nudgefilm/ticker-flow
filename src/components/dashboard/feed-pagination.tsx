@@ -20,7 +20,7 @@ export default function FeedPagination({ lastPage = 12 }: { lastPage?: number })
         type="button"
         onClick={() => setCurrent((p) => Math.max(1, p - 1))}
         disabled={current === 1}
-        className="rounded-[6px] px-3 py-1.5 text-sm text-[#666666] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
+        className="rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
       >
         이전
       </button>
@@ -39,7 +39,7 @@ export default function FeedPagination({ lastPage = 12 }: { lastPage?: number })
               "min-w-8 rounded-[6px] px-2 py-1.5 text-sm transition-colors",
               current === page
                 ? "bg-[#1a1a1a] text-white"
-                : "text-[#666666] hover:bg-[#1a1a1a] hover:text-[#cccccc]"
+                : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-[#cccccc]"
             )}
           >
             {page}
@@ -51,7 +51,7 @@ export default function FeedPagination({ lastPage = 12 }: { lastPage?: number })
         type="button"
         onClick={() => setCurrent((p) => Math.min(lastPage, p + 1))}
         disabled={current === lastPage}
-        className="rounded-[6px] px-3 py-1.5 text-sm text-[#666666] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
+        className="rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
       >
         다음
       </button>

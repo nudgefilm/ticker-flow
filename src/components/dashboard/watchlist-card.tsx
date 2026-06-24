@@ -26,13 +26,13 @@ export default function WatchlistCard({ stock }: { stock: WatchlistStock }) {
           <span className="text-sm font-medium text-white">{company}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-[#666666]">{price}</span>
+          <span className="text-xs text-[#a6a6a6]">{price}</span>
           <span className={`text-xs ${changeUp ? "text-green-400" : "text-red-400"}`}>
             {change}
           </span>
           <button
             type="button"
-            className="text-[#666666] transition-colors hover:text-white"
+            className="text-[#a6a6a6] transition-colors hover:text-white"
             aria-label="종목 삭제"
           >
             <IconTrash size={16} stroke={1.5} />
@@ -49,7 +49,7 @@ export default function WatchlistCard({ stock }: { stock: WatchlistStock }) {
         ].map((item) => (
           <div key={item.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5">
             <p className="text-sm font-semibold text-white">{item.value}</p>
-            <p className="mt-0.5 text-xs text-[#666666]">{item.label}</p>
+            <p className="mt-0.5 text-xs text-[#a6a6a6]">{item.label}</p>
           </div>
         ))}
       </div>
@@ -58,18 +58,18 @@ export default function WatchlistCard({ stock }: { stock: WatchlistStock }) {
       <div className="mt-3 flex items-center gap-4 border-t border-white/[0.06] pt-3">
         <Link
           href="/dashboard"
-          className="text-xs text-[#666666] transition-colors hover:text-white"
+          className="text-xs text-[#a6a6a6] transition-colors hover:text-white"
         >
           공시 보기
         </Link>
-        <Link href="/news" className="text-xs text-[#666666] transition-colors hover:text-white">
+        <Link href="/news" className="text-xs text-[#a6a6a6] transition-colors hover:text-white">
           뉴스 보기
         </Link>
         <div className="ml-auto flex items-center gap-1.5">
-          <IconLock size={14} stroke={1.5} className="text-[#666666]" />
+          <IconLock size={14} stroke={1.5} className="text-[#a6a6a6]" />
           <Link
             href="/billing"
-            className="text-xs text-[#666666] transition-colors hover:text-white"
+            className="text-xs text-[#a6a6a6] transition-colors hover:text-white"
           >
             변화 분석 보기
           </Link>

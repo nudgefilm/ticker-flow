@@ -87,14 +87,14 @@ export default function InsiderPreview() {
                 <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
                   {tx.ticker}
                 </span>
-                <span className="text-sm text-[#666666]">{tx.company}</span>
+                <span className="text-sm text-[#a6a6a6]">{tx.company}</span>
               </div>
 
               {/* 내부자 */}
               <span className="text-sm text-white">{tx.insider}</span>
 
               {/* 직책 */}
-              <span className="text-sm text-[#666666]">{tx.role}</span>
+              <span className="text-sm text-[#a6a6a6]">{tx.role}</span>
 
               {/* 유형 */}
               <span
@@ -117,7 +117,7 @@ export default function InsiderPreview() {
               </span>
 
               {/* 날짜 */}
-              <span className="text-right text-xs text-[#666666]">{tx.date}</span>
+              <span className="text-right text-xs text-[#a6a6a6]">{tx.date}</span>
             </div>
           ))}
 

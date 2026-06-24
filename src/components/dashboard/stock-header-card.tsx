@@ -38,7 +38,7 @@ export default function StockHeaderCard({
               {ticker}
             </span>
             <span className="text-lg font-semibold text-white">{company}</span>
-            <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#666666]">
+            <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#a6a6a6]">
               {exchange}
             </span>
           </div>
@@ -54,7 +54,7 @@ export default function StockHeaderCard({
             >
               {change}
             </span>
-            <span className="text-sm text-[#666666]">{changeAbs}</span>
+            <span className="text-sm text-[#a6a6a6]">{changeAbs}</span>
           </div>
         </div>
 
@@ -63,7 +63,7 @@ export default function StockHeaderCard({
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label}>
-                <p className="text-xs text-[#666666]">{stat.label}</p>
+                <p className="text-xs text-[#a6a6a6]">{stat.label}</p>
                 {stat.badge ? (
                   <span className="mt-1 inline-flex items-center rounded-[4px] border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-400">
                     {stat.value}

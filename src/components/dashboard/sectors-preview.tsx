@@ -152,7 +152,7 @@ export default function SectorsPreview() {
               key={item.label}
               className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-3"
             >
-              <p className="text-xs text-[#666666]">{item.label}</p>
+              <p className="text-xs text-[#a6a6a6]">{item.label}</p>
               <p className="mt-1 text-sm font-medium text-white">{item.value}</p>
             </div>
           ))}

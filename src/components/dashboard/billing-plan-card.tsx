@@ -37,9 +37,9 @@ export default function BillingPlanCard({
       <div className="mt-4">
         <div className="flex items-baseline gap-1">
           <span className="text-3xl font-semibold tabular-nums text-white">{price}</span>
-          <span className="text-sm text-[#666666]">/월</span>
+          <span className="text-sm text-[#a6a6a6]">/월</span>
         </div>
-        {annual && <p className="mt-1 text-xs text-[#666666]">{annual}</p>}
+        {annual && <p className="mt-1 text-xs text-[#a6a6a6]">{annual}</p>}
       </div>
 
       {/* 기능 리스트 */}
@@ -49,7 +49,7 @@ export default function BillingPlanCard({
             <IconCheck
               size={16}
               stroke={2}
-              className={featured ? "shrink-0 text-white" : "shrink-0 text-[#666666]"}
+              className={featured ? "shrink-0 text-white" : "shrink-0 text-[#a6a6a6]"}
             />
             <span className={cn("text-sm", featured ? "text-white" : "text-[#cccccc]")}>
               {feature}
@@ -65,7 +65,7 @@ export default function BillingPlanCard({
             <button className="w-full rounded-[6px] bg-white py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90">
               Pro 시작하기
             </button>
-            <p className="text-center text-xs text-[#666666]">언제든 해지 가능 · 연간 할인 제공</p>
+            <p className="text-center text-xs text-[#a6a6a6]">언제든 해지 가능 · 연간 할인 제공</p>
           </>
         ) : (
           <button

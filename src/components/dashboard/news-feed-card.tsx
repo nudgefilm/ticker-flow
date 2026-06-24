@@ -43,7 +43,7 @@ export default function NewsFeedCard({ news }: { news: NewsItem }) {
         >
           {category}
         </span>
-        <span className="shrink-0 text-xs text-[#666666]">
+        <span className="shrink-0 text-xs text-[#a6a6a6]">
           {source} · {time}
         </span>
       </div>
@@ -52,7 +52,7 @@ export default function NewsFeedCard({ news }: { news: NewsItem }) {
       <p className="mt-3 text-base font-semibold text-white">{event}</p>
 
       {/* Row 3: 회사명 */}
-      <p className="mt-1 text-xs text-[#666666]">{company}</p>
+      <p className="mt-1 text-xs text-[#a6a6a6]">{company}</p>
 
       {/* Row 4: 요약 */}
       <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#cccccc]">
@@ -61,12 +61,12 @@ export default function NewsFeedCard({ news }: { news: NewsItem }) {
 
       {/* Row 5: 태그 + 원문 보기 */}
       <div className="mt-3 flex items-center justify-between">
-        <span className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#666666]">
+        <span className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#a6a6a6]">
           {tag}
         </span>
         <a
           href="#"
-          className="flex items-center gap-1 text-xs text-[#666666] transition-colors hover:text-[#cccccc]"
+          className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
         >
           원문 보기
           <IconExternalLink size={12} stroke={1.5} />

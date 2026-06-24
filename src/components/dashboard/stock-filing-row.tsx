@@ -28,10 +28,10 @@ export default function StockFilingRow({ filing }: { filing: StockFiling }) {
         {badgeLabel}
       </span>
       <span className="text-sm text-[#cccccc]">{type}</span>
-      <span className="text-xs text-[#666666]">{time}</span>
+      <span className="text-xs text-[#a6a6a6]">{time}</span>
       <a
         href="#"
-        className="ml-auto flex items-center gap-1 text-xs text-[#666666] transition-colors hover:text-[#cccccc]"
+        className="ml-auto flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
       >
         SEC 원문
         <IconExternalLink size={12} stroke={1.5} />

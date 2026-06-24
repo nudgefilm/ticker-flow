@@ -51,13 +51,13 @@ export default function MacroRow({
         </span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-white">{name}</p>
-          <p className="truncate text-xs text-[#666666]">{nameEn}</p>
+          <p className="truncate text-xs text-[#a6a6a6]">{nameEn}</p>
         </div>
       </div>
 
       {/* 중: 발표시각 + 상태 배지 */}
       <div className="flex items-center gap-2 text-sm">
-        <IconClock size={14} stroke={1.5} className="shrink-0 text-[#666666]" />
+        <IconClock size={14} stroke={1.5} className="shrink-0 text-[#a6a6a6]" />
         <span className="tabular-nums text-[#cccccc]">{release}</span>
         <span
           className={cn(
@@ -76,18 +76,18 @@ export default function MacroRow({
         <div className="flex items-center gap-4">
           {forecast !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-[#666666]">예상</span>
+              <span className="text-xs text-[#a6a6a6]">예상</span>
               <span className="text-sm tabular-nums text-[#cccccc]">{forecast}</span>
             </div>
           )}
           {previous !== undefined && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-[#666666]">이전</span>
+              <span className="text-xs text-[#a6a6a6]">이전</span>
               <span className="text-sm tabular-nums text-[#cccccc]">{previous}</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[#666666]">실제</span>
+            <span className="text-xs text-[#a6a6a6]">실제</span>
             <span className={cn("text-sm tabular-nums", actualColor)}>{actualDisplay}</span>
           </div>
         </div>

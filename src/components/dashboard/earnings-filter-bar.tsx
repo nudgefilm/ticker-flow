@@ -29,7 +29,7 @@ export default function EarningsFilterBar() {
               onClick={() => setView(v)}
               className={cn(
                 "rounded-[4px] px-3 py-1.5 text-sm transition-colors",
-                view === v ? "bg-[#1a1a1a] text-white" : "text-[#666666] hover:text-[#cccccc]"
+                view === v ? "bg-[#1a1a1a] text-white" : "text-[#a6a6a6] hover:text-[#cccccc]"
               )}
             >
               {v}
@@ -43,14 +43,14 @@ export default function EarningsFilterBar() {
             className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#1a1a1a]"
           >
             모든 종목
-            <IconChevronDown size={14} stroke={1.5} className="text-[#666666]" />
+            <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
           </button>
           <button
             type="button"
             className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#1a1a1a]"
           >
             이번 주
-            <IconChevronDown size={14} stroke={1.5} className="text-[#666666]" />
+            <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
           </button>
         </div>
       </div>
@@ -64,7 +64,7 @@ export default function EarningsFilterBar() {
                 key={d.day}
                 className="flex flex-col items-center gap-1 rounded-[4px] bg-[#0a0a0a] px-2 py-3 text-center"
               >
-                <span className="text-xs text-[#666666]">{d.day}</span>
+                <span className="text-xs text-[#a6a6a6]">{d.day}</span>
                 <span className="text-lg font-semibold text-white">{d.count}건</span>
                 <div className="flex flex-wrap justify-center gap-1">
                   {d.tickers.map((t) => (

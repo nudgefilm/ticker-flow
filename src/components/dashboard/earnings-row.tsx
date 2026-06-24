@@ -68,7 +68,7 @@ export default function EarningsRow({
       </div>
 
       {/* 중: 세션 + 시각 */}
-      <div className="flex items-center gap-1.5 text-sm text-[#666666]">
+      <div className="flex items-center gap-1.5 text-sm text-[#a6a6a6]">
         <IconClock size={14} stroke={1.5} />
         <span>{session}</span>
         {!compact && time && (
@@ -82,13 +82,13 @@ export default function EarningsRow({
       {/* 우: EPS + 매출 + 태그 */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-[#666666]">{epsLabel}</span>
+          <span className="text-xs text-[#a6a6a6]">{epsLabel}</span>
           <span className="text-sm tabular-nums text-[#cccccc]">{eps}</span>
         </div>
 
         {!compact && revenueLabel && revenue && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[#666666]">{revenueLabel}</span>
+            <span className="text-xs text-[#a6a6a6]">{revenueLabel}</span>
             <span className="text-sm tabular-nums text-[#cccccc]">{revenue}</span>
           </div>
         )}

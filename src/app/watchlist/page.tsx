@@ -64,7 +64,7 @@ export default function WatchlistPage() {
       <div className="mt-6 flex items-center justify-between">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-white">5 / 5 종목</span>
-          <span className="text-sm text-[#666666]">
+          <span className="text-sm text-[#a6a6a6]">
             Free 플랜은 최대 5종목까지 등록 가능합니다.
           </span>
         </div>

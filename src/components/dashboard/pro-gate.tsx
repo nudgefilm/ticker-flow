@@ -18,7 +18,7 @@ export default function ProGate({
       <div className="flex flex-col items-center text-center">
         <Icon className="size-12 text-[#444444]" stroke={1.5} />
         <h2 className="mt-4 text-lg font-medium text-white">{title}</h2>
-        <p className="mt-2 max-w-md whitespace-pre-line text-sm leading-relaxed text-[#666666]">
+        <p className="mt-2 max-w-md whitespace-pre-line text-sm leading-relaxed text-[#a6a6a6]">
           {description}
         </p>
         <button className="mt-6 rounded-[6px] bg-white px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90">
@@ -26,7 +26,7 @@ export default function ProGate({
         </button>
         <Link
           href="/billing"
-          className="mt-3 text-xs text-[#666666] underline underline-offset-2 transition-colors hover:text-[#cccccc]"
+          className="mt-3 text-xs text-[#a6a6a6] underline underline-offset-2 transition-colors hover:text-[#cccccc]"
         >
           요금제 보기
         </Link>

@@ -53,7 +53,7 @@ export default function BillingPage() {
         <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">결제 내역</p>
         <div className="mt-4 flex flex-col items-center rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-8 text-center">
           <IconReceipt className="size-8 text-[#444444]" stroke={1.5} />
-          <p className="mt-3 text-sm text-[#666666]">결제 내역이 없습니다.</p>
+          <p className="mt-3 text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
           <p className="mt-1 text-xs text-[#444444]">
             Pro 구독 시 결제 내역이 여기에 표시됩니다.
           </p>

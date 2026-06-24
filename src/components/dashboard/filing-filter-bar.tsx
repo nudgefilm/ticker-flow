@@ -13,7 +13,7 @@ function FilterDropdown({ label }: { label: string }) {
       className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#1a1a1a]"
     >
       {label}
-      <IconChevronDown size={14} stroke={1.5} className="text-[#666666]" />
+      <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
     </button>
   );
 }
@@ -34,7 +34,7 @@ export default function FilingFilterBar() {
               "border-b-2 px-3 pb-3 text-sm font-medium transition-colors",
               activeTab === tab
                 ? "border-white text-white"
-                : "border-transparent text-[#666666] hover:text-[#cccccc]"
+                : "border-transparent text-[#a6a6a6] hover:text-[#cccccc]"
             )}
           >
             {tab}

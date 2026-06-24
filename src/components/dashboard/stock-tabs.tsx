@@ -21,7 +21,7 @@ export default function StockTabs() {
               "border-b-2 px-4 py-2.5 text-sm transition-colors",
               active === tab
                 ? "border-white text-white"
-                : "border-transparent text-[#666666] hover:text-[#cccccc]"
+                : "border-transparent text-[#a6a6a6] hover:text-[#cccccc]"
             )}
           >
             {tab}

@@ -129,7 +129,7 @@ export default function EarningsPage() {
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="실적 캘린더" />
-      <p className="mt-2 text-sm text-[#666666]">
+      <p className="mt-2 text-sm text-[#a6a6a6]">
         주요 미국 기업의 실적 발표 일정을 한국 시간 기준으로 제공합니다.
       </p>
 
@@ -174,10 +174,10 @@ export default function EarningsPage() {
       </div>
 
       <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-3.5">
-        <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#666666]" stroke={1.5} />
+        <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#a6a6a6]" stroke={1.5} />
         <div className="text-sm">
           <p className="text-[#cccccc]">모든 시각은 한국 시간(KST) 기준입니다.</p>
-          <p className="text-[#666666]">
+          <p className="text-[#a6a6a6]">
             실적 발표 일정은 기업 사정에 따라 변경될 수 있습니다.
           </p>
         </div>

@@ -5,7 +5,7 @@ export default function BillingCurrent() {
         <div>
           <p className="text-xs uppercase tracking-widest text-[#444444]">현재 플랜</p>
           <p className="mt-1.5 text-2xl font-semibold text-white">Free</p>
-          <p className="mt-1 text-sm text-[#666666]">기본 기능을 무료로 이용 중입니다.</p>
+          <p className="mt-1 text-sm text-[#a6a6a6]">기본 기능을 무료로 이용 중입니다.</p>
         </div>
         <button className="shrink-0 rounded-[6px] bg-white px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90">
           Pro로 업그레이드

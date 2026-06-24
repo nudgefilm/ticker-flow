@@ -26,7 +26,7 @@ export default function DashboardHeader({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-white/[0.08] text-[#666666] transition-colors hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-white/[0.08] text-[#a6a6a6] transition-colors hover:text-white"
         >
           <IconBell size={18} stroke={1.5} />
         </button>
