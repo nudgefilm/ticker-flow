@@ -36,15 +36,9 @@ export async function GET(request: Request) {
     });
 
     if (!error) {
-      console.log("[auth/callback] success → redirect /dashboard");
       return NextResponse.redirect(`${origin}/dashboard`);
     }
-
-    const msg = encodeURIComponent(error?.message ?? "unknown");
-    console.log("[auth/callback] fail → redirect /login?auth_error=", msg);
-    return NextResponse.redirect(`${origin}/login?auth_error=${msg}`);
   }
 
-  // 디버그: code 없음
-  return NextResponse.redirect(`${origin}/login?auth_error=no_code`);
+  return NextResponse.redirect(`${origin}/login?error=auth`);
 }
