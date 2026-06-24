@@ -14,7 +14,7 @@ export interface SummarizeOpts {
 
 // ─── Anthropic Haiku 호출 ─────────────────────────────────────────────────────
 
-async function callHaiku(prompt: string): Promise<string | null> {
+async function callHaiku(prompt: string, maxTokens = 256): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -28,7 +28,7 @@ async function callHaiku(prompt: string): Promise<string | null> {
       },
       body: JSON.stringify({
         model: HAIKU_MODEL,
-        max_tokens: 256,
+        max_tokens: maxTokens,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -134,14 +134,15 @@ export async function summarizeFilings(
   let failed = 0;
 
   for (const row of rows) {
-    const prompt = `미국 SEC 공시 정보를 한국어로 2문장으로 간결하게 설명해주세요.
-사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
+    const prompt = `미국 SEC 공시 정보를 한국어로 요약해주세요.
+- 분량: 3~5문장, 200자 내외
+- 사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
 
 기업: ${row.ticker}
 공시 유형: ${row.form_type}
 제목: ${row.title}`;
 
-    const summary = await callHaiku(prompt);
+    const summary = await callHaiku(prompt, 512);
     if (!summary) { failed++; continue; }
 
     const { error } = await adminClient
@@ -166,13 +167,14 @@ export async function summarizeNews(
   let failed = 0;
 
   for (const row of rows) {
-    const prompt = `다음 영문 뉴스 헤드라인을 한국어로 2문장으로 요약해주세요.
-사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
+    const prompt = `다음 영문 뉴스 헤드라인을 한국어로 요약해주세요.
+- 분량: 2~3문장, 100자 내외
+- 사실만 서술하고 투자 권유 표현은 절대 사용하지 마세요.
 
 헤드라인: ${row.headline}
 출처: ${row.source ?? ""}`;
 
-    const summary = await callHaiku(prompt);
+    const summary = await callHaiku(prompt, 256);
     if (!summary) { failed++; continue; }
 
     const { error } = await adminClient
