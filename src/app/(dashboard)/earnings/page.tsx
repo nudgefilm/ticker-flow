@@ -50,7 +50,7 @@ type DbEarning = {
   revenue_estimate: number | null;
   actual_eps: number | null;
   actual_revenue: number | null;
-  tickers: { name_kr: string | null; name_en: string } | null;
+  tickers: { name_kr: string | null; name_en: string | null } | null;
 };
 
 function mapRow(row: DbEarning): Earnings {
@@ -125,7 +125,7 @@ async function EarningsList() {
     );
   }
 
-  const rows = (data ?? []) as DbEarning[];
+  const rows = (data ?? []) as unknown as DbEarning[];
 
   if (rows.length === 0) {
     return (
