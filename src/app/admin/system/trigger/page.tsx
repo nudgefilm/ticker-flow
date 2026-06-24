@@ -5,6 +5,17 @@ import { IconRefresh, IconCircleCheck, IconAlertCircle } from "@tabler/icons-rea
 
 type Status = "idle" | "running" | "done" | "error";
 
+interface DebugInfo {
+  cikMapSize?: number;
+  tickerDbCount?: number;
+  skipNoDisplayNames?: number;
+  skipNoCikMatch?: number;
+  skipTickerErr?: number;
+  skipFilingErr?: number;
+  firstError?: string | null;
+  sampleSource?: Record<string, unknown> | null;
+}
+
 interface TriggerResult {
   ok: boolean;
   inserted?: number;
@@ -13,6 +24,7 @@ interface TriggerResult {
   tickers?: number;
   error?: string;
   firstError?: string;
+  debug?: DebugInfo;
 }
 
 interface Trigger {
@@ -121,13 +133,20 @@ export default function TriggerPage() {
                   <p className="text-sm font-medium text-white">{trigger.label}</p>
                   <p className="mt-0.5 text-xs text-[#a6a6a6]">{trigger.desc}</p>
                   {result && (
-                    <p
-                      className={`mt-1.5 text-xs font-medium ${
-                        result.ok ? "text-green-400" : "text-red-400"
-                      }`}
-                    >
-                      {resultSummary(result)}
-                    </p>
+                    <>
+                      <p
+                        className={`mt-1.5 text-xs font-medium ${
+                          result.ok ? "text-green-400" : "text-red-400"
+                        }`}
+                      >
+                        {resultSummary(result)}
+                      </p>
+                      {result.debug && (
+                        <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-[#0a0a0a] p-3 text-[10px] leading-relaxed text-[#a6a6a6]">
+                          {JSON.stringify(result.debug, null, 2)}
+                        </pre>
+                      )}
+                    </>
                   )}
                 </div>
                 <button
