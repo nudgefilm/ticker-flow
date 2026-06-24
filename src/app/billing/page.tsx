@@ -30,7 +30,7 @@ const PRO_FEATURES = [
 export default function BillingPage() {
   return (
     <div className="flex h-full flex-col">
-      <DashboardHeader title="구독 관리" isPro />
+      <DashboardHeader title="구독 관리" />
       <div className="mt-6">
         <BillingCurrent />
       </div>

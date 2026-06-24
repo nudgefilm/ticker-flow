@@ -1,17 +1,18 @@
+"use client";
+
 import Link from "next/link";
 import { IconBell } from "@tabler/icons-react";
+import { useProfile } from "@/lib/hooks/use-profile";
 
 interface DashboardHeaderProps {
   title: string;
-  isPro?: boolean;
   badge?: boolean;
 }
 
-export default function DashboardHeader({
-  title,
-  isPro = false,
-  badge = false,
-}: DashboardHeaderProps) {
+export default function DashboardHeader({ title, badge = false }: DashboardHeaderProps) {
+  const profile = useProfile();
+  const isPro = profile?.plan === "pro";
+
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">

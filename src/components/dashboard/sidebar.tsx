@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { useProfile } from "@/lib/hooks/use-profile";
 
 type NavItem = {
   href: string;
@@ -77,6 +78,7 @@ const navGroups: NavGroup[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const profile = useProfile();
 
   async function handleLogout() {
     const supabase = createClient();
@@ -158,12 +160,14 @@ export default function Sidebar() {
         <div className="flex items-center gap-2.5">
           <Avatar className="h-8 w-8 flex-none">
             <AvatarFallback className="bg-[#1a1a1a] text-xs text-white">
-              JK
+              {profile?.initial ?? "—"}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-white">정코딩</p>
-            <p className="truncate text-xs text-[#a6a6a6]">Free 플랜</p>
+            <p className="truncate text-sm text-white">{profile?.email ?? "—"}</p>
+            <p className="truncate text-xs text-[#a6a6a6]">
+              {profile?.plan === "pro" ? "Pro 플랜" : "Free 플랜"}
+            </p>
           </div>
           <button
             type="button"
