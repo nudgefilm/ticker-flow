@@ -72,6 +72,12 @@ const TRIGGERS: Trigger[] = [
     desc: "DB에 등록된 모든 티커의 내부자 거래 내역을 수집합니다. 시간이 걸릴 수 있습니다.",
     endpoint: "/api/collect/insider",
   },
+  {
+    id: "translate",
+    label: "번역 재실행 (Claude Haiku)",
+    desc: "summary_kr이 NULL인 공시·뉴스를 한국어로 번역합니다. 각 최대 20건씩 처리합니다.",
+    endpoint: "/api/translate",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
