@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { IconX } from "@tabler/icons-react";
-import Logo from "@/components/logo";
 
 const PRIVACY_SECTIONS = [
   {
@@ -171,7 +170,7 @@ export default function Footer() {
           {/* 상단: 로고 + 링크 */}
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <Logo />
+              <span className="text-[19px] font-semibold tracking-tight text-foreground">TickerFlow</span>
               <span className="text-sm text-muted-foreground">언폴드랩</span>
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">

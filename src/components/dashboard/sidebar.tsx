@@ -18,7 +18,6 @@ import {
   IconLogout,
 } from "@tabler/icons-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
@@ -91,7 +90,7 @@ export default function Sidebar() {
       {/* 로고 */}
       <div className="flex-none px-4 py-4">
         <Link href="/">
-          <Logo />
+          <span className="text-[19px] font-semibold tracking-tight text-white">TickerFlow</span>
         </Link>
       </div>
 
