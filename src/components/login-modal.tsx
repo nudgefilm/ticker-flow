@@ -12,6 +12,8 @@ export default function LoginModal({ onClose }: LoginModalProps) {
   async function handleGoogleLogin() {
     const supabase = createClient();
     const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+    console.log("[login-modal] NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL);
+    console.log("[login-modal] redirectTo:", redirectTo);
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
