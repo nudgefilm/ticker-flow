@@ -50,19 +50,19 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "분석",
+    label: "인사이트",
     items: [
       { href: "/stocks", label: "종목 스냅샷", icon: IconBuilding },
-      { href: "/analysis", label: "인사이트", icon: IconBulb, pro: true },
+      { href: "/analysis", label: "공시 인사이트", icon: IconBulb, pro: true },
       { href: "/calls", label: "어닝콜 요약", icon: IconMicrophone, pro: true },
       { href: "/insider", label: "인사이더", icon: IconUser, pro: true },
       { href: "/sectors", label: "섹터 히트맵", icon: IconFlame, pro: true },
     ],
   },
   {
-    label: "시장",
+    label: "매크로",
     items: [
-      { href: "/macro", label: "매크로", icon: IconChartBar },
+      { href: "/macro", label: "경제지표", icon: IconChartBar },
     ],
   },
   {
