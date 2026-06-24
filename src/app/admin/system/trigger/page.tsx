@@ -1,92 +1,182 @@
 "use client";
 
 import { useState } from "react";
-import { IconRefresh, IconCircleCheck } from "@tabler/icons-react";
+import { IconRefresh, IconCircleCheck, IconAlertCircle } from "@tabler/icons-react";
 
-type TriggerStatus = "idle" | "running" | "done";
+type Status = "idle" | "running" | "done" | "error";
 
-const triggers = [
-  { id: "filings", label: "공시 수집 (EDGAR)", desc: "SEC EDGAR에서 최신 공시를 수동으로 수집합니다." },
-  { id: "news", label: "뉴스 수집 (Finnhub)", desc: "Finnhub에서 최신 뉴스를 수동으로 수집합니다." },
-  { id: "translate", label: "번역 재실행", desc: "번역되지 않은 공시·뉴스를 Claude로 재번역합니다." },
-  { id: "earnings", label: "실적 캘린더 갱신", desc: "Finnhub에서 실적 일정을 갱신합니다." },
+interface TriggerResult {
+  ok: boolean;
+  inserted?: number;
+  skipped?: number;
+  total?: number;
+  tickers?: number;
+  error?: string;
+}
+
+interface Trigger {
+  id: string;
+  label: string;
+  desc: string;
+  endpoint: string;
+}
+
+const TRIGGERS: Trigger[] = [
+  {
+    id: "filings",
+    label: "공시 수집 (EDGAR)",
+    desc: "SEC EDGAR에서 오늘자 공시(8-K, 10-K, 10-Q, Form 4 등)를 수집합니다.",
+    endpoint: "/api/collect/filings",
+  },
+  {
+    id: "news",
+    label: "뉴스 수집 (Finnhub)",
+    desc: "Finnhub에서 최신 시장 뉴스를 수집합니다.",
+    endpoint: "/api/collect/news",
+  },
+  {
+    id: "earnings",
+    label: "실적 캘린더 갱신",
+    desc: "Finnhub에서 향후 30일간 실적 발표 일정을 수집합니다.",
+    endpoint: "/api/collect/earnings",
+  },
+  {
+    id: "macro",
+    label: "경제지표 갱신",
+    desc: "Finnhub에서 경제지표 일정 및 실제 발표값을 수집합니다.",
+    endpoint: "/api/collect/macro",
+  },
+  {
+    id: "insider",
+    label: "내부자 거래 수집 (Finnhub)",
+    desc: "DB에 등록된 모든 티커의 내부자 거래 내역을 수집합니다. 시간이 걸릴 수 있습니다.",
+    endpoint: "/api/collect/insider",
+  },
 ];
 
-const recentLog = [
-  { trigger: "공시 수집", at: "2026-06-24 09:15", result: "1,203건 수집 완료" },
-  { trigger: "뉴스 수집", at: "2026-06-24 10:30", result: "847건 수집 완료" },
-  { trigger: "실적 캘린더 갱신", at: "2026-06-23 09:00", result: "갱신 완료" },
-];
+function resultSummary(result: TriggerResult): string {
+  if (!result.ok) return result.error ?? "오류 발생";
+  const parts: string[] = [];
+  if (result.inserted !== undefined) parts.push(`저장 ${result.inserted}건`);
+  if (result.skipped !== undefined) parts.push(`스킵 ${result.skipped}건`);
+  if (result.tickers !== undefined) parts.push(`티커 ${result.tickers}개`);
+  return parts.join(" · ") || "완료";
+}
 
 export default function TriggerPage() {
-  const [statuses, setStatuses] = useState<Record<string, TriggerStatus>>({});
+  const [statuses, setStatuses] = useState<Record<string, Status>>({});
+  const [results, setResults] = useState<Record<string, TriggerResult>>({});
 
-  function handleTrigger(id: string) {
-    setStatuses((prev) => ({ ...prev, [id]: "running" }));
-    setTimeout(() => {
-      setStatuses((prev) => ({ ...prev, [id]: "done" }));
-    }, 2000);
+  async function handleTrigger(trigger: Trigger) {
+    setStatuses((prev) => ({ ...prev, [trigger.id]: "running" }));
+    setResults((prev) => {
+      const next = { ...prev };
+      delete next[trigger.id];
+      return next;
+    });
+
+    try {
+      const res = await fetch(trigger.endpoint);
+      const data: TriggerResult = await res.json();
+      setStatuses((prev) => ({ ...prev, [trigger.id]: data.ok ? "done" : "error" }));
+      setResults((prev) => ({ ...prev, [trigger.id]: data }));
+    } catch {
+      setStatuses((prev) => ({ ...prev, [trigger.id]: "error" }));
+      setResults((prev) => ({
+        ...prev,
+        [trigger.id]: { ok: false, error: "네트워크 오류" },
+      }));
+    }
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">수동 재수집 트리거</h1>
-        <p className="mt-1 text-sm text-[#a6a6a6]">데이터 수집을 수동으로 실행합니다.</p>
+        <p className="mt-1 text-sm text-[#a6a6a6]">
+          데이터 수집을 수동으로 실행합니다. Vercel Cron이 자동 수집하지 못한 경우 사용하세요.
+        </p>
       </div>
 
       <div className="space-y-3">
-        {triggers.map((trigger) => {
+        {TRIGGERS.map((trigger) => {
           const status = statuses[trigger.id] ?? "idle";
+          const result = results[trigger.id];
+
           return (
-            <div key={trigger.id} className="flex items-center justify-between rounded-xl border border-white/[0.08] bg-[#111111] px-5 py-4">
-              <div>
-                <p className="text-sm font-medium text-white">{trigger.label}</p>
-                <p className="mt-0.5 text-xs text-[#a6a6a6]">{trigger.desc}</p>
+            <div
+              key={trigger.id}
+              className="rounded-xl border border-white/[0.08] bg-[#111111] px-5 py-4"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-white">{trigger.label}</p>
+                  <p className="mt-0.5 text-xs text-[#a6a6a6]">{trigger.desc}</p>
+                  {result && (
+                    <p
+                      className={`mt-1.5 text-xs font-medium ${
+                        result.ok ? "text-green-400" : "text-red-400"
+                      }`}
+                    >
+                      {resultSummary(result)}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTrigger(trigger)}
+                  disabled={status === "running"}
+                  className="flex shrink-0 items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {status === "done" && (
+                    <>
+                      <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
+                      완료
+                    </>
+                  )}
+                  {status === "error" && (
+                    <>
+                      <IconAlertCircle size={14} stroke={1.5} className="text-red-400" />
+                      오류
+                    </>
+                  )}
+                  {(status === "idle" || status === "running") && (
+                    <>
+                      <IconRefresh
+                        size={14}
+                        stroke={1.5}
+                        className={status === "running" ? "animate-spin" : ""}
+                      />
+                      {status === "running" ? "실행 중..." : "실행"}
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleTrigger(trigger.id)}
-                disabled={status === "running"}
-                className="flex items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#1a1a1a] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {status === "done" ? (
-                  <>
-                    <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
-                    완료
-                  </>
-                ) : (
-                  <>
-                    <IconRefresh
-                      size={14}
-                      stroke={1.5}
-                      className={status === "running" ? "animate-spin" : ""}
-                    />
-                    {status === "running" ? "실행 중..." : "실행"}
-                  </>
-                )}
-              </button>
             </div>
           );
         })}
       </div>
 
-      {/* 실행 이력 */}
+      {/* Cron 스케줄 안내 */}
       <div className="rounded-xl border border-white/[0.08] bg-[#111111] overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/[0.06]">
-          <h2 className="text-sm font-medium text-white">최근 실행 이력</h2>
+        <div className="border-b border-white/[0.06] px-4 py-3">
+          <h2 className="text-sm font-medium text-white">Vercel Cron 스케줄</h2>
         </div>
         <div className="divide-y divide-white/[0.04]">
-          {recentLog.map((log, i) => (
-            <div key={i} className="flex items-center justify-between px-4 py-3">
+          {[
+            { name: "공시 수집", schedule: "매시간 정각", path: "/api/collect/filings" },
+            { name: "뉴스 수집", schedule: "매시간 정각", path: "/api/collect/news" },
+            { name: "실적 캘린더", schedule: "매일 00:00 UTC (09:00 KST)", path: "/api/collect/earnings" },
+            { name: "경제지표", schedule: "매일 00:00 UTC (09:00 KST)", path: "/api/collect/macro" },
+          ].map((cron) => (
+            <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
-                <p className="text-sm text-white">{log.trigger}</p>
-                <p className="text-xs text-[#a6a6a6]">{log.at}</p>
+                <p className="text-sm text-white">{cron.name}</p>
+                <p className="text-xs text-[#a6a6a6]">{cron.path}</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
-                <span className="text-xs text-green-400">{log.result}</span>
-              </div>
+              <span className="rounded-[4px] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#a6a6a6]">
+                {cron.schedule}
+              </span>
             </div>
           ))}
         </div>

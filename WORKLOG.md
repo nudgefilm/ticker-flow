@@ -159,6 +159,84 @@
 
 ---
 
+## 2026-06-25 · 세션 5
+
+### 레이아웃 구조 리팩토링: 개별 layout.tsx → 공통 Route Group 레이아웃
+
+- **이전 구조:** 각 대시보드 페이지(news, earnings, macro, watchlist, analysis, calls, insider, sectors, alerts, billing, mypage, stocks/[symbol])가 개별 `layout.tsx`로 Sidebar를 주입
+- **변경 구조:** Next.js Route Group `(dashboard)` 사용
+  - `src/app/(dashboard)/layout.tsx` — 사이드바 공통 레이아웃 1개만 유지
+  - 전체 대시보드 라우트를 `(dashboard)/` 하위로 이동
+  - Route Group은 URL에 영향 없음 (기존 `/dashboard`, `/news`, `/stocks` 등 URL 유지)
+- **삭제된 개별 layout.tsx:** dashboard, news, earnings, macro, watchlist, analysis, calls, insider, sectors, alerts, billing, mypage, stocks/[symbol] — 총 13개
+- **이점:** 사이드바 레이아웃 변경 시 1개 파일만 수정하면 됨
+
+---
+
+## 2026-06-25 · 세션 6
+
+### 금융 용어 설명 추가 (툴팁 + 괄호 표기)
+
+**filing-filter-bar.tsx** — 공시 필터 탭에 hover 툴팁 추가
+- 8-K: "주요 경영 이벤트 공시 — CEO 교체, M&A, 계약 등"
+- 10-K: "연간 실적 보고서 — 매년 1회 제출"
+- 10-Q: "분기 실적 보고서 — 분기별 3회 제출"
+- Form 4: "내부자 거래 공시 — 임원·대주주 매수/매도"
+- CSS-only 툴팁 (group-hover/tab 패턴, 외부 의존 없음)
+
+**alerts-preview.tsx** — Checkbox 컴포넌트에 `desc` prop 추가
+- 각 공시 유형 아래에 한 줄 설명 표기
+
+**earnings/page.tsx** — 기존 안내 박스에 용어 범례 추가
+- EPS (주당순이익), BMO (개장 전 발표), AMC (장 마감 후 발표)
+
+**insider/page.tsx**
+- 헤더 "인사이더" → "내부자 거래"로 변경
+- 서브타이틀 추가: 내부자(인사이더) 정의 (임원, 이사, 10% 이상 대주주)
+
+**calls/page.tsx**
+- 서브타이틀 추가: 어닝콜(실적 발표 컨퍼런스콜) 설명
+
+**dashboard/page.tsx**
+- "Form 4 인사이더" 배지 → "Form 4 내부자 거래"로 변경
+
+**supabase/schema.sql**
+- alerts.alert_type CHECK 제약 추가: `('8k', '10k', '10q', 'form4', 'other')`
+
+---
+
+## 2026-06-25 · 세션 7
+
+### 데이터 수집 파이프라인 구현
+
+**신규 파일**
+- `src/lib/supabase/admin.ts` — service_role 어드민 클라이언트 팩토리
+- `src/lib/collect/auth.ts` — Vercel Cron(CRON_SECRET 헤더) 또는 어드민 세션 검증
+- `src/app/api/collect/filings/route.ts` — SEC EDGAR 공시 수집
+- `src/app/api/collect/news/route.ts` — Finnhub 뉴스 수집
+- `src/app/api/collect/earnings/route.ts` — Finnhub 실적 캘린더 수집
+- `src/app/api/collect/macro/route.ts` — Finnhub 경제지표 수집
+- `src/app/api/collect/insider/route.ts` — Finnhub 내부자 거래 수집 (ticker별 또는 전체)
+- `vercel.json` — Vercel Cron 스케줄 (공시/뉴스 매시간, 실적/경제지표 매일 00:00 UTC)
+
+**업데이트**
+- `src/app/admin/system/trigger/page.tsx` — mock setTimeout → 실제 API 호출, 결과(inserted/skipped) 표시
+- `supabase/schema.sql` — insider_trades에 UNIQUE(ticker, name, transaction_date, shares, transaction_type) 추가
+
+**설계 결정**
+- SEC EDGAR: `company_tickers_exchange.json`으로 CIK→ticker 매핑, 신규 티커 자동 upsert
+- earnings/filings: 신규 ticker 자동 upsert (chicken-and-egg 방지)
+- news: ticker nullable — DB에 없는 ticker는 null로 저장 (FK 위반 방지)
+- insider: P→buy, S→sell, 나머지 및 파생상품 제외, 티커당 200ms 딜레이
+- Cron 자동: filings/news/earnings/macro. 내부자 거래는 수동 트리거만
+
+**필요한 Vercel 환경변수 (미설정 시 추가 필요)**
+- `CRON_SECRET` — Vercel Cron 인가 시크릿 (임의 문자열, Vercel 프로젝트 설정과 동일 값)
+- `SUPABASE_SERVICE_ROLE_KEY` — Supabase 어드민 INSERT용 (이미 사용 중)
+- `FINNHUB_API_KEY` — Finnhub API 키 (이미 Vercel에 등록됨)
+
+---
+
 ## 다음 작업 예정
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - 실제 데이터 연동 (SEC EDGAR API, Finnhub, yfinance)
