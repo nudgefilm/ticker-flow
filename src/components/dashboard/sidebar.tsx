@@ -14,7 +14,6 @@ import {
   IconFlame,
   IconChartBar,
   IconBell,
-  IconCreditCard,
   IconSearch,
   IconLogout,
 } from "@tabler/icons-react";
@@ -69,7 +68,7 @@ const navGroups: NavGroup[] = [
     label: "설정",
     items: [
       { href: "/alerts", label: "알림 설정", icon: IconBell, pro: true },
-      { href: "/billing", label: "구독 관리", icon: IconCreditCard },
+      { href: "/mypage", label: "마이페이지", icon: IconUser },
     ],
   },
 ];
@@ -160,6 +159,7 @@ export default function Sidebar() {
           </div>
           <button
             type="button"
+            onClick={() => console.log("로그아웃")}
             className="flex-none text-[#a6a6a6] transition-colors hover:text-white"
             aria-label="로그아웃"
           >
