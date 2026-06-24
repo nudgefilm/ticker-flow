@@ -32,17 +32,20 @@ function SettingRow({
   );
 }
 
-function Checkbox({ label, checked }: { label: string; checked: boolean }) {
+function Checkbox({ label, desc, checked }: { label: string; desc?: string; checked: boolean }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-start gap-2">
       <div
-        className={`flex size-4 shrink-0 items-center justify-center rounded-[4px] border ${
+        className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border ${
           checked ? "border-white bg-white" : "border-white/[0.3] bg-transparent"
         }`}
       >
         {checked && <IconCheck size={12} stroke={2.5} className="text-black" />}
       </div>
-      <span className="text-sm text-[#cccccc]">{label}</span>
+      <div>
+        <p className="text-sm text-[#cccccc]">{label}</p>
+        {desc && <p className="text-xs text-[#a6a6a6]">{desc}</p>}
+      </div>
     </div>
   );
 }
@@ -89,10 +92,10 @@ export default function AlertsPreview() {
         <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 받을 공시 유형</p>
           <div className="flex flex-col gap-3">
-            <Checkbox label="8-K 주요이벤트" checked={true} />
-            <Checkbox label="10-K 연간보고서" checked={true} />
-            <Checkbox label="10-Q 분기보고서" checked={true} />
-            <Checkbox label="Form 4 인사이더 거래" checked={true} />
+            <Checkbox label="8-K" desc="주요 경영 이벤트 공시 — CEO 교체, M&A, 계약 등" checked={true} />
+            <Checkbox label="10-K" desc="연간 실적 보고서 — 매년 1회 제출" checked={true} />
+            <Checkbox label="10-Q" desc="분기 실적 보고서 — 분기별 3회 제출" checked={true} />
+            <Checkbox label="Form 4" desc="내부자 거래 공시 — 임원·대주주 매수/매도" checked={true} />
             <Checkbox label="기타 공시" checked={false} />
           </div>
         </div>
