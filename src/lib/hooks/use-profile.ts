@@ -11,28 +11,24 @@ export interface UserProfile {
   plan: Plan;
 }
 
-let cache: UserProfile | null = null;
-
 export function useProfile(): UserProfile | null {
-  const [profile, setProfile] = useState<UserProfile | null>(cache);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    if (cache) return;
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
-      const { data: row } = await supabase
+      const { data: row, error } = await supabase
         .from("profiles")
         .select("plan")
         .eq("id", data.user.id)
         .single();
-      const result: UserProfile = {
+      if (error) console.error("[useProfile] profiles fetch error:", error);
+      setProfile({
         email: data.user.email ?? "",
         initial: (data.user.email ?? "?")[0].toUpperCase(),
         plan: (row?.plan as Plan) ?? "free",
-      };
-      cache = result;
-      setProfile(result);
+      });
     });
   }, []);
 
