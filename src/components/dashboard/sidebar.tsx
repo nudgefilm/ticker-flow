@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   IconStar,
   IconFileText,
@@ -20,6 +20,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 type NavItem = {
   href: string;
@@ -75,6 +76,13 @@ const navGroups: NavGroup[] = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[0.08] bg-[#0f0f0f]">
@@ -159,7 +167,7 @@ export default function Sidebar() {
           </div>
           <button
             type="button"
-            onClick={() => console.log("로그아웃")}
+            onClick={handleLogout}
             className="flex-none text-[#a6a6a6] transition-colors hover:text-white"
             aria-label="로그아웃"
           >

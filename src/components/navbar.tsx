@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { IconUser, IconLogout } from "@tabler/icons-react";
 
 type DropdownKey = "모니터링" | "인사이트" | "매크로" | null;
 
@@ -40,8 +42,35 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<DropdownKey>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [userInitial, setUserInitial] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.email) {
+        setUserInitial(data.user.email[0].toUpperCase());
+      }
+    });
+  }, []);
+
+  function handleProfileEnter() {
+    if (profileTimer.current) clearTimeout(profileTimer.current);
+    setProfileOpen(true);
+  }
+
+  function handleProfileLeave() {
+    profileTimer.current = setTimeout(() => setProfileOpen(false), 150);
+  }
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  }
 
   function handleLogoClick() {
     if (pathname === "/") {
@@ -144,20 +173,56 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
           </nav>
 
           <div className="flex items-center gap-3 border-l border-border pl-4 md:ml-4">
-            <button
-              type="button"
-              onClick={onOpenLogin}
-              className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
-            >
-              로그인
-            </button>
-            <button
-              type="button"
-              onClick={onOpenLogin}
-              className="inline-flex h-8 cursor-pointer items-center rounded-[6px] border border-foreground px-3 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
-            >
-              시작하기
-            </button>
+            {userInitial ? (
+              <div
+                className="relative"
+                onMouseEnter={handleProfileEnter}
+                onMouseLeave={handleProfileLeave}
+              >
+                <button
+                  type="button"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-sm font-medium text-foreground transition-colors hover:bg-secondary/50"
+                >
+                  {userInitial}
+                </button>
+                {profileOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-44 rounded-lg border border-border bg-background/95 py-1.5 shadow-lg backdrop-blur-md">
+                    <Link
+                      href="/mypage"
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                    >
+                      <IconUser size={14} stroke={1.5} />
+                      MY PAGE
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                    >
+                      <IconLogout size={14} stroke={1.5} />
+                      LOG OUT
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="inline-flex h-8 cursor-pointer items-center rounded-[6px] border border-foreground px-3 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
+                >
+                  시작하기
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
