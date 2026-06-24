@@ -19,7 +19,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className={`${inter.variable} dark`}>
-      <body className="min-h-full antialiased">{children}</body>
+      <body className="min-h-full antialiased">
+        <div id="site-content">{children}</div>
+      </body>
     </html>
   );
 }

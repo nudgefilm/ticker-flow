@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { IconX } from "@tabler/icons-react";
 import Logo from "@/components/logo";
@@ -88,8 +89,8 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* 백드롭 */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+      {/* 반투명 오버레이 */}
+      <div className="absolute inset-0 bg-black/50" />
 
       {/* 패널 */}
       <div
@@ -130,6 +131,30 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
 
 export default function Footer() {
   const [modal, setModal] = useState<ModalType>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const el = document.getElementById("site-content");
+    if (!el) return;
+    if (modal) {
+      el.style.filter = "blur(6px)";
+      el.style.transition = "filter 0.2s ease";
+      document.body.style.overflow = "hidden";
+    } else {
+      el.style.filter = "";
+      document.body.style.overflow = "";
+    }
+    return () => {
+      el.style.filter = "";
+      document.body.style.overflow = "";
+    };
+  }, [modal]);
+
+  const handleClose = () => setModal(null);
 
   return (
     <>
@@ -172,7 +197,10 @@ export default function Footer() {
         </div>
       </footer>
 
-      {modal && <LegalModal type={modal} onClose={() => setModal(null)} />}
+      {mounted && modal && createPortal(
+        <LegalModal type={modal} onClose={handleClose} />,
+        document.body
+      )}
     </>
   );
 }
