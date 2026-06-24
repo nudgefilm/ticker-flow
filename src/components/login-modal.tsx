@@ -1,7 +1,6 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import Logo from "@/components/logo";
 import Link from "next/link";
 import { IconBrandGoogle, IconX } from "@tabler/icons-react";
 
@@ -40,11 +39,9 @@ export default function LoginModal({ onClose }: LoginModalProps) {
           <IconX size={16} stroke={1.5} />
         </button>
 
-        {/* 로고 */}
-        <div className="mb-2 flex justify-center">
-          <Link href="/" onClick={onClose}>
-            <Logo />
-          </Link>
+        {/* 브랜드명 */}
+        <div className="mb-2 text-center">
+          <span className="text-3xl font-bold tracking-tight text-foreground">TickerFlow</span>
         </div>
 
         {/* 부제목 */}
