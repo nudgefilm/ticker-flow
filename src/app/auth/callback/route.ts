@@ -28,15 +28,20 @@ export async function GET(request: Request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    console.log("[auth/callback] exchangeCodeForSession error:", error ?? "none");
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    console.log("[auth/callback] result:", {
+      user: data?.user?.email ?? null,
+      session: data?.session ? "present" : "null",
+      error: error ? { message: error.message, status: error.status } : null,
+    });
 
     if (!error) {
+      console.log("[auth/callback] success → redirect /dashboard");
       return NextResponse.redirect(`${origin}/dashboard`);
     }
 
-    // 디버그: 에러 내용을 URL에 노출
     const msg = encodeURIComponent(error?.message ?? "unknown");
+    console.log("[auth/callback] fail → redirect /login?auth_error=", msg);
     return NextResponse.redirect(`${origin}/login?auth_error=${msg}`);
   }
 
