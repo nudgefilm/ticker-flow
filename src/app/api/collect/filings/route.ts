@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
     eftsUrl.searchParams.set("forms", "8-K,10-K,10-Q,4,S-1,DEF14A");
     eftsUrl.searchParams.set(
       "_source",
-      "entity_name,file_date,form_type,display_names"
+      "entity_name,file_date,root_forms,display_names"
     );
 
     const eftsRes = await fetch(eftsUrl.toString(), {
@@ -140,14 +140,19 @@ export async function GET(req: NextRequest) {
         ? buildFilingUrl(paddedCik, accessionId)
         : `https://www.sec.gov/Archives/edgar/data/${accessionId}`;
 
+      // root_forms는 배열: ["8-K"], ["4"] 등
+      const formType = Array.isArray(src.root_forms)
+        ? String(src.root_forms[0] ?? "")
+        : String(src.root_forms ?? "");
+
       const { error } = await adminClient.from("filings").upsert(
         {
           ticker,
-          form_type: String(src.form_type ?? ""),
+          form_type: formType,
           filed_at: `${src.file_date}T00:00:00Z`,
-          title: `${entityName} — ${src.form_type}`,
+          title: `${entityName} — ${formType}`,
           url: filingUrl,
-          event_type: getEventType(String(src.form_type ?? "")),
+          event_type: getEventType(formType),
         },
         { onConflict: "url", ignoreDuplicates: true }
       );
