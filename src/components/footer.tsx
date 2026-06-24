@@ -89,7 +89,7 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
       onClick={onClose}
     >
       {/* 백드롭 */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
 
       {/* 패널 */}
       <div
@@ -113,7 +113,7 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
         </div>
 
         {/* 본문 */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className="no-scrollbar flex-1 overflow-y-auto px-6 py-5">
           {config.sections.map((section) => (
             <section key={section.title} className="mb-6 last:mb-0">
               <h3 className="mb-2 text-sm font-semibold text-foreground">{section.title}</h3>
