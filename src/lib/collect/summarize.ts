@@ -1,8 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
-/** 1회 수집 당 요약 상한 — Vercel 함수 타임아웃 여유 확보 */
 const BATCH_LIMIT = 20;
+
+type AdminClient = SupabaseClient<any, any, any>;
+
+export interface SummarizeOpts {
+  limit?: number;
+  /** 우선 번역할 티커 목록 (와치리스트 종목). 소화 후 나머지 슬롯을 채움. */
+  priorityTickers?: string[];
+}
+
+// ─── Anthropic Haiku 호출 ─────────────────────────────────────────────────────
 
 async function callHaiku(prompt: string): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -30,20 +40,95 @@ async function callHaiku(prompt: string): Promise<string | null> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function summarizeFilings(
-  adminClient: SupabaseClient<any, any, any>,
-  limit = BATCH_LIMIT
-): Promise<{ done: number; failed: number }> {
-  const { data: rows } = await adminClient
+// ─── 행 조회 헬퍼 ──────────────────────────────────────────────────────────────
+
+async function fetchFilingRows(
+  adminClient: AdminClient,
+  limit: number,
+  priorityTickers: string[]
+) {
+  const base = adminClient
+    .from("filings")
+    .select("id, ticker, form_type, title")
+    .is("summary_kr", null)
+    .not("form_type", "eq", "");
+
+  // 우선 티커 없으면 단순 최신순
+  if (priorityTickers.length === 0) {
+    const { data } = await base.order("filed_at", { ascending: false }).limit(limit);
+    return data ?? [];
+  }
+
+  // 1. 와치리스트 종목 우선
+  const { data: priority } = await base
+    .in("ticker", priorityTickers)
+    .order("filed_at", { ascending: false })
+    .limit(limit);
+
+  const priorityRows = priority ?? [];
+  const remaining = limit - priorityRows.length;
+  if (remaining <= 0) return priorityRows;
+
+  // 2. 나머지 슬롯: 와치리스트 外 항목
+  const { data: fill } = await adminClient
     .from("filings")
     .select("id, ticker, form_type, title")
     .is("summary_kr", null)
     .not("form_type", "eq", "")
+    .not("ticker", "in", `(${priorityTickers.join(",")})`)
     .order("filed_at", { ascending: false })
+    .limit(remaining);
+
+  return [...priorityRows, ...(fill ?? [])];
+}
+
+async function fetchNewsRows(
+  adminClient: AdminClient,
+  limit: number,
+  priorityTickers: string[]
+) {
+  const base = adminClient
+    .from("news")
+    .select("id, headline, source")
+    .is("summary_kr", null)
+    .not("headline", "eq", "");
+
+  if (priorityTickers.length === 0) {
+    const { data } = await base.order("published_at", { ascending: false }).limit(limit);
+    return data ?? [];
+  }
+
+  // 1. 와치리스트 종목 뉴스 우선
+  const { data: priority } = await base
+    .in("ticker", priorityTickers)
+    .order("published_at", { ascending: false })
     .limit(limit);
 
-  if (!rows?.length) return { done: 0, failed: 0 };
+  const priorityRows = priority ?? [];
+  const remaining = limit - priorityRows.length;
+  if (remaining <= 0) return priorityRows;
+
+  // 2. 나머지: ticker IS NULL(시장 전반) + 와치리스트 外
+  const { data: fill } = await adminClient
+    .from("news")
+    .select("id, headline, source")
+    .is("summary_kr", null)
+    .not("headline", "eq", "")
+    .or(`ticker.is.null,ticker.not.in.(${priorityTickers.join(",")})`)
+    .order("published_at", { ascending: false })
+    .limit(remaining);
+
+  return [...priorityRows, ...(fill ?? [])];
+}
+
+// ─── 공개 API ─────────────────────────────────────────────────────────────────
+
+export async function summarizeFilings(
+  adminClient: AdminClient,
+  { limit = BATCH_LIMIT, priorityTickers = [] }: SummarizeOpts = {}
+): Promise<{ done: number; failed: number }> {
+  const rows = await fetchFilingRows(adminClient, limit, priorityTickers);
+  if (!rows.length) return { done: 0, failed: 0 };
 
   let done = 0;
   let failed = 0;
@@ -70,20 +155,12 @@ export async function summarizeFilings(
   return { done, failed };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function summarizeNews(
-  adminClient: SupabaseClient<any, any, any>,
-  limit = BATCH_LIMIT
+  adminClient: AdminClient,
+  { limit = BATCH_LIMIT, priorityTickers = [] }: SummarizeOpts = {}
 ): Promise<{ done: number; failed: number }> {
-  const { data: rows } = await adminClient
-    .from("news")
-    .select("id, headline, source")
-    .is("summary_kr", null)
-    .not("headline", "eq", "")
-    .order("published_at", { ascending: false })
-    .limit(limit);
-
-  if (!rows?.length) return { done: 0, failed: 0 };
+  const rows = await fetchNewsRows(adminClient, limit, priorityTickers);
+  if (!rows.length) return { done: 0, failed: 0 };
 
   let done = 0;
   let failed = 0;

@@ -201,6 +201,7 @@ export default function TriggerPage() {
           {[
             { name: "공시 수집", schedule: "매시간 17분", path: "/api/collect/filings" },
             { name: "뉴스 수집", schedule: "매시간 23분", path: "/api/collect/news" },
+            { name: "번역 (Claude Haiku)", schedule: "매시간 07·27·47분", path: "/api/translate" },
             { name: "실적 캘린더", schedule: "매일 00:07 UTC (09:07 KST)", path: "/api/collect/earnings" },
             { name: "경제지표", schedule: "매일 00:13 UTC (09:13 KST)", path: "/api/collect/macro" },
           ].map((cron) => (

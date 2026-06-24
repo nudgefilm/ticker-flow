@@ -17,9 +17,17 @@ export async function GET(req: NextRequest) {
   try {
     const adminClient = createAdminClient();
 
+    // 와치리스트 등록 종목 우선 번역
+    const { data: watchlistRows } = await adminClient
+      .from("watchlist")
+      .select("ticker");
+    const priorityTickers = [
+      ...new Set(watchlistRows?.map((r: { ticker: string }) => r.ticker) ?? []),
+    ];
+
     const [filings, news] = await Promise.all([
-      summarizeFilings(adminClient),
-      summarizeNews(adminClient),
+      summarizeFilings(adminClient, { priorityTickers }),
+      summarizeNews(adminClient, { priorityTickers }),
     ]);
 
     const totalFailed = filings.failed + news.failed;

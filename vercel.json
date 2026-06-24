@@ -15,6 +15,18 @@
     {
       "path": "/api/collect/macro",
       "schedule": "13 0 * * *"
+    },
+    {
+      "path": "/api/translate",
+      "schedule": "7 * * * *"
+    },
+    {
+      "path": "/api/translate",
+      "schedule": "27 * * * *"
+    },
+    {
+      "path": "/api/translate",
+      "schedule": "47 * * * *"
     }
   ]
 }
