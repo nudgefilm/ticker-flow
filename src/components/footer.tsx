@@ -25,7 +25,7 @@ const PRIVACY_SECTIONS = [
   },
   {
     title: "문의",
-    content: `개인정보 관련 문의사항은 아래로 연락해 주세요.\n· 운영사: 언폴드랩\n· 이메일: contact@tickerflow.net`,
+    content: `개인정보 관련 문의사항은 아래로 연락해 주세요.\n· 운영사: 언폴드랩\n· 이메일: support@tickerflow.net`,
   },
 ];
 
@@ -56,7 +56,7 @@ const TERMS_SECTIONS = [
   },
   {
     title: "문의",
-    content: `서비스 이용 관련 문의사항은 아래로 연락해 주세요.\n· 운영사: 언폴드랩\n· 이메일: contact@tickerflow.net`,
+    content: `서비스 이용 관련 문의사항은 아래로 연락해 주세요.\n· 운영사: 언폴드랩\n· 이메일: support@tickerflow.net`,
   },
 ];
 

@@ -1,0 +1,344 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import {
+  IconBell,
+  IconDownload,
+  IconReceipt,
+  IconMail,
+  IconMessageCircle,
+  IconLogout,
+  IconTrash,
+  IconLock,
+  IconX,
+  IconAlertTriangle,
+  IconChevronRight,
+} from "@tabler/icons-react";
+import DashboardHeader from "@/components/dashboard/dashboard-header";
+import { useProfile } from "@/lib/hooks/use-profile";
+import { createClient } from "@/lib/supabase/client";
+
+function SectionCard({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      <p className="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+        {label}
+      </p>
+      <div className="border-t border-white/[0.06]">{children}</div>
+    </div>
+  );
+}
+
+function InfoRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4 last:border-0">
+      <span className="text-sm text-[#a6a6a6]">{label}</span>
+      <div className="text-sm text-white">{children}</div>
+    </div>
+  );
+}
+
+export default function MyPage() {
+  const profile = useProfile();
+  const router = useRouter();
+  const [createdAt, setCreatedAt] = useState("—");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user?.created_at) {
+        setCreatedAt(
+          new Date(data.user.created_at).toLocaleDateString("ko-KR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        );
+      }
+    });
+  }, []);
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/delete-account", { method: "POST" });
+      if (res.ok) {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.push("/");
+      } else {
+        setDeleting(false);
+      }
+    } catch {
+      setDeleting(false);
+    }
+  }
+
+  function handleCsvDownload() {
+    const csv = "티커,회사명,추가일\n";
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tickerflow-watchlist.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  if (!profile) return null;
+
+  const isPro = profile.plan === "pro";
+
+  return (
+    <div className="flex h-full flex-col">
+      <DashboardHeader title="마이페이지" />
+
+      <div className="mt-6 flex max-w-2xl flex-col gap-4">
+
+        {/* 1. 계정 정보 */}
+        <SectionCard label="계정 정보">
+          <InfoRow label="이메일">{profile.email}</InfoRow>
+          <InfoRow label="가입일">{createdAt}</InfoRow>
+        </SectionCard>
+
+        {/* 2. 구독 플랜 */}
+        <SectionCard label="구독 플랜">
+          {isPro ? (
+            <>
+              <InfoRow label="현재 플랜">
+                <span className="rounded-[4px] bg-[#3b82f6] px-2 py-0.5 text-xs font-medium text-white">
+                  Pro
+                </span>
+              </InfoRow>
+              <InfoRow label="결제 정보">
+                <span className="text-[#a6a6a6]">Polar.sh 연동 후 제공 예정</span>
+              </InfoRow>
+              <div className="px-5 py-4">
+                <a
+                  href="mailto:support@tickerflow.net?subject=Pro 플랜 해지 요청"
+                  className="text-sm text-[#a6a6a6] underline underline-offset-2 transition-colors hover:text-[#cccccc]"
+                >
+                  플랜 해지 문의 →
+                </a>
+              </div>
+            </>
+          ) : (
+            <>
+              <InfoRow label="현재 플랜">Free</InfoRow>
+              <div className="px-5 py-4">
+                <Link
+                  href="/billing"
+                  className="inline-flex items-center gap-1.5 rounded-[6px] bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-white/90"
+                >
+                  Pro로 업그레이드
+                  <IconChevronRight size={14} stroke={2} />
+                </Link>
+              </div>
+            </>
+          )}
+        </SectionCard>
+
+        {/* 3. 알림 설정 */}
+        <SectionCard label="알림 설정">
+          {isPro ? (
+            <div className="px-5 py-4">
+              <Link
+                href="/alerts"
+                className="inline-flex items-center gap-2 text-sm text-white transition-colors hover:text-[#cccccc]"
+              >
+                <IconBell size={16} stroke={1.5} />
+                알림 설정 바로가기
+                <IconChevronRight size={14} stroke={1.5} className="text-[#a6a6a6]" />
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between px-5 py-4">
+              <div className="flex items-center gap-2 text-sm text-[#a6a6a6]">
+                <IconLock size={16} stroke={1.5} />
+                Pro 전용 기능
+              </div>
+              <Link
+                href="/billing"
+                className="rounded-[6px] bg-white px-3 py-1.5 text-xs font-medium text-black transition-colors hover:bg-white/90"
+              >
+                Pro 시작하기
+              </Link>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* 4. 데이터 내보내기 */}
+        <SectionCard label="데이터 내보내기">
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-sm text-white">와치리스트 CSV 다운로드</p>
+              <p className="mt-0.5 text-xs text-[#a6a6a6]">
+                현재 와치리스트 종목을 CSV 파일로 내보냅니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCsvDownload}
+              className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#cccccc] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            >
+              <IconDownload size={14} stroke={1.5} />
+              다운로드
+            </button>
+          </div>
+        </SectionCard>
+
+        {/* 5. 결제 내역 */}
+        <SectionCard label="결제 내역">
+          <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
+            <IconReceipt size={32} stroke={1} className="text-[#2a2a2a]" />
+            <p className="text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
+            <p className="text-xs text-[#555555]">Polar.sh 연동 후 결제 내역이 표시됩니다.</p>
+          </div>
+        </SectionCard>
+
+        {/* 6. 문의 및 피드백 */}
+        <div>
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+            문의 및 피드백
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <a
+              href="mailto:support@tickerflow.net"
+              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 transition-colors hover:bg-[#1a1a1a]"
+            >
+              <IconMail size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
+              <div>
+                <p className="text-sm font-medium text-white">문의하기</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#a6a6a6]">
+                  서비스 이용 관련 문의사항을 이메일로 보내주세요.
+                </p>
+                <p className="mt-2 text-xs text-[#555555]">support@tickerflow.net</p>
+              </div>
+            </a>
+            <a
+              href="mailto:support@tickerflow.net?subject=피드백 — 기능 제안/버그 신고"
+              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 transition-colors hover:bg-[#1a1a1a]"
+            >
+              <IconMessageCircle size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
+              <div>
+                <p className="text-sm font-medium text-white">피드백</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#a6a6a6]">
+                  기능 제안이나 버그 신고를 이메일로 보내주세요.
+                </p>
+                <p className="mt-2 text-xs text-[#555555]">support@tickerflow.net</p>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        {/* 7. 계정 관리 */}
+        <SectionCard label="계정 관리">
+          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+            <div>
+              <p className="text-sm text-white">로그아웃</p>
+              <p className="mt-0.5 text-xs text-[#a6a6a6]">현재 기기에서 로그아웃합니다.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#cccccc] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+            >
+              <IconLogout size={14} stroke={1.5} />
+              로그아웃
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-5 py-4">
+            <div>
+              <p className="text-sm text-red-400">회원 탈퇴</p>
+              <p className="mt-0.5 text-xs text-[#a6a6a6]">계정 및 모든 데이터가 삭제됩니다.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-1.5 rounded-[6px] border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/20"
+            >
+              <IconTrash size={14} stroke={1.5} />
+              회원 탈퇴
+            </button>
+          </div>
+        </SectionCard>
+
+      </div>
+
+      <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
+        <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
+        <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
+        <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
+      </footer>
+
+      {/* 회원 탈퇴 확인 모달 */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => !deleting && setShowDeleteModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative z-10 w-full max-w-md rounded-[8px] border border-white/[0.08] bg-[#111111] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <IconAlertTriangle
+                size={20}
+                stroke={1.5}
+                className="mt-0.5 shrink-0 text-red-400"
+              />
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-white">회원 탈퇴</h3>
+                <p className="mt-2 text-sm leading-relaxed text-[#a6a6a6]">
+                  와치리스트, 알림 설정, 구독 정보 등 계정 데이터가 삭제됩니다.
+                  이 작업은 되돌릴 수 없습니다.
+                </p>
+              </div>
+              {!deleting && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="shrink-0 text-[#a6a6a6] transition-colors hover:text-white"
+                >
+                  <IconX size={18} stroke={1.5} />
+                </button>
+              )}
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="flex-1 rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-white disabled:opacity-40"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 rounded-[6px] bg-red-500/90 py-2.5 text-sm font-medium text-white transition-colors hover:bg-red-500 disabled:opacity-50"
+              >
+                {deleting ? "처리 중..." : "탈퇴 확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
