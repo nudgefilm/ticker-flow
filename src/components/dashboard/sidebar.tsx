@@ -14,9 +14,9 @@ import {
   IconFlame,
   IconChartBar,
   IconBell,
-  IconSearch,
   IconLogout,
 } from "@tabler/icons-react";
+import TickerSearch from "@/components/dashboard/ticker-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -96,18 +96,7 @@ export default function Sidebar() {
 
       {/* 검색 */}
       <div className="flex-none px-3 pb-3">
-        <div className="relative">
-          <IconSearch
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#a6a6a6]"
-            size={14}
-            stroke={1.5}
-          />
-          <input
-            type="text"
-            placeholder="종목 검색... AAPL, NVDA"
-            className="w-full rounded-[6px] border border-white/[0.08] bg-[#0a0a0a] py-1.5 pl-8 pr-3 text-xs text-white placeholder:text-[#a6a6a6] outline-none transition-colors focus:border-white/20"
-          />
-        </div>
+        <TickerSearch />
       </div>
 
       {/* 네비게이션 */}
