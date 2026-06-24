@@ -237,6 +237,85 @@
 
 ---
 
+---
+
+## 2026-06-25 · 세션 8
+
+### 번역 파이프라인 구현 및 개선
+
+**신규 파일**
+- `src/lib/collect/summarize.ts` — 번역/요약 배치 로직
+  - `buildFilingSummary(ticker, companyName, formType)` — 코드 생성 결정적 한국어 요약 (Haiku 미사용)
+  - `FORM_TYPE_INFO` 매핑 (8-K, 10-K, 10-Q, Form 4, S-1, DEF 14A)
+  - `subjectParticle()` — 이/가 조사 선택 (유니코드 종성 판별)
+  - 뉴스 요약: Claude Haiku 사용, 100자 이내, plain text, 사실 서술체
+  - Priority 로직: watchlist 종목 우선 (최대 `limit`건), 나머지 순차 처리
+- `src/app/api/translate/route.ts` — 번역 엔드포인트
+  - watchlist에서 distinct ticker → priorityTickers 추출
+  - 공시/뉴스 배치 번역 (각 최대 20건)
+
+**vercel.json 번역 Cron 3개 추가**
+- `7 * * * *`, `27 * * * *`, `47 * * * *` → `/api/translate`
+
+**번역 프롬프트 개선 이력**
+- 분량 제한 추가: 뉴스 100자 이내
+- 마크다운 기호 금지 (# ** - 등)
+- Haiku 거절 방지: 프롬프트 완화 (금지표현 → 중립 서술 지시)
+- [원칙] 블록 추가: 사실만 서술, 분석/의견/전망 금지, '~했습니다' 사실 서술체
+- 공시 요약: Haiku 완전 제거 → 코드 생성 결정적 문자열 (거절 원천 차단)
+
+**CLAUDE.md 업데이트**
+- 번역 프롬프트 운영 원칙 섹션 추가
+
+### 공시 피드(/dashboard) 실 데이터 연동
+
+- `force-dynamic` export 추가
+- `FilingFeedList` async 서버 컴포넌트: filings 테이블에서 최신순 50건 조회, 페이지네이션
+- 2열 그리드: `grid grid-cols-1 md:grid-cols-2 gap-4`, 홀수 마지막 카드 `col-span-2`
+- `FeedPagination` — Link 기반, `?page=N` 쿼리 파라미터, Suspense 내부 렌더
+
+**신규 컴포넌트**
+- `src/components/dashboard/feed-pagination.tsx` — 서버 컴포넌트, Link href 기반 페이지네이션
+
+### 뉴스 피드(/news) 실 데이터 연동
+
+- 동일 패턴: `NewsFeedList` async 컴포넌트, 50건 페이지네이션, 2열 그리드
+
+### 실적 캘린더(/earnings) 실 데이터 연동
+
+- `EarningsList` async 컴포넌트: 오늘 이후 30일, report_date 오름차순
+- `DbEarning` 타입: `tickers: { name_kr: string | null; name_en: string | null } | null`
+- `as unknown as DbEarning[]` 캐스트 (Supabase 조인 타입 추론 불일치 우회)
+- TypeScript 빌드 에러 수정: `name_en: string | null`로 확장 + `as unknown as` 이중 캐스트
+
+### 와치리스트(/watchlist) 실 데이터 연동
+
+**신규 파일**
+- `src/app/api/watchlist/route.ts` — POST: 종목 추가 (tickers 테이블 검증 후 insert, 중복 409)
+- `src/app/api/watchlist/[ticker]/route.ts` — DELETE: 종목 삭제 (user_id + ticker 필터)
+- `src/components/dashboard/watchlist-client.tsx` — 클라이언트 컴포넌트
+  - useState: deletingTicker, showAddInput, addInput, addError, adding
+  - 추가/삭제 후 `router.refresh()`로 서버 컴포넌트 재실행
+  - 종목 추가 인라인 입력 폼, 에러 표시
+  - Free 5종목 한도 표시 (N / 5 종목)
+  - 최근 7일 변화 요약 (공시 건수, 뉴스 건수, 실적 임박 건수)
+
+**수정 파일**
+- `src/components/dashboard/watchlist-card.tsx`
+  - `WatchlistStock` 인터페이스: `price`, `change`, `changeUp` 제거 / `newFilings: number`, `newNews: number` (string → number)
+  - `onDelete: () => void`, `isDeleting?: boolean` 추가
+  - "use client" 추가 (삭제 버튼 onClick 처리)
+  - `IconLoader2` 스피너로 삭제 중 상태 표시
+- `src/app/(dashboard)/watchlist/page.tsx`
+  - `export const dynamic = "force-dynamic"`, `Suspense + WatchlistSkeleton`
+  - `WatchlistContent` async 서버 컴포넌트: watchlist + tickers 조인 + 병렬 조회
+    - filings 최근 7일 카운트 (ticker별 집계)
+    - news 최근 7일 카운트 (ticker별 집계)
+    - earnings 다음 발표일 조회 → `D-N` / `오늘` / `—` 포맷
+  - 3개 쿼리 `Promise.all()` 병렬 실행
+
+---
+
 ## 다음 작업 예정
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - 실제 데이터 연동 (SEC EDGAR API, Finnhub, yfinance)

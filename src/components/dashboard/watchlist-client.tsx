@@ -1,0 +1,187 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import WatchlistCard, { type WatchlistStock } from "@/components/dashboard/watchlist-card";
+
+const FREE_LIMIT = 5;
+
+export default function WatchlistClient({
+  initialStocks,
+}: {
+  initialStocks: WatchlistStock[];
+}) {
+  const router = useRouter();
+  const stocks = initialStocks;
+
+  const [deletingTicker, setDeletingTicker] = useState<string | null>(null);
+  const [showAddInput, setShowAddInput] = useState(false);
+  const [addInput, setAddInput] = useState("");
+  const [addError, setAddError] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const totalFilings = stocks.reduce((sum, s) => sum + s.newFilings, 0);
+  const totalNews = stocks.reduce((sum, s) => sum + s.newNews, 0);
+  const earningsImminentCount = stocks.filter((s) => s.earningsDday !== "—").length;
+  const atLimit = stocks.length >= FREE_LIMIT;
+
+  async function handleDelete(ticker: string) {
+    setDeletingTicker(ticker);
+    await fetch(`/api/watchlist/${ticker}`, { method: "DELETE" });
+    setDeletingTicker(null);
+    router.refresh();
+  }
+
+  async function handleAdd() {
+    const ticker = addInput.trim().toUpperCase();
+    if (!ticker) return;
+    setAdding(true);
+    setAddError("");
+
+    const res = await fetch("/api/watchlist", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ticker }),
+    });
+
+    setAdding(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAddError(data.error ?? "추가에 실패했습니다. 다시 시도해주세요.");
+      return;
+    }
+
+    setAddInput("");
+    setShowAddInput(false);
+    router.refresh();
+  }
+
+  return (
+    <>
+      {/* 정보 바 */}
+      <div className="mt-6 flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium text-white">
+            {stocks.length} / {FREE_LIMIT} 종목
+          </span>
+          <span className="text-sm text-[#a6a6a6]">
+            Free 플랜은 최대 {FREE_LIMIT}종목까지 등록 가능합니다.
+          </span>
+        </div>
+        {atLimit ? (
+          <button
+            disabled
+            className="h-9 cursor-not-allowed rounded-[6px] border border-white/[0.08] px-3 text-sm text-[#a6a6a6]"
+          >
+            + 종목 추가
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddInput(true);
+              setAddError("");
+            }}
+            className="h-9 shrink-0 rounded-[6px] border border-white/[0.08] px-3 text-sm text-white transition-colors hover:bg-[#1a1a1a]"
+          >
+            + 종목 추가
+          </button>
+        )}
+      </div>
+
+      {/* 종목 추가 입력 */}
+      {showAddInput && (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              value={addInput}
+              onChange={(e) => setAddInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === "Enter" && !adding && handleAdd()}
+              placeholder="티커 입력 (예: AAPL)"
+              maxLength={10}
+              autoFocus
+              className="h-9 flex-1 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 text-sm text-white placeholder-[#a6a6a6] outline-none focus:border-white/20"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={adding || !addInput.trim()}
+              className="h-9 rounded-[6px] border border-white/[0.08] px-4 text-sm text-white transition-colors hover:bg-[#1a1a1a] disabled:opacity-50"
+            >
+              {adding ? "추가 중..." : "추가"}
+            </button>
+            <button
+              onClick={() => {
+                setShowAddInput(false);
+                setAddInput("");
+                setAddError("");
+              }}
+              className="h-9 rounded-[6px] px-3 text-sm text-[#a6a6a6] transition-colors hover:text-white"
+            >
+              취소
+            </button>
+          </div>
+          {addError && <p className="text-xs text-red-400">{addError}</p>}
+        </div>
+      )}
+
+      {/* 최근 7일 변화 요약 */}
+      {stocks.length > 0 && (
+        <div className="mt-5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
+          <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">최근 7일 변화</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {[
+              { label: "공시", count: `${totalFilings}건` },
+              { label: "뉴스", count: `${totalNews}건` },
+              { label: "실적 임박", count: `${earningsImminentCount}건` },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5 text-center">
+                <p className="text-xl font-semibold tabular-nums text-white">{stat.count}</p>
+                <p className="mt-0.5 text-xs text-[#a6a6a6]">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 종목 없음 */}
+      {stocks.length === 0 && (
+        <p className="mt-10 text-center text-sm text-[#a6a6a6]">
+          등록된 종목이 없습니다. 종목을 추가해주세요.
+        </p>
+      )}
+
+      {/* 종목 카드 그리드 */}
+      {stocks.length > 0 && (
+        <div className="mt-5 grid gap-3 md:grid-cols-2">
+          {stocks.map((stock, i) => (
+            <div
+              key={stock.ticker}
+              className={
+                stocks.length % 2 !== 0 && i === stocks.length - 1
+                  ? "md:col-span-2"
+                  : undefined
+              }
+            >
+              <WatchlistCard
+                stock={stock}
+                onDelete={() => handleDelete(stock.ticker)}
+                isDeleting={deletingTicker === stock.ticker}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 업그레이드 배너 */}
+      <div className="mt-3 flex items-center justify-between rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
+        <p className="text-sm text-[#cccccc]">
+          Pro로 업그레이드하면 종목 수 제한 없이 등록할 수 있습니다.
+        </p>
+        <button className="h-9 shrink-0 rounded-[6px] border border-white/[0.08] px-3 text-sm text-white transition-colors hover:bg-[#1a1a1a]">
+          Pro 시작하기
+        </button>
+      </div>
+    </>
+  );
+}
