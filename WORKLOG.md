@@ -145,6 +145,20 @@
 
 ---
 
+## 2026-06-24 · 세션 4
+
+### 버그 수정: 랜딩 navbar 로그아웃 미작동
+- **증상:** 헤더 프로필 드롭다운에서 LOG OUT 클릭 시 로그아웃이 되지 않음
+- **원인:** `router.push("/")` 는 이미 `/` 에 있을 때 같은 경로 이동이라 Next.js가 re-render 스킵 → `userInitial` state가 그대로 남아 로그인 상태처럼 보임
+- **해결:** `window.location.href = "/"` 로 교체 → 하드 리로드로 모든 React state 초기화 + 서버에서 세션 없이 새로 렌더
+
+### 버그 수정: /mypage 사이드바 미표시
+- **증상:** `/mypage` 접속 시 사이드바 없이 본문만 전체 화면으로 표시
+- **원인:** 이 프로젝트는 각 대시보드 페이지마다 개별 `layout.tsx`로 사이드바를 주입하는 구조인데, `src/app/mypage/layout.tsx` 가 누락됨
+- **해결:** 다른 페이지(news, earnings 등)와 동일한 패턴으로 `layout.tsx` 생성
+
+---
+
 ## 다음 작업 예정
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - 실제 데이터 연동 (SEC EDGAR API, Finnhub, yfinance)
