@@ -6,15 +6,13 @@ export default function Hero() {
     <section className="mx-auto max-w-6xl px-6 pb-20 pt-36 md:pt-40">
       <div className="animate-fade-in flex flex-col items-center text-center">
         <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-          미국 기업의 중요한 변화,
+          나스닥 모니터링 대시보드
           <br />
-          놓치지 마세요
+          티커플로우
         </h1>
 
         <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-          공시, 뉴스, 실적 일정을 한곳에서.
-          <br />
-          관심 종목의 주요 변화를 빠르게 확인하는 나스닥 모니터링 대시보드.
+          미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
         </p>
 
         <Link

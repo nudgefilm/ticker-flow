@@ -13,10 +13,10 @@ export default function Logo({ className }: LogoProps) {
         alt="TickerFlow"
         width={160}
         height={160}
-        className="h-7 w-7 object-contain"
+        className="h-10 w-10 object-contain"
         priority
       />
-      <span className="text-[17px] font-semibold tracking-tight text-white">
+      <span className="text-[19px] font-semibold tracking-tight text-white">
         TickerFlow
       </span>
     </div>

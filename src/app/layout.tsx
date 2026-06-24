@@ -9,7 +9,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "TickerFlow",
-  description: "미국 기업의 중요한 변화, 놓치지 마세요",
+  description: "나스닥 모니터링 대시보드",
 };
 
 export default function RootLayout({
