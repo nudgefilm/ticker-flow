@@ -36,7 +36,7 @@ export default function BillingPage() {
       </div>
 
       <div className="mt-8">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">플랜 비교</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">플랜 비교</p>
         <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <BillingPlanCard name="Free" price="₩0" features={FREE_FEATURES} />
           <BillingPlanCard
@@ -50,17 +50,17 @@ export default function BillingPage() {
       </div>
 
       <div className="mt-8">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">결제 내역</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">결제 내역</p>
         <div className="mt-4 flex flex-col items-center rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-8 text-center">
-          <IconReceipt className="size-8 text-[#444444]" stroke={1.5} />
+          <IconReceipt className="size-8 text-[#a6a6a6]" stroke={1.5} />
           <p className="mt-3 text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
-          <p className="mt-1 text-xs text-[#444444]">
+          <p className="mt-1 text-xs text-[#a6a6a6]">
             Pro 구독 시 결제 내역이 여기에 표시됩니다.
           </p>
         </div>
       </div>
 
-      <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#444444]">
+      <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
         <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
         <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>

@@ -7,7 +7,7 @@ const STATS = [
 export default function WatchlistChangesSummary() {
   return (
     <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">오늘 감지된 변화</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">오늘 감지된 변화</p>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {STATS.map((stat) => (
           <div key={stat.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5 text-center">

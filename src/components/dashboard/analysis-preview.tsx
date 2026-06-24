@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">{label}</p>
       <div className="mt-1.5">{children}</div>
     </div>
   );
@@ -21,7 +21,7 @@ const ACCORDION_ROWS = [
 export default function AnalysisPreview() {
   return (
     <div className="mt-8">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">실제 제공되는 리포트 예시</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">실제 제공되는 리포트 예시</p>
 
       <div
         className="mt-4 grid grid-cols-1 gap-3 blur-sm select-none md:grid-cols-2"
@@ -70,7 +70,7 @@ export default function AnalysisPreview() {
           <div className="mt-4 border-t border-white/[0.06] pt-3">
             <button
               disabled
-              className="rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#444444]"
+              className="rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#a6a6a6]"
             >
               PDF 다운로드
             </button>
@@ -104,7 +104,7 @@ export default function AnalysisPreview() {
           <div className="border-t border-white/[0.06] pt-3">
             <button
               disabled
-              className="rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#444444]"
+              className="rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#a6a6a6]"
             >
               PDF 다운로드
             </button>

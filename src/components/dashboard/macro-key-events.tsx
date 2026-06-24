@@ -7,7 +7,7 @@ const KEY_EVENTS = [
 export default function MacroKeyEvents() {
   return (
     <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">이번 주 핵심 이벤트</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">이번 주 핵심 이벤트</p>
       <ul className="mt-3">
         {KEY_EVENTS.map((event, i) => (
           <li

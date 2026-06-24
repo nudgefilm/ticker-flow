@@ -65,12 +65,12 @@ function Radio({ label, selected }: { label: string; selected: boolean }) {
 export default function AlertsPreview() {
   return (
     <div className="mt-6">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">설정 미리보기</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">설정 미리보기</p>
 
       <div className="mt-4 flex flex-col gap-3 blur-sm select-none" aria-hidden="true">
         {/* 카드 1: 알림 채널 */}
         <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-          <p className="mb-4 text-xs uppercase tracking-wide text-[#444444]">알림 채널</p>
+          <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 채널</p>
           <div className="flex flex-col gap-4">
             <SettingRow
               title="이메일 알림"
@@ -87,7 +87,7 @@ export default function AlertsPreview() {
 
         {/* 카드 2: 공시 유형 */}
         <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-          <p className="mb-4 text-xs uppercase tracking-wide text-[#444444]">알림 받을 공시 유형</p>
+          <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 받을 공시 유형</p>
           <div className="flex flex-col gap-3">
             <Checkbox label="8-K 주요이벤트" checked={true} />
             <Checkbox label="10-K 연간보고서" checked={true} />
@@ -99,7 +99,7 @@ export default function AlertsPreview() {
 
         {/* 카드 3: 수신 시간대 */}
         <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-          <p className="mb-4 text-xs uppercase tracking-wide text-[#444444]">알림 수신 시간대</p>
+          <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 수신 시간대</p>
           <div className="flex flex-col gap-3">
             <Radio label="즉시 알림 (공시 등록 후 15분 이내)" selected={true} />
             <Radio label="일간 요약 (매일 오전 8시 KST)" selected={false} />

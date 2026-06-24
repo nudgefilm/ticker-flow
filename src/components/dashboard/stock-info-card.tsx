@@ -5,7 +5,7 @@ export default function StockInfoCard({
 }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-widest text-[#444444]">기업 정보</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">기업 정보</p>
       <dl className="mt-4 flex flex-col gap-3">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between">

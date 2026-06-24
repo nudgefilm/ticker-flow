@@ -16,7 +16,7 @@ export default function ProGate({
   return (
     <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-8">
       <div className="flex flex-col items-center text-center">
-        <Icon className="size-12 text-[#444444]" stroke={1.5} />
+        <Icon className="size-12 text-[#a6a6a6]" stroke={1.5} />
         <h2 className="mt-4 text-lg font-medium text-white">{title}</h2>
         <p className="mt-2 max-w-md whitespace-pre-line text-sm leading-relaxed text-[#a6a6a6]">
           {description}

@@ -27,7 +27,7 @@ export default function FeedPagination({ lastPage = 12 }: { lastPage?: number })
 
       {pages.map((page, i) =>
         page === "…" ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-sm text-[#444444]">
+          <span key={`ellipsis-${i}`} className="px-2 text-sm text-[#a6a6a6]">
             …
           </span>
         ) : (

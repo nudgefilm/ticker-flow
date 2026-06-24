@@ -70,7 +70,7 @@ export default function BillingPlanCard({
         ) : (
           <button
             disabled
-            className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#444444]"
+            className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#a6a6a6]"
           >
             현재 플랜
           </button>

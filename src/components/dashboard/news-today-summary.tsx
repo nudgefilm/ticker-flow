@@ -8,7 +8,7 @@ const STATS = [
 export default function NewsTodaySummary() {
   return (
     <div>
-      <p className="mb-3 text-xs uppercase tracking-widest text-[#444444]">
+      <p className="mb-3 text-xs uppercase tracking-widest text-[#a6a6a6]">
         오늘 주요 변화
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

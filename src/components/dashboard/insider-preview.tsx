@@ -58,12 +58,12 @@ const COLS = "grid-cols-[1.4fr_1.2fr_0.8fr_0.8fr_0.9fr_0.9fr_1.1fr]";
 export default function InsiderPreview() {
   return (
     <div className="mt-8">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">거래 내역 미리보기</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">거래 내역 미리보기</p>
 
       <div className="mt-4 blur-sm select-none pointer-events-none" aria-hidden="true">
         <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
           {/* 헤더 */}
-          <div className={cn("grid bg-[#0f0f0f] px-5 py-3 text-xs text-[#444444]", COLS)}>
+          <div className={cn("grid bg-[#0f0f0f] px-5 py-3 text-xs text-[#a6a6a6]", COLS)}>
             <span>종목</span>
             <span>내부자</span>
             <span>직책</span>
@@ -122,7 +122,7 @@ export default function InsiderPreview() {
           ))}
 
           {/* 각주 */}
-          <div className="border-t border-white/[0.06] px-5 py-3 text-xs text-[#444444]">
+          <div className="border-t border-white/[0.06] px-5 py-3 text-xs text-[#a6a6a6]">
             인사이더 거래는 SEC에 공시된 사실 정보입니다. 투자 결정의 근거로 단독 활용하지
             마십시오.
           </div>

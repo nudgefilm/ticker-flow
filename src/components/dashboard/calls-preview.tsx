@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 function Section({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">{label}</p>
       <div className="mt-1.5">{children}</div>
     </div>
   );
@@ -21,7 +21,7 @@ function QA({ q, a }: { q: string; a: string }) {
 export default function CallsPreview() {
   return (
     <div className="mt-8">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">요약 미리보기</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">요약 미리보기</p>
 
       <div
         className="mt-4 grid gap-3 blur-sm select-none md:grid-cols-2"

@@ -7,8 +7,8 @@ export default function StockEarningsTable({
 }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-widest text-[#444444]">분기 실적</p>
-      <div className="mt-4 grid grid-cols-3 text-xs text-[#444444]">
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">분기 실적</p>
+      <div className="mt-4 grid grid-cols-3 text-xs text-[#a6a6a6]">
         <span>분기</span>
         <span>매출</span>
         <span>EPS</span>

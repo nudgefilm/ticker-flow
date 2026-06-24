@@ -77,7 +77,7 @@ export default function StockPage() {
 
       {/* 최근 7일 변화 */}
       <div className="mt-6 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">최근 7일 변화</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 7일 변화</p>
         <div className="mt-3 grid grid-cols-3 gap-4">
           {RECENT_CHANGES.map((item) => (
             <div key={item.label}>
@@ -100,7 +100,7 @@ export default function StockPage() {
 
           {/* 최근 공시 */}
           <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">최근 공시</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 공시</p>
             <div className="mt-4 flex flex-col gap-3">
               {FILINGS.map((filing, i) => (
                 <StockFilingRow key={i} filing={filing} />
@@ -135,7 +135,7 @@ export default function StockPage() {
 
           {/* 다음 실적 발표 */}
           <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-            <p className="text-xs font-medium uppercase tracking-wide text-[#444444]">
+            <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
               다음 실적 발표
             </p>
             <div className="mt-3">
@@ -155,7 +155,7 @@ export default function StockPage() {
         </div>
       </div>
 
-      <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#444444]">
+      <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
         <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
         <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>

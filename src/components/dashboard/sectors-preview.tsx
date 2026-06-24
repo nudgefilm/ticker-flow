@@ -96,7 +96,7 @@ const SUMMARY = [
 export default function SectorsPreview() {
   return (
     <div className="mt-5 flex flex-col gap-3">
-      <p className="text-xs uppercase tracking-widest text-[#444444]">히트맵 미리보기</p>
+      <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">히트맵 미리보기</p>
 
       <div className="flex flex-col gap-3 blur-sm select-none pointer-events-none" aria-hidden="true">
         {/* 히트맵 카드 */}
@@ -106,7 +106,7 @@ export default function SectorsPreview() {
             <div className="w-32 shrink-0" />
             <div className="grid flex-1 grid-cols-7 gap-2">
               {DATES.map((d) => (
-                <span key={d} className="text-right text-xs text-[#444444]">
+                <span key={d} className="text-right text-xs text-[#a6a6a6]">
                   {d}
                 </span>
               ))}
@@ -131,17 +131,17 @@ export default function SectorsPreview() {
           <div className="mt-4 flex items-center gap-4 border-t border-white/[0.06] pt-4">
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-red-500/60" />
-              <span className="text-xs text-[#444444]">부정</span>
+              <span className="text-xs text-[#a6a6a6]">부정</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-white/10" />
-              <span className="text-xs text-[#444444]">중립</span>
+              <span className="text-xs text-[#a6a6a6]">중립</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-4 w-4 rounded-[2px] bg-green-500/60" />
-              <span className="text-xs text-[#444444]">긍정</span>
+              <span className="text-xs text-[#a6a6a6]">긍정</span>
             </div>
-            <span className="ml-auto text-xs text-[#444444]">뉴스 흐름 기반 섹터 분위기</span>
+            <span className="ml-auto text-xs text-[#a6a6a6]">뉴스 흐름 기반 섹터 분위기</span>
           </div>
         </div>
 

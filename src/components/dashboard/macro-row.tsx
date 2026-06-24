@@ -21,7 +21,7 @@ const IMPORTANCE_STYLES: Record<MacroIndicator["importance"], string> = {
 const ACTUAL_COLOR: Record<"beat" | "miss" | "pending", string> = {
   beat: "text-green-400",
   miss: "text-red-400",
-  pending: "text-[#444444]",
+  pending: "text-[#a6a6a6]",
 };
 
 export default function MacroRow({
@@ -35,7 +35,7 @@ export default function MacroRow({
 
   const isReleased = actualVariant === "beat" || actualVariant === "miss";
   const actualDisplay = actualVariant === "pending" || !actual ? "—" : actual;
-  const actualColor = actualVariant ? ACTUAL_COLOR[actualVariant] : "text-[#444444]";
+  const actualColor = actualVariant ? ACTUAL_COLOR[actualVariant] : "text-[#a6a6a6]";
 
   return (
     <div className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
