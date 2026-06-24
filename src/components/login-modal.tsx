@@ -11,11 +11,11 @@ interface LoginModalProps {
 export default function LoginModal({ onClose }: LoginModalProps) {
   async function handleGoogleLogin() {
     const supabase = createClient();
-    const origin = window.location.origin;
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${origin}/auth/callback`,
+        redirectTo: `${siteUrl}/auth/callback`,
       },
     });
   }
