@@ -81,7 +81,7 @@ export default function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[0.08] bg-[#0f0f0f]">
       {/* 로고 */}
       <div className="flex-none px-4 py-4">
-        <Link href="/dashboard">
+        <Link href="/">
           <Logo />
         </Link>
       </div>
