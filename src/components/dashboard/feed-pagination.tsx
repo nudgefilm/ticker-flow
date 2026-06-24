@@ -3,26 +3,29 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const PAGES = [1, 2, 3, "…", 12] as const;
-type Page = (typeof PAGES)[number];
+type Page = number | "…";
 
-export default function FeedPagination() {
+function buildPages(last: number): Page[] {
+  if (last <= 5) return Array.from({ length: last }, (_, i) => i + 1);
+  return [1, 2, 3, "…", last];
+}
+
+export default function FeedPagination({ lastPage = 12 }: { lastPage?: number }) {
   const [current, setCurrent] = useState(1);
+  const pages = buildPages(lastPage);
 
   return (
     <div className="flex items-center justify-center gap-1">
-      {/* 이전 */}
       <button
         type="button"
-        onClick={() => setCurrent((p) => Math.max(1, Number(p) - 1))}
+        onClick={() => setCurrent((p) => Math.max(1, p - 1))}
         disabled={current === 1}
         className="rounded-[6px] px-3 py-1.5 text-sm text-[#666666] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
       >
         이전
       </button>
 
-      {/* 페이지 번호 */}
-      {PAGES.map((page, i) =>
+      {pages.map((page, i) =>
         page === "…" ? (
           <span key={`ellipsis-${i}`} className="px-2 text-sm text-[#444444]">
             …
@@ -44,11 +47,10 @@ export default function FeedPagination() {
         )
       )}
 
-      {/* 다음 */}
       <button
         type="button"
-        onClick={() => setCurrent((p) => Math.min(12, Number(p) + 1))}
-        disabled={current === 12}
+        onClick={() => setCurrent((p) => Math.min(lastPage, p + 1))}
+        disabled={current === lastPage}
         className="rounded-[6px] px-3 py-1.5 text-sm text-[#666666] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc] disabled:pointer-events-none disabled:opacity-30"
       >
         다음
