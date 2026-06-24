@@ -14,20 +14,35 @@ interface EFTSHit {
   _source: Record<string, unknown>;
 }
 
-interface CikEntry {
-  ticker: string;
-  name: string;
-  exchange: string;
+interface ParsedFiler {
+  ticker: string | null;
+  paddedCik: string | null;
 }
 
-/** display_names[0] = "NVIDIA CORP (0001045810) (Filer)" → "0001045810" */
-function extractPaddedCik(displayNames: unknown): string | null {
-  if (!Array.isArray(displayNames) || displayNames.length === 0) return null;
-  const match = String(displayNames[0]).match(/\((\d{7,10})\)/);
-  return match ? match[1].padStart(10, "0") : null;
+/**
+ * EDGAR display_names 형식: "EagleRock Land, LLC  (EROK)  (CIK 0002104882)"
+ *   - ticker: 괄호 안 1-6자 대문자 (BRK.A 등 점 허용)
+ *   - CIK:    "(CIK 숫자)" 패턴
+ */
+function parseFiler(displayNames: unknown): ParsedFiler {
+  if (!Array.isArray(displayNames) || displayNames.length === 0) {
+    return { ticker: null, paddedCik: null };
+  }
+
+  const s = String(displayNames[0]);
+
+  // "(EROK)", "(NVDA)", "(BRK.A)" 등 — "CIK" 문자열이 아닌 첫 번째 대문자 심볼
+  const tickerMatch = s.match(/\(([A-Z][A-Z.]{0,5})\)/);
+  const ticker = tickerMatch ? tickerMatch[1] : null;
+
+  // "(CIK 0002104882)" 또는 "(CIK 123456789)"
+  const cikMatch = s.match(/\(CIK\s+(\d+)\)/i);
+  const paddedCik = cikMatch ? cikMatch[1].padStart(10, "0") : null;
+
+  return { ticker, paddedCik };
 }
 
-/** "0001045810-24-000001" → https://www.sec.gov/Archives/edgar/data/1045810/000104581024000001/... */
+/** "0002104882-24-000001" → https://www.sec.gov/Archives/edgar/data/2104882/... */
 function buildFilingUrl(paddedCik: string, accessionId: string): string {
   const cik = parseInt(paddedCik, 10).toString();
   const accNoDashes = accessionId.replace(/-/g, "");
@@ -47,21 +62,20 @@ export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date") ?? today;
 
   try {
-    // 1. SEC CIK → ticker 매핑
+    // 1. SEC CIK → exchange 매핑 (exchange 보강용, 없어도 수집 진행)
     const secRes = await fetch(SEC_TICKERS_URL, {
       headers: { "User-Agent": USER_AGENT },
       next: { revalidate: 3600 },
     });
-    if (!secRes.ok) throw new Error(`SEC tickers: HTTP ${secRes.status}`);
-    const secData: { data: SecRow[] } = await secRes.json();
-
-    const cikMap = new Map<string, CikEntry>();
-    for (const [cik, name, ticker, exchange] of secData.data) {
-      cikMap.set(String(cik).padStart(10, "0"), { ticker, name, exchange });
+    const cikToExchange = new Map<string, string>();
+    if (secRes.ok) {
+      const secData: { data: SecRow[] } = await secRes.json();
+      for (const [cik, , , exchange] of secData.data) {
+        cikToExchange.set(String(cik).padStart(10, "0"), exchange);
+      }
     }
 
     // 2. EDGAR EFTS에서 당일 공시 수집
-    // _source를 명시해 display_names가 반드시 포함되도록 요청
     const eftsUrl = new URL(EFTS_URL);
     eftsUrl.searchParams.set("q", '""');
     eftsUrl.searchParams.set("dateRange", "custom");
@@ -82,36 +96,36 @@ export async function GET(req: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // 3. DB에 있는 티커 목록
+    // 3. DB에 있는 티커 목록 (FK 검증 + 중복 upsert 방지)
     const { data: knownRows } = await adminClient
       .from("tickers")
       .select("ticker");
     const tickerSet = new Set<string>(knownRows?.map((r) => r.ticker) ?? []);
 
     let inserted = 0;
-    // 스킵 사유별 카운터
-    let skipNoDisplayNames = 0; // display_names 없거나 CIK 파싱 실패
-    let skipNoCikMatch = 0;     // SEC 매핑에 CIK 없음 (OTC·외국 기업 등)
-    let skipTickerErr = 0;      // tickers upsert 실패
-    let skipFilingErr = 0;      // filings upsert 실패
+    let skipNoTicker = 0;   // display_names에서 ticker 파싱 실패
+    let skipTickerErr = 0;  // tickers upsert 실패
+    let skipFilingErr = 0;  // filings upsert 실패
     let firstError: string | undefined;
 
     for (const hit of hits) {
       const { _id: accessionId, _source: src } = hit;
 
-      const paddedCik = extractPaddedCik(src.display_names);
-      if (!paddedCik) { skipNoDisplayNames++; continue; }
+      const { ticker, paddedCik } = parseFiler(src.display_names);
+      if (!ticker) { skipNoTicker++; continue; }
 
-      const info = cikMap.get(paddedCik);
-      if (!info) { skipNoCikMatch++; continue; }
+      const entityName = String(src.entity_name ?? ticker);
+      // exchange는 SEC 매핑에서 보강, 없으면 null (nullable)
+      const exchange = paddedCik ? (cikToExchange.get(paddedCik) ?? null) : null;
 
-      // 신규 티커 자동 upsert
-      if (!tickerSet.has(info.ticker)) {
+      // 신규 티커는 tickers 테이블에 자동 upsert
+      // ignoreDuplicates: true → 시드된 name_en은 덮어쓰지 않음
+      if (!tickerSet.has(ticker)) {
         const { error: tickerErr } = await adminClient
           .from("tickers")
           .upsert(
-            { ticker: info.ticker, name_en: info.name, exchange: info.exchange },
-            { onConflict: "ticker" }
+            { ticker, name_en: entityName, ...(exchange ? { exchange } : {}) },
+            { onConflict: "ticker", ignoreDuplicates: true }
           );
         if (tickerErr) {
           firstError ??= `ticker upsert: ${tickerErr.message}`;
@@ -119,16 +133,20 @@ export async function GET(req: NextRequest) {
           skipTickerErr++;
           continue;
         }
-        tickerSet.add(info.ticker);
+        tickerSet.add(ticker);
       }
+
+      const filingUrl = paddedCik
+        ? buildFilingUrl(paddedCik, accessionId)
+        : `https://www.sec.gov/Archives/edgar/data/${accessionId}`;
 
       const { error } = await adminClient.from("filings").upsert(
         {
-          ticker: info.ticker,
+          ticker,
           form_type: String(src.form_type ?? ""),
           filed_at: `${src.file_date}T00:00:00Z`,
-          title: `${src.entity_name} — ${src.form_type}`,
-          url: buildFilingUrl(paddedCik, accessionId),
+          title: `${entityName} — ${src.form_type}`,
+          url: filingUrl,
           event_type: getEventType(String(src.form_type ?? "")),
         },
         { onConflict: "url", ignoreDuplicates: true }
@@ -148,17 +166,12 @@ export async function GET(req: NextRequest) {
       date,
       total: hits.length,
       inserted,
-      skipped: skipNoDisplayNames + skipNoCikMatch + skipTickerErr + skipFilingErr,
-      // 스킵 사유 분석 — 어디서 막히는지 파악용
+      skipped: skipNoTicker + skipTickerErr + skipFilingErr,
       debug: {
-        cikMapSize: cikMap.size,
-        tickerDbCount: tickerSet.size,
-        skipNoDisplayNames,
-        skipNoCikMatch,
+        skipNoTicker,
         skipTickerErr,
         skipFilingErr,
         firstError: firstError ?? null,
-        // EDGAR 응답 첫 번째 hit의 _source 원본 — 필드 구조 확인용
         sampleSource: hits[0]?._source ?? null,
       },
     });
