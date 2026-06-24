@@ -68,7 +68,7 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
   async function handleLogout() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    router.push("/");
+    window.location.href = "/";
   }
 
   function handleLogoClick() {
