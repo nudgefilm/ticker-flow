@@ -316,8 +316,67 @@
 
 ---
 
+---
+
+## 2026-06-25 · 세션 9
+
+### 버그 수정: Next.js 15 동적 라우트 params
+
+- **증상:** `DELETE /api/watchlist/[ticker]` TypeScript 빌드 에러
+- **원인:** Next.js 15에서 동적 라우트 핸들러의 `params`가 `Promise<{ ticker: string }>` 타입으로 변경
+- **해결:** context 타입을 `{ params: Promise<{ ticker: string }> }`로 수정, `await params`로 추출
+
+### 와치리스트 Pro 플랜 배너 조건부 표시
+
+- `WatchlistContent`에서 `profiles.plan` 조회를 watchlist 조회와 `Promise.all()` 병렬 실행
+- `isPro` prop을 `WatchlistClient`로 전달
+- Pro 유저: 업그레이드 배너 숨김, 종목 수 제한 없음(`atLimit` 조건 제외), 정보 바 `"N종목"` 표시
+- Free 유저: 기존 동작 유지 (`N / 5 종목`, 배너 노출)
+
+### 사이드바 종목 검색창 실 데이터 연동
+
+**신규 파일**
+- `src/components/dashboard/ticker-search.tsx` — 클라이언트 컴포넌트
+  - 검색어 입력 시 200ms debounce → Supabase `tickers` 테이블 조회
+  - `ticker.ilike.Q%` (prefix) + `name_en/name_kr.ilike.%Q%` (substring) OR 필터
+  - 최대 10건, ticker 알파벳 순 정렬
+  - 결과 클릭 시 `/stocks/[ticker]` 이동, 검색어 초기화
+  - ESC / 바깥 클릭 시 드롭다운 닫힘
+  - 로딩 중 `IconLoader2` 스피너 표시
+
+**수정 파일**
+- `src/components/dashboard/sidebar.tsx` — 정적 `<input>` → `<TickerSearch />` 교체
+
+**변경 이력**
+- 초기 구현: 결과 클릭 → 와치리스트 추가 (+ 버튼)
+- 수정: 결과 클릭 → `/stocks/[ticker]` 페이지 이동으로 변경, + 버튼 제거
+
+### 와치리스트 종목별 통계 쿼리 개선
+
+- **증상:** 공시/뉴스 건수가 모두 "없음"으로 표시
+- **원인:** 단일 `.in("ticker", tickers)` 배치 쿼리 사용 → 쿼리 에러 시 `data: null` → `[]` 처리되어 조용히 0 반환
+- **해결:** 종목별 개별 count 쿼리로 교체
+  - `select("*", { count: "exact", head: true })` — HEAD 요청으로 건수만 조회 (row 미반환)
+  - `.eq("ticker", row.ticker)` 단건 필터로 명확화
+  - `.maybeSingle()` — 다음 실적일 조회 (데이터 없을 때 에러 방지)
+  - 쿼리 에러 시 `console.error`로 Vercel 로그에 기록
+
+### 공시 수집 기간 7일로 확장 + 페이지네이션
+
+- **배경:** 대형주 공시가 당일 EDGAR 결과에 포함되지 않는 경우 발생
+- **변경:** `src/app/api/collect/filings/route.ts`
+  - 기본 수집 범위: 오늘 하루 → 최근 7일 (`startdt = today-7`, `enddt = today`)
+  - `?date=YYYY-MM-DD` 쿼리 파라미터: 단일 날짜 수동 백필 (기존 방식 유지)
+  - `fetchAllHits()` 함수 분리: EFTS 페이지네이션 처리
+    - 페이지당 200건 (`hits.hits=200`)
+    - `from` 파라미터로 오프셋 증가
+    - `hits.total.value`로 전체 건수 확인 후 마지막 페이지 감지
+    - 1회 실행 최대 2000건 상한 (무한 루프 방지)
+  - 응답: `date` → `period: { startdt, enddt }`로 변경
+
+---
+
 ## 다음 작업 예정
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
-- 실제 데이터 연동 (SEC EDGAR API, Finnhub, yfinance)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동
