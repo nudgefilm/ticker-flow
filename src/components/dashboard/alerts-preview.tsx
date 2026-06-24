@@ -67,7 +67,7 @@ export default function AlertsPreview() {
     <div className="mt-6">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">설정 미리보기</p>
 
-      <div className="mt-4 flex flex-col gap-3 blur-sm select-none" aria-hidden="true">
+      <div className="mt-4 flex flex-col gap-3">
         {/* 카드 1: 알림 채널 */}
         <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 채널</p>

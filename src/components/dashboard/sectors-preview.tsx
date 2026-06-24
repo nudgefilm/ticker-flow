@@ -98,7 +98,7 @@ export default function SectorsPreview() {
     <div className="mt-5 flex flex-col gap-3">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">히트맵 미리보기</p>
 
-      <div className="flex flex-col gap-3 blur-sm select-none pointer-events-none" aria-hidden="true">
+      <div className="flex flex-col gap-3">
         {/* 히트맵 카드 */}
         <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           {/* 날짜 헤더 */}

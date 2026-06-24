@@ -23,12 +23,9 @@ export default function AnalysisPreview() {
     <div className="mt-8">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">실제 제공되는 리포트 예시</p>
 
-      <div
-        className="mt-4 grid grid-cols-1 gap-3 blur-sm select-none md:grid-cols-2"
-        aria-hidden="true"
-      >
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Card 1: 8-K 심층 분석 */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           {/* 상단 */}
           <div className="flex items-center gap-2">
             <span className="rounded-[4px] border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-400">
@@ -78,7 +75,7 @@ export default function AnalysisPreview() {
         </div>
 
         {/* Card 2: 10-K 연간보고서 요약 */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           {/* 상단 */}
           <div className="flex items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">

@@ -130,7 +130,7 @@ const features: FeatureRowProps[] = [
   {
     title: "실적 발표, 한국 시간으로",
     description:
-      "나스닥 주요 종목의 실적 발표 일정을 한국 시간(KST)으로 확인하세요. EPS 컨센서스와 D-day 카운터를 함께 제공합니다.",
+      "나스닥 주요 종목의 실적 발표 일정을 한국 시간(KST)으로 확인하세요. 시장 예상 EPS와 실적 발표 일정을 함께 확인할 수 있습니다.",
     mockup: (
       <div className="space-y-2">
         <EarningsRow ticker="NVDA" dDay="D-2" eps="$2.80" />

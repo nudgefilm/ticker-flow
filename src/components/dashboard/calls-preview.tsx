@@ -23,12 +23,9 @@ export default function CallsPreview() {
     <div className="mt-8">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">요약 미리보기</p>
 
-      <div
-        className="mt-4 grid gap-3 blur-sm select-none md:grid-cols-2"
-        aria-hidden="true"
-      >
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
         {/* Card 1: NVDA */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">
               실적
@@ -86,7 +83,7 @@ export default function CallsPreview() {
         </div>
 
         {/* Card 2: TSLA */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">
               실적

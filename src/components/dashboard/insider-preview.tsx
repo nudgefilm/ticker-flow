@@ -60,7 +60,7 @@ export default function InsiderPreview() {
     <div className="mt-8">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">거래 내역 미리보기</p>
 
-      <div className="mt-4 blur-sm select-none pointer-events-none" aria-hidden="true">
+      <div className="mt-4">
         <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
           {/* 헤더 */}
           <div className={cn("grid bg-[#0f0f0f] px-5 py-3 text-xs text-[#a6a6a6]", COLS)}>
