@@ -1,55 +1,76 @@
+import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import FilingFilterBar from "@/components/dashboard/filing-filter-bar";
 import FilingFeedCard, { type Filing } from "@/components/dashboard/filing-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import { createClient } from "@/lib/supabase/server";
 
-const FILINGS: Filing[] = [
-  {
-    badgeColor: "blue",
-    badgeLabel: "8-K 주요이벤트",
-    company: "TSLA · 테슬라",
-    time: "오늘 23:14 KST",
-    summary:
-      "머스크 CEO, 2026 2분기 생산 목표 하향 조정. 픽업트럭 사이버트럭 생산량을 기존 계획 대비 15% 축소. 멕시코 기가팩토리 완공 시점도 2027년으로 연기.",
-    keyNumbers: "생산 목표 -15% · 완공 연기 2027",
-  },
-  {
-    badgeColor: "green",
-    badgeLabel: "10-Q 분기보고서",
-    company: "NVDA · 엔비디아",
-    time: "어제 06:02 KST",
-    summary:
-      "2026 회계연도 2분기 데이터센터 매출 $39B 기록. 전분기 대비 21% 성장, 호퍼 아키텍처 수요 지속. 중국 수출 규제 관련 리스크 요인 신규 추가.",
-    keyNumbers: "데이터센터 $39B · +21% QoQ",
-  },
-  {
-    badgeColor: "amber",
-    badgeLabel: "Form 4 내부자 거래",
-    company: "PLTR · 팔란티어",
-    time: "2일 전 09:30 KST",
-    summary:
-      "Alex Karp CEO, 보통주 120만 주 매도. 총 거래 금액 약 1억 8천만 달러 규모. 스톡옵션 행사에 따른 계획적 매도(10b5-1 플랜).",
-    keyNumbers: "120만 주 · $180M 매도",
-  },
-  {
-    badgeColor: "blue",
-    badgeLabel: "8-K 주요이벤트",
-    company: "AAPL · 애플",
-    time: "2일 전 22:45 KST",
-    summary:
-      "2026 회계연도 3분기 실적 발표. 매출 $943억으로 전년 동기 대비 5% 증가. 서비스 부문 매출 $268억으로 역대 최고치 경신.",
-    keyNumbers: "매출 $94.3B · 서비스 $26.8B",
-  },
-  {
-    badgeColor: "green",
-    badgeLabel: "10-K 연간보고서",
-    company: "META · 메타",
-    time: "3일 전 07:15 KST",
-    summary:
-      "2025 회계연도 연간 보고서 제출. 광고 매출 $1,270억으로 전년 대비 22% 성장. 데이터센터 인프라 투자 확대로 자본지출 $380억 기록.",
-    keyNumbers: "광고 매출 $127B · CapEx $38B",
-  },
-];
+export const dynamic = "force-dynamic";
+
+// ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
+
+function FilingFeedSkeleton() {
+  return (
+    <div className="flex flex-col gap-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 animate-pulse"
+        >
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-20 rounded-[4px] bg-white/[0.06]" />
+            <div className="h-4 w-12 rounded bg-white/[0.06]" />
+            <div className="ml-auto h-4 w-16 rounded bg-white/[0.06]" />
+          </div>
+          <div className="mt-3 space-y-2">
+            <div className="h-3 w-full rounded bg-white/[0.06]" />
+            <div className="h-3 w-4/5 rounded bg-white/[0.06]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── 실 데이터 피드 ────────────────────────────────────────────────────────────
+
+async function FilingFeedList() {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("filings")
+    .select("id, ticker, form_type, title, summary_kr, filed_at, url")
+    .order("filed_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+      </p>
+    );
+  }
+
+  const filings: Filing[] = data ?? [];
+
+  if (filings.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        수집된 공시가 없습니다.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {filings.map((filing) => (
+        <FilingFeedCard key={filing.id} filing={filing} />
+      ))}
+    </div>
+  );
+}
+
+// ─── 페이지 ────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   return (
@@ -58,10 +79,10 @@ export default function DashboardPage() {
       <div className="mt-6">
         <FilingFilterBar />
       </div>
-      <div className="mt-5 flex flex-col gap-3">
-        {FILINGS.map((filing, i) => (
-          <FilingFeedCard key={i} filing={filing} />
-        ))}
+      <div className="mt-5">
+        <Suspense fallback={<FilingFeedSkeleton />}>
+          <FilingFeedList />
+        </Suspense>
       </div>
       <div className="mt-6">
         <FeedPagination />
