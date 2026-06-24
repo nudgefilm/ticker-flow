@@ -22,7 +22,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* 로고 */}
         <div className="mb-8 flex justify-center">
-          <Logo />
+          <Link href="/">
+            <Logo />
+          </Link>
         </div>
 
         {/* 카드 */}
