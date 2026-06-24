@@ -7,6 +7,9 @@ const USER_AGENT = "TickerFlow support@tickerflow.net";
 const EFTS_URL = "https://efts.sec.gov/LATEST/search-index";
 const SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers_exchange.json";
 
+const PAGE_SIZE = 200; // EFTS 페이지당 건수
+const MAX_HITS = 2000; // 1회 실행 상한 (초과 시 중단)
+
 // company_tickers_exchange.json field order: [cik_str, name, ticker, exchange]
 type SecRow = [number, string, string, string];
 
@@ -32,11 +35,9 @@ function parseFiler(displayNames: unknown): ParsedFiler {
 
   const s = String(displayNames[0]);
 
-  // "(EROK)", "(NVDA)", "(BRK.A)" 등 — "CIK" 문자열이 아닌 첫 번째 대문자 심볼
   const tickerMatch = s.match(/\(([A-Z][A-Z.]{0,5})\)/);
   const ticker = tickerMatch ? tickerMatch[1] : null;
 
-  // "(CIK 0002104882)" 또는 "(CIK 123456789)"
   const cikMatch = s.match(/\(CIK\s+(\d+)\)/i);
   const paddedCik = cikMatch ? cikMatch[1].padStart(10, "0") : null;
 
@@ -55,12 +56,51 @@ function getEventType(formType: string): string | null {
   return null;
 }
 
+/** EFTS에서 페이지네이션으로 전체 hits 수집 */
+async function fetchAllHits(startdt: string, enddt: string): Promise<EFTSHit[]> {
+  const allHits: EFTSHit[] = [];
+  let from = 0;
+
+  while (allHits.length < MAX_HITS) {
+    const url = new URL(EFTS_URL);
+    url.searchParams.set("q", '""');
+    url.searchParams.set("dateRange", "custom");
+    url.searchParams.set("startdt", startdt);
+    url.searchParams.set("enddt", enddt);
+    url.searchParams.set("forms", "8-K,10-K,10-Q,4,S-1,DEF14A");
+    url.searchParams.set("_source", "entity_name,file_date,root_forms,display_names");
+    url.searchParams.set("hits.hits", String(PAGE_SIZE));
+    if (from > 0) url.searchParams.set("from", String(from));
+
+    const res = await fetch(url.toString(), { headers: { "User-Agent": USER_AGENT } });
+    if (!res.ok) throw new Error(`EFTS: HTTP ${res.status}`);
+
+    const data = await res.json();
+    const pageHits: EFTSHit[] = data?.hits?.hits ?? [];
+    const totalValue: number = data?.hits?.total?.value ?? 0;
+
+    allHits.push(...pageHits);
+
+    // 마지막 페이지이거나 전체 수집 완료
+    if (pageHits.length < PAGE_SIZE || allHits.length >= totalValue) break;
+
+    from += pageHits.length;
+  }
+
+  return allHits;
+}
+
 export async function GET(req: NextRequest) {
   const authError = await requireCollectAuth(req);
   if (authError) return authError;
 
   const today = new Date().toISOString().slice(0, 10);
-  const date = req.nextUrl.searchParams.get("date") ?? today;
+
+  // ?date=YYYY-MM-DD → 단일 날짜 (수동 백필용)
+  // 미지정 → 최근 7일
+  const dateParam = req.nextUrl.searchParams.get("date");
+  const startdt = dateParam ?? new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  const enddt = dateParam ?? today;
 
   try {
     // 1. SEC CIK → exchange 매핑 (exchange 보강용, 없어도 수집 진행)
@@ -76,24 +116,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. EDGAR EFTS에서 당일 공시 수집
-    const eftsUrl = new URL(EFTS_URL);
-    eftsUrl.searchParams.set("q", '""');
-    eftsUrl.searchParams.set("dateRange", "custom");
-    eftsUrl.searchParams.set("startdt", date);
-    eftsUrl.searchParams.set("enddt", date);
-    eftsUrl.searchParams.set("forms", "8-K,10-K,10-Q,4,S-1,DEF14A");
-    eftsUrl.searchParams.set(
-      "_source",
-      "entity_name,file_date,root_forms,display_names"
-    );
-
-    const eftsRes = await fetch(eftsUrl.toString(), {
-      headers: { "User-Agent": USER_AGENT },
-    });
-    if (!eftsRes.ok) throw new Error(`EFTS: HTTP ${eftsRes.status}`);
-    const eftsData = await eftsRes.json();
-    const hits: EFTSHit[] = eftsData?.hits?.hits ?? [];
+    // 2. EDGAR EFTS에서 공시 수집 (페이지네이션)
+    const hits = await fetchAllHits(startdt, enddt);
 
     const adminClient = createAdminClient();
 
@@ -104,9 +128,9 @@ export async function GET(req: NextRequest) {
     const tickerSet = new Set<string>(knownRows?.map((r) => r.ticker) ?? []);
 
     let inserted = 0;
-    let skipNoTicker = 0;   // display_names에서 ticker 파싱 실패
-    let skipTickerErr = 0;  // tickers upsert 실패
-    let skipFilingErr = 0;  // filings upsert 실패
+    let skipNoTicker = 0;
+    let skipTickerErr = 0;
+    let skipFilingErr = 0;
     let firstError: string | undefined;
 
     for (const hit of hits) {
@@ -116,7 +140,6 @@ export async function GET(req: NextRequest) {
       if (!ticker) { skipNoTicker++; continue; }
 
       const entityName = String(src.entity_name ?? ticker);
-      // exchange는 SEC 매핑에서 보강, 없으면 null (nullable)
       const exchange = paddedCik ? (cikToExchange.get(paddedCik) ?? null) : null;
 
       // 신규 티커는 tickers 테이블에 자동 upsert
@@ -141,7 +164,6 @@ export async function GET(req: NextRequest) {
         ? buildFilingUrl(paddedCik, accessionId)
         : `https://www.sec.gov/Archives/edgar/data/${accessionId}`;
 
-      // root_forms는 배열: ["8-K"], ["4"] 등
       const formType = Array.isArray(src.root_forms)
         ? String(src.root_forms[0] ?? "")
         : String(src.root_forms ?? "");
@@ -178,7 +200,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      date,
+      period: { startdt, enddt },
       total: hits.length,
       inserted,
       skipped: skipNoTicker + skipTickerErr + skipFilingErr,
