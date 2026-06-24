@@ -69,7 +69,9 @@ export async function GET(req: NextRequest) {
 
     // 2. EDGAR EFTS에서 당일 공시 수집
     const eftsUrl = new URL(EFTS_URL);
-    eftsUrl.searchParams.set("q", "");
+    // q="" (empty string) → EFTS returns HTTP 500. Quoted empty string tells
+    // Elasticsearch to match all documents without a text filter.
+    eftsUrl.searchParams.set("q", '""');
     eftsUrl.searchParams.set("dateRange", "custom");
     eftsUrl.searchParams.set("startdt", date);
     eftsUrl.searchParams.set("enddt", date);
