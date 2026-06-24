@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -38,12 +38,22 @@ const menus: {
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState<DropdownKey>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  function handleMouseEnter(label: DropdownKey) {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setActive(label);
+  }
+
+  function handleMouseLeave() {
+    closeTimer.current = setTimeout(() => setActive(null), 150);
+  }
 
   return (
     <header
@@ -65,8 +75,8 @@ export default function Navbar() {
               <div
                 key={menu.label}
                 className="relative"
-                onMouseEnter={() => setActive(menu.label as DropdownKey)}
-                onMouseLeave={() => setActive(null)}
+                onMouseEnter={() => handleMouseEnter(menu.label as DropdownKey)}
+                onMouseLeave={handleMouseLeave}
               >
                 <button
                   type="button"
@@ -99,7 +109,7 @@ export default function Navbar() {
                 </button>
 
                 {active === menu.label && (
-                  <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border border-border bg-background/95 py-1.5 shadow-lg backdrop-blur-md">
+                  <div className="absolute left-0 top-full mt-1 w-48 rounded-lg border border-border bg-background/95 py-1.5 shadow-lg backdrop-blur-md">
                     {menu.items.map((item) => (
                       <Link
                         key={item.href}
@@ -120,7 +130,7 @@ export default function Navbar() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3 md:ml-2">
+          <div className="flex items-center gap-3 border-l border-border pl-4 md:ml-4">
             <Link
               href="/dashboard"
               className="hidden text-sm text-muted-foreground transition-colors hover:text-foreground md:block"
