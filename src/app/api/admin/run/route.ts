@@ -48,12 +48,17 @@ export async function GET(req: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     (host.includes("localhost") ? `http://${host}` : `https://${host}`);
   const cronSecret = process.env.CRON_SECRET ?? "";
+  // after()는 새 fetch이므로 세션 쿠키가 자동 전달되지 않음 — 원본 쿠키를 수동으로 전달
+  const cookieHeader = req.headers.get("cookie") ?? "";
 
   // 응답 반환 후 서버 독립 실행
   after(async () => {
     try {
       const res = await fetch(`${baseUrl}${endpoint}`, {
-        headers: { Authorization: `Bearer ${cronSecret}` },
+        headers: {
+          Authorization: `Bearer ${cronSecret}`,
+          ...(cookieHeader && { Cookie: cookieHeader }),
+        },
       });
       const result: Record<string, unknown> = res.ok
         ? await res.json().catch(() => ({}))
