@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "gen:types": "npx supabase@latest gen types typescript --project-id bjyceygtamogiikjedlu > src/types/supabase.ts"
+    "gen:types": "npx --yes supabase@latest gen types typescript --project-id bjyceygtamogiikjedlu > src/types/supabase.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
