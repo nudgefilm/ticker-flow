@@ -10,15 +10,14 @@ export type TrendingItem = {
   news: number;
 };
 
-const CARD_WIDTH = 176; // w-44 = 11rem × 16px
-const CARD_GAP   = 12;  // gap-3 = 0.75rem × 16px
-
 export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function scroll(dir: "prev" | "next") {
-    scrollRef.current?.scrollBy({
-      left: (dir === "next" ? 1 : -1) * (CARD_WIDTH + CARD_GAP),
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({
+      left: (dir === "next" ? 1 : -1) * el.clientWidth,
       behavior: "smooth",
     });
   }
