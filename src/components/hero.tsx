@@ -44,17 +44,34 @@ function formatRelativeTime(isoString: string): string {
   return `${diffDays}일 전`;
 }
 
+function relativeTime(isoString: string): string {
+  const diffDays = Math.floor((Date.now() - new Date(isoString).getTime()) / 86_400_000);
+  if (diffDays === 0) return "오늘";
+  if (diffDays === 1) return "어제";
+  return `${diffDays}일 전`;
+}
+
+function getMockupBadgeClass(formType: string): string {
+  const ft = (formType ?? "").toUpperCase().trim();
+  if (ft === "8-K" || ft.startsWith("8-K/")) return "bg-amber-500/20 text-amber-400";
+  if (ft === "10-K" || ft.startsWith("10-K/") || ft === "10-Q" || ft.startsWith("10-Q/"))
+    return "bg-blue-500/20 text-blue-400";
+  if (ft === "4" || ft === "4/A") return "bg-purple-500/20 text-purple-400";
+  return "bg-white/10 text-white/40";
+}
+
 export default async function Hero() {
   const admin = createAdminClient();
 
   const { data } = await admin
     .from("filings")
-    .select("ticker, form_type, summary_kr, filed_at, url, event_type")
+    .select("id, ticker, form_type, summary_kr, filed_at, url, event_type")
     .not("summary_kr", "is", null)
     .order("filed_at", { ascending: false })
-    .limit(2);
+    .limit(3);
 
   type FilingRow = {
+    id: string;
     ticker: string;
     form_type: string;
     summary_kr: string | null;
@@ -77,69 +94,150 @@ export default async function Hero() {
   }
 
   const showRealData = filings.length >= 2;
+  const mockupFilings = filings.slice(0, 3);
 
   return (
-    <section className="mx-auto max-w-6xl px-6 pb-20 pt-36 md:pt-40">
-      <div className="animate-fade-in flex flex-col items-center text-center">
-        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-          나스닥 모니터링
-          <br />
-          <span
-            className="text-blue-400"
-            style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.7))" }}
-          >
-            티커플로우
-          </span>
-        </h1>
+    <section className="pb-20 pt-36 md:pt-40">
+      <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-        <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-          미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
-        </p>
+        {/* 좌측: 기존 텍스트 + CTA */}
+        <div className="animate-fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
+            나스닥 모니터링
+            <br />
+            <span
+              className="text-blue-400"
+              style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.7))" }}
+            >
+              티커플로우
+            </span>
+          </h1>
 
-        {/* 공시 샘플 카드 */}
-        <div className="mt-16 grid w-full max-w-2xl gap-4 text-left md:grid-cols-2">
-          {showRealData ? (
-            filings.map((filing) => {
-              const badge = getFormTypeBadge(filing.form_type);
-              const event = filing.event_type ? EVENT_TYPE_KR[filing.event_type] : undefined;
-              const companyName = nameMap.get(filing.ticker) ?? filing.ticker;
-              const company = `${filing.ticker} · ${companyName}`;
-              return (
+          <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
+            미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
+          </p>
+
+          {/* 공시 샘플 카드 */}
+          <div className="mt-16 grid w-full max-w-2xl gap-4 text-left md:grid-cols-2">
+            {showRealData ? (
+              filings.slice(0, 2).map((filing) => {
+                const badge = getFormTypeBadge(filing.form_type);
+                const event = filing.event_type ? EVENT_TYPE_KR[filing.event_type] : undefined;
+                const companyName = nameMap.get(filing.ticker) ?? filing.ticker;
+                const company = `${filing.ticker} · ${companyName}`;
+                return (
+                  <FilingCard
+                    key={`${filing.ticker}-${filing.filed_at}`}
+                    badgeColor={badge.color}
+                    badgeLabel={badge.label}
+                    event={event}
+                    company={company}
+                    summary={filing.summary_kr ?? ""}
+                    time={formatRelativeTime(filing.filed_at)}
+                    url={filing.url ?? undefined}
+                  />
+                );
+              })
+            ) : (
+              <>
                 <FilingCard
-                  key={`${filing.ticker}-${filing.filed_at}`}
-                  badgeColor={badge.color}
-                  badgeLabel={badge.label}
-                  event={event}
-                  company={company}
-                  summary={filing.summary_kr ?? ""}
-                  time={formatRelativeTime(filing.filed_at)}
-                  url={filing.url ?? undefined}
+                  badgeColor="blue"
+                  badgeLabel="8-K 주요이벤트"
+                  event="생산 목표 변경"
+                  company="TSLA · 테슬라"
+                  summary="머스크 CEO, 2026 2분기 생산 목표 하향 조정. 픽업트럭 사이버트럭 생산량을 기존 계획 대비 15% 축소."
+                  keyNumbers="생산 목표 -15% · 완공 연기 2027"
+                  time="오늘 10:42 KST"
                 />
-              );
-            })
-          ) : (
-            <>
-              <FilingCard
-                badgeColor="blue"
-                badgeLabel="8-K 주요이벤트"
-                event="생산 목표 변경"
-                company="TSLA · 테슬라"
-                summary="머스크 CEO, 2026 2분기 생산 목표 하향 조정. 픽업트럭 사이버트럭 생산량을 기존 계획 대비 15% 축소."
-                keyNumbers="생산 목표 -15% · 완공 연기 2027"
-                time="오늘 10:42 KST"
-              />
-              <FilingCard
-                badgeColor="green"
-                badgeLabel="10-Q 분기보고서"
-                event="가이던스 변경"
-                company="NVDA · 엔비디아"
-                summary="2026 회계연도 2분기 데이터센터 매출 $39B 기록. 전분기 대비 21% 성장."
-                keyNumbers="데이터센터 $39B · +21% QoQ"
-                time="어제 06:02 KST"
-              />
-            </>
-          )}
+                <FilingCard
+                  badgeColor="green"
+                  badgeLabel="10-Q 분기보고서"
+                  event="가이던스 변경"
+                  company="NVDA · 엔비디아"
+                  summary="2026 회계연도 2분기 데이터센터 매출 $39B 기록. 전분기 대비 21% 성장."
+                  keyNumbers="데이터센터 $39B · +21% QoQ"
+                  time="어제 06:02 KST"
+                />
+              </>
+            )}
+          </div>
         </div>
+
+        {/* 우측: 대시보드 목업 */}
+        <div className="hidden lg:block relative">
+          {/* 블루 글로우 */}
+          <div className="absolute -inset-8 bg-blue-500/10 blur-3xl rounded-3xl -z-10" />
+
+          {/* 목업 컨테이너 */}
+          <div className="relative rounded-2xl border border-white/[0.08] bg-[#0f0f0f] overflow-hidden shadow-2xl">
+
+            {/* 목업 상단 바 */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+              <div className="w-3 h-3 rounded-full bg-white/10" />
+              <div className="w-3 h-3 rounded-full bg-white/10" />
+              <div className="w-3 h-3 rounded-full bg-white/10" />
+              <span className="ml-2 text-xs text-white/30 font-mono">tickerflow.net</span>
+            </div>
+
+            {/* 목업 내부 — 2열 */}
+            <div className="flex">
+
+              {/* 미니 사이드바 */}
+              <div className="w-36 border-r border-white/[0.06] p-3 flex flex-col gap-1 shrink-0">
+                <p className="text-[10px] text-white/30 uppercase tracking-wider px-2 mb-1">모니터링</p>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.08]">
+                  <div className="w-3 h-3 rounded bg-blue-400/60" />
+                  <span className="text-[11px] text-white">공시 피드</span>
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+                  <div className="w-3 h-3 rounded bg-white/20" />
+                  <span className="text-[11px] text-white/40">뉴스 피드</span>
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+                  <div className="w-3 h-3 rounded bg-white/20" />
+                  <span className="text-[11px] text-white/40">실적 캘린더</span>
+                </div>
+                <p className="text-[10px] text-white/30 uppercase tracking-wider px-2 mb-1 mt-3">인사이트</p>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+                  <div className="w-3 h-3 rounded bg-white/20" />
+                  <span className="text-[11px] text-white/40">종목 스냅샷</span>
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
+                  <div className="w-3 h-3 rounded bg-white/20" />
+                  <span className="text-[11px] text-white/40">섹터 히트맵</span>
+                </div>
+              </div>
+
+              {/* 메인 콘텐츠 */}
+              <div className="flex-1 p-4 space-y-2 min-w-0">
+                {mockupFilings.map((filing) => (
+                  <div key={filing.id} className="rounded-xl border border-white/[0.06] bg-[#111111] p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${getMockupBadgeClass(filing.form_type)}`}>
+                        {filing.form_type}
+                      </span>
+                      <span className="text-[11px] font-mono text-white/60">{filing.ticker}</span>
+                      <span className="text-[10px] text-white/30 ml-auto">
+                        {relativeTime(filing.filed_at)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/70 leading-relaxed line-clamp-2">
+                      {filing.summary_kr ?? "요약 준비 중"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+            {/* 하단 페이드 */}
+            <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none" />
+          </div>
+
+          {/* 좌측 페이드 */}
+          <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+        </div>
+
       </div>
     </section>
   );

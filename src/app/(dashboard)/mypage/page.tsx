@@ -106,7 +106,7 @@ export default function MyPage() {
     <div className="flex h-full flex-col">
       <DashboardHeader title="마이페이지" />
 
-      <div className="mt-6 flex max-w-2xl flex-col gap-4">
+      <div className="mt-6 flex flex-col gap-4">
 
         {/* 1. 계정 정보 */}
         <SectionCard label="계정 정보">

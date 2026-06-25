@@ -948,6 +948,40 @@ CREATE TABLE stock_prices (
   ```
 - 이제 CRON_SECRET 없이 어드민 세션 쿠키만으로 인증 통과
 
+### 실적 캘린더 페이지네이션 추가
+
+**`src/app/(dashboard)/earnings/page.tsx`**
+- `PAGE_SIZE = 25` 상수 추가
+- `EarningsList`에 `page` prop 추가, Supabase `.range(offset, offset + 24)` + `{ count: "exact" }`로 DB 레벨 슬라이싱
+- `EarningsPagination` 서버 컴포넌트 추가: Next.js `<Link>` 기반 `?page=N` URL 파라미터 방식
+  - 7페이지 이하: 전체 노출 / 이상: 현재 페이지 주변 + `…` 말줄임
+  - 이전/다음 버튼 비활성 시 `pointer-events-none opacity-30`
+- `EarningsPage` async 변환, `searchParams: Promise<{ page?: string }>` 파싱
+- `<Suspense key={page}>` — 페이지 전환마다 스켈레톤 재표시
+- 데이터 25건 이하 시 페이지네이션 미표시
+
+### 마이페이지 카드 너비 수정
+
+**`src/app/(dashboard)/mypage/page.tsx`**
+- 카드 컨테이너 `max-w-2xl` 제거 → 다른 페이지와 동일하게 전체 너비 사용
+
+### 랜딩 Hero 2열 레이아웃 + 대시보드 목업 UI 구현
+
+**`src/components/hero.tsx`**
+- 기존 1열 중앙 정렬 → 2열 그리드 (`grid-cols-1 lg:grid-cols-2 gap-16`) 변경
+- 좌측: 기존 h1, 부제, 샘플 공시 카드 유지 (`lg:text-left` 반응형 정렬 추가)
+- 우측: 대시보드 목업 UI 코드로 직접 구현 (`hidden lg:block`)
+  - 브라우저 크롬 상단 바 (macOS 버튼 3개 + tickerflow.net URL)
+  - 미니 사이드바 (모니터링/인사이트 메뉴, 공시 피드 활성 상태)
+  - 공시 카드 3건 (실제 DB filings 데이터, summary_kr IS NOT NULL 최신순)
+  - form_type 배지 색상: 8-K → amber, 10-K·10-Q → blue, Form 4 → purple, 기타 → gray
+  - 하단 페이드 그라디언트 + 좌측 페이드 (배경 자연 연결)
+  - 블루 글로우 (`bg-blue-500/10 blur-3xl`)
+- `relativeTime()` 헬퍼 추가 (오늘/어제/N일 전)
+- `getMockupBadgeClass()` 헬퍼 추가 (form_type → Tailwind 클래스)
+- filings 쿼리: `id` 필드 추가, `limit(2 → 3)` 확장
+- `revalidate = 1800` 유지
+
 ---
 
 ## 다음 작업 예정

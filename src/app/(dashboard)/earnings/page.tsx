@@ -1,11 +1,14 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import EarningsFilterBar from "@/components/dashboard/earnings-filter-bar";
 import EarningsRow, { type Earnings } from "@/components/dashboard/earnings-row";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconInfoCircle, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 25;
 
 // ─── 헬퍼 함수 ────────────────────────────────────────────────────────────────
 
@@ -102,20 +105,82 @@ function EarningsSkeleton() {
   );
 }
 
+// ─── 페이지네이션 ─────────────────────────────────────────────────────────────
+
+function EarningsPagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+  const pages: (number | "ellipsis")[] = [];
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push("ellipsis");
+    const start = Math.max(2, currentPage - 1);
+    const end   = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push("ellipsis");
+    pages.push(totalPages);
+  }
+
+  const btn =
+    "inline-flex h-8 min-w-[32px] items-center justify-center rounded-[4px] px-2 text-sm transition-colors";
+
+  return (
+    <div className="mt-6 flex items-center justify-center gap-1">
+      <Link
+        href={`?page=${currentPage - 1}`}
+        aria-disabled={currentPage === 1}
+        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === 1 ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-[#ffffff]"}`}
+      >
+        <IconChevronLeft size={14} stroke={1.5} />
+      </Link>
+
+      {pages.map((p, i) =>
+        p === "ellipsis" ? (
+          <span key={`ellipsis-${i}`} className={`${btn} text-[#a6a6a6]`}>…</span>
+        ) : (
+          <Link
+            key={p}
+            href={`?page=${p}`}
+            className={`${btn} border ${
+              p === currentPage
+                ? "border-white/20 bg-[#1a1a1a] text-[#ffffff]"
+                : "border-white/[0.08] text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-[#ffffff]"
+            }`}
+          >
+            {p}
+          </Link>
+        )
+      )}
+
+      <Link
+        href={`?page=${currentPage + 1}`}
+        aria-disabled={currentPage === totalPages}
+        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === totalPages ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-[#ffffff]"}`}
+      >
+        <IconChevronRight size={14} stroke={1.5} />
+      </Link>
+    </div>
+  );
+}
+
 // ─── 실 데이터 목록 ───────────────────────────────────────────────────────────
 
-async function EarningsList() {
+async function EarningsList({ page }: { page: number }) {
   const supabase = await createClient();
 
   const today   = new Date().toISOString().slice(0, 10);
   const limit30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
 
-  const { data, error } = await supabase
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const { data, error, count } = await supabase
     .from("earnings")
-    .select("ticker, report_date, time_of_day, eps_estimate, revenue_estimate, actual_eps, actual_revenue, tickers(name_kr, name_en)")
+    .select("ticker, report_date, time_of_day, eps_estimate, revenue_estimate, actual_eps, actual_revenue, tickers(name_kr, name_en)", { count: "exact" })
     .gte("report_date", today)
     .lte("report_date", limit30)
-    .order("report_date", { ascending: true });
+    .order("report_date", { ascending: true })
+    .range(offset, offset + PAGE_SIZE - 1);
 
   if (error) {
     return (
@@ -135,18 +200,32 @@ async function EarningsList() {
     );
   }
 
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
+
   return (
-    <div className="flex flex-col gap-3">
-      {rows.map((row) => (
-        <EarningsRow key={`${row.ticker}-${row.report_date}`} earnings={mapRow(row)} />
-      ))}
-    </div>
+    <>
+      <div className="flex flex-col gap-3">
+        {rows.map((row) => (
+          <EarningsRow key={`${row.ticker}-${row.report_date}`} earnings={mapRow(row)} />
+        ))}
+      </div>
+      {totalPages > 1 && (
+        <EarningsPagination currentPage={page} totalPages={totalPages} />
+      )}
+    </>
   );
 }
 
 // ─── 페이지 ──────────────────────────────────────────────────────────────────
 
-export default function EarningsPage() {
+export default async function EarningsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="실적 캘린더" />
@@ -162,8 +241,8 @@ export default function EarningsPage() {
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
           향후 30일 실적 일정
         </p>
-        <Suspense fallback={<EarningsSkeleton />}>
-          <EarningsList />
+        <Suspense key={page} fallback={<EarningsSkeleton />}>
+          <EarningsList page={page} />
         </Suspense>
       </div>
 
