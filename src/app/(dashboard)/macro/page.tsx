@@ -153,7 +153,7 @@ async function MacroIndicatorList() {
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-white">{item.indicator_name}</p>
                 {meta?.desc && (
-                  <p className="mt-0.5 text-xs leading-relaxed text-[#666666]">{meta.desc}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-[#a6a6a6]">{meta.desc}</p>
                 )}
               </div>
               {item.source && (
