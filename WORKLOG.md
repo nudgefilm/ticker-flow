@@ -888,6 +888,51 @@ CREATE TABLE stock_prices (
 - 카드 wrapper: `space-y-3` → `grid grid-cols-1 md:grid-cols-2 gap-4`
 - map 콜백에 `index` 추가, `TRIGGERS.length % 2 !== 0 && index === last` 조건으로 마지막 카드 `md:col-span-2` 자동 처리
 
+### 종목 프로필 수집 401 에러 분석
+
+- **코드 차이 없음:** profile route는 기존 정상 동작 route(analyst, filings 등)와 완전히 동일한 패턴 사용 확인
+- **원인:** `/api/admin/run` → `after()` → `/api/collect/profile` 서버-서버 호출 시 세션 쿠키가 전달되지 않음. CRON_SECRET이 `.env.local`에 없으면 Bearer 인증도 실패 → 401
+- **다른 버튼이 "완료"로 보이는 이유:** `lastRun` DB에 이전 성공 기록이 있어서. profile은 신규라 이전 결과 없음 → 현재 오류 바로 노출
+- **해결:** `.env.local`에 `CRON_SECRET=tickerflow-local-dev` 추가 (Vercel 설정값과 동일하게). 코드 변경 없음.
+
+---
+
+## 2026-06-26 · 세션 21
+
+### 어드민 더미 데이터 전체 제거 및 실 데이터 연동
+
+**`src/app/admin/users/pro-grant/page.tsx`**
+- `"use client"` + `useState` 제거 → 서버 컴포넌트(async) 전환
+- `export const dynamic = "force-dynamic"` 추가
+- `createAdminClient()`로 `profiles` 테이블에서 `plan = 'pro'` 유저 조회 (created_at DESC)
+- 하드코딩 `grantHistory` 배열 완전 제거
+- 사유 컬럼 완전 제거 (profiles 테이블에 없음): 폼의 사유 입력 필드 + 테이블 사유 열 모두 삭제
+- 전체 Pro 유저 수 카드 추가
+- 빈 상태 처리: "Pro 플랜 유저가 없습니다." 안내
+
+**`src/app/admin/ops/filings/page.tsx`**
+- `"use client"` 제거 → 서버 컴포넌트(async) 전환
+- 하드코딩 `filings` 배열 완전 제거
+- `createAdminClient()`로 4개 쿼리 `Promise.all` 병렬 실행:
+  - 전체 공시 수 (count)
+  - 오늘 수집 수 (filed_at >= today, count)
+  - 번역 완료 수 (summary_kr IS NOT NULL, count)
+  - 최근 20건 (filed_at DESC)
+- 상단 카드 3개: 전체 공시 / 오늘 수집 / 번역 완료
+- 테이블 컬럼: 날짜 / 티커 / 유형 / 제목 / 번역(O·X) / 원문 링크
+- 검색·숨김 필터 UI 제거 (미구현 기능)
+- 빈 상태 처리: "수집된 공시가 없습니다." 안내
+
+**`src/app/admin/ops/notices/page.tsx`**
+- 더미 notices 배열 + useState + 폼 전체 제거
+- notices 테이블 없음 확인 (supabase.ts)
+- 빈 상태 UI (IconBell + "공지사항 기능은 준비 중입니다.") 로 대체
+
+**`src/app/admin/ops/reports/page.tsx`**
+- 더미 reports 배열 + statusColor 맵 + 테이블 전체 제거
+- reports / contacts 테이블 없음 확인 (supabase.ts)
+- 빈 상태 UI (IconMessage + "문의·신고 기능은 준비 중입니다.") 로 대체
+
 ---
 
 ## 다음 작업 예정
