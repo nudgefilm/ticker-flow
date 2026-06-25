@@ -1,121 +1,110 @@
+import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
-import MacroFilterBar from "@/components/dashboard/macro-filter-bar";
-import MacroKeyEvents from "@/components/dashboard/macro-key-events";
-import MacroRow, { type MacroIndicator } from "@/components/dashboard/macro-row";
+import { createClient } from "@/lib/supabase/server";
 
-const THIS_WEEK: MacroIndicator[] = [
-  {
-    importance: "상",
-    name: "FOMC 금리 결정",
-    nameEn: "FOMC Rate Decision",
-    release: "6/25 수 03:00 KST",
-    forecast: "4.25~4.50%",
-    previous: "4.25~4.50%",
-    actualVariant: "pending",
-  },
-  {
-    importance: "상",
-    name: "소비자물가지수",
-    nameEn: "CPI (YoY)",
-    release: "6/24 화 21:30 KST",
-    forecast: "+2.6%",
-    previous: "+2.4%",
-    actual: "+2.7%",
-    actualVariant: "beat",
-  },
-  {
-    importance: "상",
-    name: "비농업 고용지수",
-    nameEn: "Non-Farm Payrolls",
-    release: "6/27 금 21:30 KST",
-    forecast: "185K",
-    previous: "177K",
-    actualVariant: "pending",
-  },
-  {
-    importance: "중",
-    name: "신규 실업수당 청구",
-    nameEn: "Initial Jobless Claims",
-    release: "6/26 목 21:30 KST",
-    forecast: "225K",
-    previous: "221K",
-    actual: "218K",
-    actualVariant: "beat",
-  },
-  {
-    importance: "중",
-    name: "내구재 주문",
-    nameEn: "Durable Goods Orders",
-    release: "6/26 목 21:30 KST",
-    forecast: "+0.5%",
-    previous: "-1.1%",
-    actualVariant: "pending",
-  },
-  {
-    importance: "하",
-    name: "미시간대 소비자심리",
-    nameEn: "Michigan Consumer Sentiment",
-    release: "6/27 금 23:00 KST",
-    forecast: "68.5",
-    previous: "67.8",
-    actualVariant: "pending",
-  },
-];
+export const dynamic = "force-dynamic";
 
-const NEXT_WEEK: MacroIndicator[] = [
-  {
-    importance: "상",
-    name: "개인소비지출",
-    nameEn: "PCE",
-    release: "6/30 월 21:30 KST",
-  },
-  {
-    importance: "중",
-    name: "ISM 제조업 PMI",
-    nameEn: "ISM Manufacturing PMI",
-    release: "7/1 화 23:00 KST",
-  },
-  {
-    importance: "상",
-    name: "FOMC 의사록",
-    nameEn: "FOMC Meeting Minutes",
-    release: "7/3 목 03:00 KST",
-  },
-];
+function MacroSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-28 animate-pulse rounded-[6px] border border-white/[0.08] bg-[#111111]"
+        />
+      ))}
+    </div>
+  );
+}
+
+async function MacroIndicatorList() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("macro_indicators")
+    .select("indicator_name, value, previous_value, released_at, source")
+    .order("released_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    return <p className="text-sm text-red-400">데이터를 불러오지 못했습니다.</p>;
+  }
+
+  // indicator_name 기준 최신 1건만 유지
+  const seen = new Set<string>();
+  const indicators = (data ?? []).filter((row) => {
+    if (seen.has(row.indicator_name)) return false;
+    seen.add(row.indicator_name);
+    return true;
+  });
+
+  if (indicators.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-16 text-center">
+        <p className="text-sm text-[#a6a6a6]">수집된 경제지표 데이터가 없습니다.</p>
+        <p className="text-xs text-[#555555]">어드민에서 경제지표 갱신을 실행해 주세요.</p>
+      </div>
+    );
+  }
+
+  function fmtValue(v: number | null): string {
+    if (v == null) return "—";
+    return v.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {indicators.map((item) => {
+        const releasedDate = new Date(item.released_at).toLocaleDateString("ko-KR", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        return (
+          <div
+            key={item.indicator_name}
+            className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4"
+          >
+            {/* 지표명 + 출처 배지 */}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-white">{item.indicator_name}</p>
+              {item.source && (
+                <span className="shrink-0 rounded-[4px] bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a6a6a6]">
+                  {item.source}
+                </span>
+              )}
+            </div>
+
+            {/* 현재값 */}
+            <p className="text-2xl font-semibold tabular-nums text-white">
+              {fmtValue(item.value)}
+            </p>
+
+            {/* 이전값 + 발표일 */}
+            <div className="flex items-center justify-between text-xs text-[#a6a6a6]">
+              <span>이전 {fmtValue(item.previous_value)}</span>
+              <span>{releasedDate}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MacroPage() {
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="경제지표" />
-      <div className="mt-6 flex justify-end">
-        <MacroFilterBar />
-      </div>
+
       <div className="mt-6">
-        <MacroKeyEvents />
-      </div>
-
-      <div className="mt-8">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
-          이번 주 주요 지표
-        </p>
-        <div className="mt-3 flex flex-col gap-3">
-          {THIS_WEEK.map((m, i) => (
-            <MacroRow key={i} macro={m} />
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">다음 주 예정</p>
-        <div className="mt-3 flex flex-col gap-3">
-          {NEXT_WEEK.map((m, i) => (
-            <MacroRow key={i} macro={m} compact />
-          ))}
-        </div>
+        <Suspense fallback={<MacroSkeleton />}>
+          <MacroIndicatorList />
+        </Suspense>
       </div>
 
       <p className="mt-6 text-xs text-[#a6a6a6]">
-        모든 시각은 한국 시간(KST) 기준입니다. 경제지표 발표 일정 및 수치는 변경될 수 있습니다.
+        출처: FRED (미국 연방준비제도). 데이터는 매일 09:13 KST 기준으로 갱신됩니다.
       </p>
 
       <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
