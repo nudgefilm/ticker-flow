@@ -75,7 +75,7 @@ async function InsiderTradeList() {
     return <p className="mt-4 text-sm text-red-400">데이터를 불러오지 못했습니다.</p>;
   }
 
-  const trades = (data ?? []) as InsiderRow[];
+  const trades = (data ?? []) as unknown as InsiderRow[];
 
   if (trades.length === 0) {
     return (
