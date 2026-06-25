@@ -715,7 +715,56 @@ CREATE TABLE stock_prices (
 - **원인:** `@theme inline`으로 선언된 `--animate-glow-pulse` 변수는 브라우저 런타임에 CSS custom property로 노출되지 않아 `var()` 참조가 빈 값으로 해석됨
 - **수정:** `.animate-glow-pulse` 클래스의 `animation: var(--animate-glow-pulse)` → `animation: glow-pulse 3s ease-in-out infinite` 직접 값으로 교체
 
+---
+
+## 2026-06-26 · 세션 19
+
+### pnpm gen:types 파일 오염 버그 수정
+
+- **원인:** `npx supabase` (버전 미지정) 실행 시 설치 프롬프트 텍스트가 stdout으로 출력되어 `src/types/supabase.ts`에 저장됨 → TypeScript 빌드 에러
+- **수정 1:** `package.json` gen:types 스크립트에 `--yes` 플래그 추가: `npx --yes supabase@latest ...`
+- **규칙 추가:** CLAUDE.md 10항 15번 — 커밋 전 supabase.ts 첫 줄 `export type Json =` 확인 의무화
+
+### collect_runs 테이블 타입 캐스트 적용
+
+- `src/app/api/admin/run/route.ts`, `run-status/route.ts`, `last-runs/route.ts`
+- `collect_runs` 테이블이 Supabase 자동 생성 타입에 없어 빌드 에러 발생
+- **수정:** 3개 파일 모두 `.from("collect_runs")` → `(adminClient as any).from("collect_runs")` 패턴 적용
+- **규칙 추가:** CLAUDE.md 10항 16번 — 타입 미등록 테이블은 `as any` 캐스트 패턴 사용
+
+### 와치리스트 에메랄드 테두리 위치 수정
+
+- **이전:** `WatchlistCard`(종목 요약 카드)에 잘못 적용됨
+- **수정:** `WatchlistCard` → `border-white/[0.08]` 원복, `TrendingCarousel` 개별 카드 → `border-emerald-400/50 shadow-emerald-400/[0.12]` 적용 (더 밝게)
+
+### 랜딩 히어로 "티커플로우" 글로우 효과 최종 구현
+
+- text-shadow CSS 방식 완전 포기 (Tailwind v4 `@theme inline` 환경에서 반복 실패)
+- **최종 구현:** `text-blue-400` + `style={{ filter: "drop-shadow(0 0 10px rgba(96,165,250,0.7))" }}`
+  - 인라인 CSS filter로 텍스트 외곽 형광 글로우 구현 (정적, 애니메이션 없음)
+  - 뱃지 blue-400 계열과 동일한 색상 체계
+
+### 랜딩 히어로 헤드카피 단축
+
+- "나스닥 모니터링 대시보드" → "나스닥 모니터링"
+
+### 공시 피드 탭 필터 구현 시도 (미완료)
+
+- `FilingFilterBar`: useState → useRouter → Link 방식으로 변경 (3회 시도)
+- `DashboardPage`: `?type=` searchParam 읽어 Supabase 쿼리에 필터 적용
+- `FeedPagination`: `type` param 유지 기능 추가
+- **현재 상태:** URL 필터링 로직은 구현됐으나 탭 클릭 시 시각적 반응 없음 (원인 미확정, 추후 재작업)
+
+### FilingCard SEC 원문 링크 하단 고정
+
+- **수정:** `<div className="space-y-3 ...">` → `<div className="flex flex-col space-y-3 ...">`
+- SEC 원문 링크 div에 `mt-auto` 추가
+- 카드 내 텍스트 분량과 무관하게 링크가 항상 카드 하단에 위치
+
+---
+
 ## 다음 작업 예정
+- 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동
