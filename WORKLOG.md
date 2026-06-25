@@ -514,8 +514,84 @@ CREATE TABLE institutional_holdings (
 
 ---
 
+## 2026-06-25 · 세션 13
+
+### 수집 파이프라인 추가 — 주가 히스토리 · 어닝서프라이즈
+
+**신규 API 라우트**
+
+- `src/app/api/collect/prices/route.ts`
+  - Yahoo Finance v8 chart API 활용 (Python 불필요, Vercel 서버사이드)
+  - URL: `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range=1y&interval=1d`
+  - 수집 항목: 현재가(regularMarketPrice), 52주 최고(fiftyTwoWeekHigh), 52주 최저(fiftyTwoWeekLow), 52주 수익률(close 첫값→마지막값 % 변동)
+  - 수집 대상: 와치리스트 + 최근 7일 공시 종목, 1회 최대 20개, 200ms 딜레이
+  - `stock_prices` 테이블 upsert (`onConflict: "ticker"`)
+
+- `src/app/api/collect/earnings-actual/route.ts`
+  - Finnhub `/stock/earnings?symbol={ticker}` 엔드포인트
+  - 회계 분기 마감일(period)과 DB 발표일(report_date) 매칭: |기간차| ≤ 90일
+  - null actual_eps 행만 선택적 업데이트 (기존 실적 데이터 보존)
+  - 수집 대상: 와치리스트 + 최근 7일 공시 종목, 1회 최대 15개, 300ms 딜레이
+
+**Vercel Cron 추가 (vercel.json)**
+
+- `/api/collect/prices`: 매일 00:30 UTC (`"30 0 * * *"`)
+- `/api/collect/earnings-actual`: 매일 00:35 UTC (`"35 0 * * *"`)
+
+### 어드민 홈 종합 스코어링 개편
+
+기존: `fc×2 + nc + 내부자매수+5 + 애널리스트+3 + 기관+3`
+신규: `fc×2 + nc + 내부자매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관편입+5 + 어닝서프라이즈+6 + 가이던스+6`
+
+변경 내역:
+- 애널리스트 조건 세분화: strong_buy ≥ 5 → +8, buy ≥ 5 → +5 (기존: any > 0 → +3)
+- 기관 보유 가중치: +3 → +5
+- 어닝서프라이즈(actual_eps > eps_estimate): 태그만 있었으나 → +6점 추가
+- 가이던스 공시(event_type = 'guidance'): 태그만 있었으나 → +6점 추가
+- analyst_ratings 쿼리: `.gt("buy", 0)` 필터 제거, JS에서 임계값 처리
+
+### 어드민 트리거 페이지 업데이트
+
+- 수동 실행 버튼 2개 추가: 주가 히스토리 수집, 실적 어닝서프라이즈 업데이트
+- Cron 스케줄 안내 테이블: analyst, prices, earnings-actual, 13F 항목 추가
+
+**Supabase 테이블 생성 필요 (미완료 — 유저 직접 실행)**
+
+```sql
+-- 기존 (이전 세션에서 생성 필요했던 것)
+CREATE TABLE analyst_ratings (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticker text NOT NULL, period text NOT NULL,
+  buy integer DEFAULT 0, hold integer DEFAULT 0, sell integer DEFAULT 0,
+  strong_buy integer DEFAULT 0, strong_sell integer DEFAULT 0,
+  collected_at timestamptz DEFAULT now(),
+  UNIQUE(ticker, period)
+);
+CREATE TABLE institutional_holdings (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticker text, institution_name text NOT NULL,
+  shares bigint, value bigint, quarter text NOT NULL, filed_at date,
+  UNIQUE(ticker, institution_name, quarter)
+);
+
+-- 이번 세션 신규
+CREATE TABLE stock_prices (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticker text NOT NULL UNIQUE,
+  current_price numeric,
+  week52_high numeric,
+  week52_low numeric,
+  week52_return numeric,
+  collected_at timestamptz DEFAULT now()
+);
+```
+
+- 테이블 생성 후 `pnpm gen:types` 실행 필요
+
+---
+
 ## 다음 작업 예정
-- Supabase에 `analyst_ratings`, `institutional_holdings` 테이블 생성 후 `pnpm gen:types` 실행
+- Supabase에 `analyst_ratings`, `institutional_holdings`, `stock_prices` 테이블 생성 후 `pnpm gen:types` 실행
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동

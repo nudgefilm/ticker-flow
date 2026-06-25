@@ -73,6 +73,18 @@ const TRIGGERS: Trigger[] = [
     endpoint: "/api/collect/insider",
   },
   {
+    id: "prices",
+    label: "주가 히스토리 수집 (Yahoo Finance)",
+    desc: "와치리스트 + 최근 공시 종목의 현재가, 52주 최고/최저, 52주 수익률을 수집합니다. 최대 20종목.",
+    endpoint: "/api/collect/prices",
+  },
+  {
+    id: "earnings-actual",
+    label: "실적 어닝서프라이즈 업데이트 (Finnhub)",
+    desc: "와치리스트 + 최근 공시 종목의 실제 EPS를 Finnhub에서 조회해 earnings 테이블을 갱신합니다. 최대 15종목.",
+    endpoint: "/api/collect/earnings-actual",
+  },
+  {
     id: "translate",
     label: "번역 재실행 (Claude Haiku)",
     desc: "summary_kr이 NULL인 공시·뉴스를 한국어로 번역합니다. 각 최대 20건씩 처리합니다.",
@@ -205,6 +217,10 @@ export default function TriggerPage() {
             { name: "실적 캘린더", schedule: "매일 00:07 UTC (09:07 KST)", path: "/api/collect/earnings" },
             { name: "경제지표", schedule: "매일 00:13 UTC (09:13 KST)", path: "/api/collect/macro" },
             { name: "내부자 거래", schedule: "매일 00:20 UTC (09:20 KST)", path: "/api/collect/insider" },
+            { name: "애널리스트 추천", schedule: "매일 00:25 UTC (09:25 KST)", path: "/api/collect/analyst" },
+            { name: "주가 히스토리", schedule: "매일 00:30 UTC (09:30 KST)", path: "/api/collect/prices" },
+            { name: "실적 어닝서프라이즈", schedule: "매일 00:35 UTC (09:35 KST)", path: "/api/collect/earnings-actual" },
+            { name: "13F 기관 보유", schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f" },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

@@ -66,7 +66,6 @@ async function AdminWatchSection() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin as any).from("analyst_ratings")
       .select("ticker, buy, strong_buy")
-      .gt("buy", 0)
       .limit(500),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (admin as any).from("institutional_holdings")
@@ -93,11 +92,14 @@ async function AdminWatchSection() {
     newsCount.set(r.ticker, (newsCount.get(r.ticker) ?? 0) + 1);
   }
 
-  // analyst: buy+strong_buy > 0 인 종목
-  const analystSet = new Set<string>();
+  // 애널리스트: Strong Buy 5+ → +8pt, Buy 5+ → +5pt
+  const strongBuy5Set = new Set<string>();
+  const buy5Set       = new Set<string>();
   for (const r of (analystRes.data ?? []) as { ticker: string; buy: number; strong_buy: number }[]) {
-    if ((r.buy ?? 0) + (r.strong_buy ?? 0) > 0) analystSet.add(r.ticker);
+    if ((r.strong_buy ?? 0) >= 5) strongBuy5Set.add(r.ticker);
+    if ((r.buy ?? 0) >= 5)       buy5Set.add(r.ticker);
   }
+  const analystSet = new Set([...strongBuy5Set, ...buy5Set]);
 
   // 13F: 현재 분기 기관 보유 종목
   const in13FSet = new Set<string>(
@@ -120,18 +122,21 @@ async function AdminWatchSection() {
       const fc = filingsCount.get(ticker) ?? 0;
       const nc = newsCount.get(ticker) ?? 0;
       const tags: SignalTag[] = [];
-      if (insiderBuySet.has(ticker)) tags.push("내부자 매수");
-      if (guidanceSet.has(ticker))   tags.push("가이던스");
-      if (epsBeatSet.has(ticker))    tags.push("실적 상회");
-      if (analystSet.has(ticker))    tags.push("애널리스트");
-      if (in13FSet.has(ticker))      tags.push("기관 보유");
-      if (fc + nc >= 5)              tags.push("활동 활발");
+      if (insiderBuySet.has(ticker))  tags.push("내부자 매수");
+      if (guidanceSet.has(ticker))    tags.push("가이던스");
+      if (epsBeatSet.has(ticker))     tags.push("실적 상회");
+      if (analystSet.has(ticker))     tags.push("애널리스트");
+      if (in13FSet.has(ticker))       tags.push("기관 보유");
+      if (fc + nc >= 5)               tags.push("활동 활발");
       const score =
         fc * 2 +
         nc +
-        (insiderBuySet.has(ticker) ? 5 : 0) +
-        (analystSet.has(ticker) ? 3 : 0) +
-        (in13FSet.has(ticker) ? 3 : 0);
+        (insiderBuySet.has(ticker)  ? 5 : 0) +
+        (strongBuy5Set.has(ticker)  ? 8 : 0) +
+        (buy5Set.has(ticker)        ? 5 : 0) +
+        (in13FSet.has(ticker)       ? 5 : 0) +
+        (epsBeatSet.has(ticker)     ? 6 : 0) +
+        (guidanceSet.has(ticker)    ? 6 : 0);
       return { ticker, tags, filings: fc, news: nc, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -347,7 +352,7 @@ export default async function AdminPage() {
         <div className="mb-4">
           <h2 className="text-sm font-medium text-white">기업 동향 (내부용)</h2>
           <p className="mt-1 text-xs text-[#a6a6a6]">
-            공시×2 + 뉴스×1 + 내부자 매수+5 + 애널리스트+3 + 기관 보유+3 기준으로 상위 10개 종목을 선정합니다.
+            공시×2 + 뉴스×1 + 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>

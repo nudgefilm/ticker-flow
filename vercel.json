@@ -29,6 +29,14 @@
       "schedule": "30 0 * * 1"
     },
     {
+      "path": "/api/collect/prices",
+      "schedule": "30 0 * * *"
+    },
+    {
+      "path": "/api/collect/earnings-actual",
+      "schedule": "35 0 * * *"
+    },
+    {
       "path": "/api/translate",
       "schedule": "7 * * * *"
     },
