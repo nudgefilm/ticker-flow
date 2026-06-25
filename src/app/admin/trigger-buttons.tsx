@@ -5,7 +5,7 @@ import { IconRefresh, IconCircleCheck, IconAlertCircle } from "@tabler/icons-rea
 
 type Status = "idle" | "running" | "done" | "error";
 
-interface TriggerResult { ok: boolean; upserted?: number; skipped?: number; error?: string }
+interface TriggerResult { ok: boolean; upserted?: number; skipped?: number; error?: string; firstError?: string | null }
 
 const BUTTONS = [
   { id: "analyst",          label: "애널리스트 추천 수집",        endpoint: "/api/collect/analyst"          },
@@ -55,11 +55,16 @@ export default function AdminTriggerButtons() {
                 {status === "running" ? "실행 중..." : label}
               </button>
               {result && (
-                <p className={`text-[10px] ${result.ok ? "text-green-400" : "text-red-400"}`}>
-                  {result.ok
-                    ? `저장 ${result.upserted ?? 0}건 · 스킵 ${result.skipped ?? 0}건`
-                    : (result.error ?? "오류")}
-                </p>
+                <div className="space-y-0.5">
+                  <p className={`text-[10px] ${result.ok ? "text-green-400" : "text-red-400"}`}>
+                    {result.ok
+                      ? `저장 ${result.upserted ?? 0}건 · 스킵 ${result.skipped ?? 0}건`
+                      : (result.error ?? "오류")}
+                  </p>
+                  {result.ok && result.firstError && (
+                    <p className="text-[10px] text-yellow-500">{result.firstError}</p>
+                  )}
+                </div>
               )}
             </div>
           );

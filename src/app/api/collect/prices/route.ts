@@ -2,68 +2,98 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Yahoo Finance v8 chart API (비공개 무료 엔드포인트, 인증 불필요)
-interface YahooChartMeta {
-  regularMarketPrice: number;
-  fiftyTwoWeekHigh: number;
-  fiftyTwoWeekLow: number;
-}
-
+// Yahoo Finance v8 chart API
+// query2 도메인 + Referer 헤더가 서버사이드 호출 차단 우회에 더 효과적
 interface YahooChartResponse {
   chart: {
     result: Array<{
-      meta: YahooChartMeta;
+      timestamp: number[];
       indicators: {
-        quote: Array<{ close: (number | null)[] }>;
+        quote: Array<{
+          close: (number | null)[];
+          volume: (number | null)[];
+        }>;
       };
     }> | null;
     error: { code: string; description: string } | null;
   };
 }
 
-async function fetchPriceForTicker(
-  ticker: string
-): Promise<{ currentPrice: number; high52: number; low52: number; return52: number } | null> {
+type DayPrice = {
+  date: string;
+  close: number;
+  change_pct: number | null;
+  volume: number | null;
+};
+
+async function fetchDayPrices(ticker: string): Promise<
+  { rows: DayPrice[]; error?: string } | null
+> {
+  const url =
+    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
+    `?range=1mo&interval=1d&includePrePost=false`;
+
+  let res: Response;
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1y&interval=1d`;
-    const res = await fetch(url, {
+    res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; TickerFlow/1.0; +https://tickerflow.net)",
-        Accept: "application/json",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        Referer: "https://finance.yahoo.com/",
+        Origin: "https://finance.yahoo.com",
       },
-      signal: AbortSignal.timeout(8000),
+      // Vercel 기본 타임아웃(60s) 내에서 동작; signal 미사용
     });
-
-    if (!res.ok) return null;
-
-    const data: YahooChartResponse = await res.json();
-    const result = data?.chart?.result?.[0];
-    if (!result) return null;
-
-    const meta = result.meta;
-    const closes = result.indicators?.quote?.[0]?.close ?? [];
-
-    // 유효한 종가만 필터
-    const validCloses = closes.filter((c): c is number => c != null && isFinite(c));
-    if (validCloses.length < 2) return null;
-
-    const currentPrice = meta.regularMarketPrice;
-    const high52 = meta.fiftyTwoWeekHigh;
-    const low52 = meta.fiftyTwoWeekLow;
-    const firstClose = validCloses[0];
-    const return52 = firstClose > 0
-      ? ((currentPrice - firstClose) / firstClose) * 100
-      : 0;
-
-    return {
-      currentPrice: Math.round(currentPrice * 100) / 100,
-      high52: Math.round(high52 * 100) / 100,
-      low52: Math.round(low52 * 100) / 100,
-      return52: Math.round(return52 * 100) / 100,
-    };
-  } catch {
-    return null;
+  } catch (e) {
+    return { rows: [], error: `fetch error: ${String(e)}` };
   }
+
+  if (!res.ok) {
+    return { rows: [], error: `HTTP ${res.status}` };
+  }
+
+  let data: YahooChartResponse;
+  try {
+    data = await res.json();
+  } catch {
+    return { rows: [], error: "JSON parse error" };
+  }
+
+  if (data.chart.error) {
+    return { rows: [], error: data.chart.error.description };
+  }
+
+  const result = data.chart.result?.[0];
+  if (!result) return { rows: [], error: "no result" };
+
+  const timestamps = result.timestamp ?? [];
+  const closes  = result.indicators?.quote?.[0]?.close  ?? [];
+  const volumes = result.indicators?.quote?.[0]?.volume ?? [];
+
+  const rows: DayPrice[] = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    const close = closes[i];
+    if (close == null || !isFinite(close)) continue;
+
+    const date = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
+    const prevClose = i > 0 ? closes[i - 1] : null;
+    const change_pct =
+      prevClose != null && prevClose > 0
+        ? Math.round(((close - prevClose) / prevClose) * 10000) / 100
+        : null;
+
+    rows.push({
+      date,
+      close: Math.round(close * 100) / 100,
+      change_pct,
+      volume: volumes[i] ?? null,
+    });
+  }
+
+  return { rows };
 }
 
 export async function GET(req: NextRequest) {
@@ -79,7 +109,6 @@ export async function GET(req: NextRequest) {
     tickers = [tickerParam.toUpperCase()];
   } else {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
     const [{ data: watchlistRows }, { data: filingRows }] = await Promise.all([
       adminClient.from("watchlist").select("ticker"),
       adminClient.from("filings").select("ticker").gte("filed_at", sevenDaysAgo),
@@ -88,46 +117,37 @@ export async function GET(req: NextRequest) {
     const tickerSet = new Set<string>();
     watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
     filingRows?.forEach((r) => tickerSet.add(r.ticker));
-
-    // 1회 최대 20개 (Yahoo Finance rate limit 대응)
     tickers = [...tickerSet].slice(0, 20);
   }
 
   let upserted = 0;
   let skipped = 0;
-  const collectedAt = new Date().toISOString();
+  let firstError: string | null = null;
 
   for (const ticker of tickers) {
-    const price = await fetchPriceForTicker(ticker);
+    const result = await fetchDayPrices(ticker);
 
-    if (!price) {
+    if (!result || result.rows.length === 0) {
+      if (result?.error && !firstError) firstError = `${ticker}: ${result.error}`;
       skipped++;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (adminClient as any)
+      // stock_prices 테이블: (ticker, date) 복합 PK
+      const insertRows = result.rows.map((r) => ({ ticker, ...r }));
+      const { error } = await adminClient
         .from("stock_prices")
-        .upsert(
-          {
-            ticker,
-            current_price: price.currentPrice,
-            week52_high: price.high52,
-            week52_low: price.low52,
-            week52_return: price.return52,
-            collected_at: collectedAt,
-          },
-          { onConflict: "ticker" }
-        );
+        .upsert(insertRows, { onConflict: "ticker,date" });
 
       if (error) {
-        console.error(`[collect/prices] ${ticker}:`, error.message);
+        console.error(`[collect/prices] upsert ${ticker}:`, error.message);
+        if (!firstError) firstError = `${ticker}: ${error.message}`;
         skipped++;
       } else {
-        upserted++;
+        upserted += result.rows.length;
       }
     }
 
     if (tickers.length > 1) {
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 300));
     }
   }
 
@@ -136,5 +156,6 @@ export async function GET(req: NextRequest) {
     tickers: tickers.length,
     upserted,
     skipped,
+    firstError,
   });
 }
