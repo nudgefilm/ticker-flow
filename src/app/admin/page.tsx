@@ -117,10 +117,33 @@ async function AdminWatchSection() {
     ...in13FSet,
   ]);
 
+  // 주가 수익률: stock_prices에서 종목별 최초/최신 종가 조회 → 기간 수익률 계산
+  const priceReturnMap = new Map<string, number>();
+  if (allTickers.size > 0) {
+    const { data: priceRows } = await admin
+      .from("stock_prices")
+      .select("ticker, date, close")
+      .in("ticker", Array.from(allTickers))
+      .order("date", { ascending: true });
+
+    const firstLast = new Map<string, { first: number; last: number }>();
+    for (const row of priceRows ?? []) {
+      if (!firstLast.has(row.ticker)) {
+        firstLast.set(row.ticker, { first: row.close, last: row.close });
+      } else {
+        firstLast.get(row.ticker)!.last = row.close;
+      }
+    }
+    for (const [ticker, { first, last }] of firstLast) {
+      if (first > 0) priceReturnMap.set(ticker, ((last - first) / first) * 100);
+    }
+  }
+
   const candidates = Array.from(allTickers)
     .map((ticker) => {
       const fc = filingsCount.get(ticker) ?? 0;
       const nc = newsCount.get(ticker) ?? 0;
+      const priceReturn = priceReturnMap.get(ticker) ?? 0;
       const tags: SignalTag[] = [];
       if (insiderBuySet.has(ticker))  tags.push("내부자 매수");
       if (guidanceSet.has(ticker))    tags.push("가이던스");
@@ -136,7 +159,8 @@ async function AdminWatchSection() {
         (buy5Set.has(ticker)        ? 5 : 0) +
         (in13FSet.has(ticker)       ? 5 : 0) +
         (epsBeatSet.has(ticker)     ? 6 : 0) +
-        (guidanceSet.has(ticker)    ? 6 : 0);
+        (guidanceSet.has(ticker)    ? 6 : 0) +
+        (priceReturn >= 20          ? 4 : priceReturn >= 10 ? 2 : 0);
       return { ticker, tags, filings: fc, news: nc, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -352,7 +376,7 @@ export default async function AdminPage() {
         <div className="mb-4">
           <h2 className="text-sm font-medium text-white">기업 동향 (내부용)</h2>
           <p className="mt-1 text-xs text-[#a6a6a6]">
-            공시×2 + 뉴스×1 + 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6
+            공시×2 + 뉴스×1 + 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6 + 52주 수익률(20%↑+4 / 10%↑+2)
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
