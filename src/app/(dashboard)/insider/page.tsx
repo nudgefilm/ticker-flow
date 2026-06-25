@@ -75,7 +75,16 @@ async function InsiderTradeList() {
     return <p className="mt-4 text-sm text-red-400">데이터를 불러오지 못했습니다.</p>;
   }
 
-  const trades = (data ?? []) as unknown as InsiderRow[];
+  const allTrades = (data ?? []) as unknown as InsiderRow[];
+
+  // 종목당 최대 5건 표시 (동일 종목에서 동일 인물 거래가 과도하게 표시되는 것 방지)
+  const tickerCount = new Map<string, number>();
+  const trades = allTrades.filter((tx) => {
+    const count = tickerCount.get(tx.ticker) ?? 0;
+    if (count >= 5) return false;
+    tickerCount.set(tx.ticker, count + 1);
+    return true;
+  });
 
   if (trades.length === 0) {
     return (

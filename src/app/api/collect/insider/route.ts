@@ -12,6 +12,7 @@ interface FinnhubInsiderTransaction {
   isDerivative: boolean;
   filingDate: string;
   symbol: string;
+  title?: string;
 }
 
 interface FinnhubInsiderResponse {
@@ -56,6 +57,7 @@ async function collectForTicker(
     const { error } = await adminClient.from("insider_trades").insert({
       ticker,
       name: tx.name || null,
+      title: tx.title || null,
       transaction_type: transactionType,
       shares: tx.share || null,
       price: tx.transactionPrice || null,

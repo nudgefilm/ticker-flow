@@ -3,6 +3,7 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import WatchlistClient from "@/components/dashboard/watchlist-client";
 import { type WatchlistStock } from "@/components/dashboard/watchlist-card";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -137,6 +138,116 @@ async function WatchlistContent() {
   return <WatchlistClient initialStocks={stocks} isPro={isPro} />;
 }
 
+// ─── 오늘의 기업 동향 스켈레톤 ────────────────────────────────────────────────────
+
+function TrendingSkeleton() {
+  return (
+    <section className="mt-10">
+      <div className="h-4 w-36 animate-pulse rounded bg-white/[0.06]" />
+      <div className="mt-1 h-3 w-64 animate-pulse rounded bg-white/[0.06]" />
+      <div className="mt-4 flex gap-3 overflow-x-hidden pb-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-28 w-44 shrink-0 animate-pulse rounded-[6px] bg-white/[0.04]"
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ─── 오늘의 기업 동향 ─────────────────────────────────────────────────────────────
+
+async function TrendingContent() {
+  const supabase = await createClient();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  // 현재 유저의 와치리스트 (제외 목적)
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: wl } = user
+    ? await supabase.from("watchlist").select("ticker").eq("user_id", user.id)
+    : { data: [] };
+  const excludeSet = new Set((wl ?? []).map((r) => r.ticker));
+
+  // 최근 7일 공시·뉴스 ticker 수집
+  const [filingsRes, newsRes] = await Promise.all([
+    supabase.from("filings").select("ticker").gte("filed_at", sevenDaysAgo).limit(500),
+    supabase.from("news").select("ticker").gte("published_at", sevenDaysAgo).limit(500),
+  ]);
+
+  // 종목별 카운트 집계
+  const counts = new Map<string, { filings: number; news: number }>();
+  for (const r of filingsRes.data ?? []) {
+    const c = counts.get(r.ticker) ?? { filings: 0, news: 0 };
+    c.filings++;
+    counts.set(r.ticker, c);
+  }
+  for (const r of newsRes.data ?? []) {
+    if (!r.ticker) continue;
+    const c = counts.get(r.ticker) ?? { filings: 0, news: 0 };
+    c.news++;
+    counts.set(r.ticker, c);
+  }
+
+  // 와치리스트 제외 후 상위 10개 선별
+  const trending = Array.from(counts.entries())
+    .filter(([t]) => !excludeSet.has(t))
+    .map(([t, c]) => ({ ticker: t, filings: c.filings, news: c.news, total: c.filings + c.news }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
+  if (trending.length === 0) return null;
+
+  // 회사명 조회
+  const { data: tickerRows } = await supabase
+    .from("tickers")
+    .select("ticker, name_kr, name_en")
+    .in("ticker", trending.map((t) => t.ticker));
+
+  const nameMap = new Map(
+    (tickerRows ?? []).map((r) => [r.ticker, r.name_kr ?? r.name_en ?? r.ticker])
+  );
+
+  return (
+    <section className="mt-10">
+      <h2 className="text-base font-semibold text-white">오늘의 기업 동향</h2>
+      <p className="mt-1 text-xs text-[#a6a6a6]">
+        최근 7일 공시·뉴스 활동이 많은 종목입니다. 와치리스트에 추가된 종목은 제외됩니다.
+      </p>
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+        {trending.map((item) => (
+          <div
+            key={item.ticker}
+            className="w-44 shrink-0 rounded-[6px] border border-white/[0.08] bg-[#111111] p-4"
+          >
+            <span
+              className={cn(
+                "inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]"
+              )}
+            >
+              {item.ticker}
+            </span>
+            <p className="mt-2 truncate text-sm font-medium text-white">
+              {nameMap.get(item.ticker) ?? item.ticker}
+            </p>
+            <div className="mt-3 space-y-1">
+              <p className="text-xs text-[#a6a6a6]">
+                공시{" "}
+                <span className="font-medium text-[#cccccc]">{item.filings}건</span>
+              </p>
+              <p className="text-xs text-[#a6a6a6]">
+                뉴스{" "}
+                <span className="font-medium text-[#cccccc]">{item.news}건</span>
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
 export default function WatchlistPage() {
@@ -146,7 +257,10 @@ export default function WatchlistPage() {
       <Suspense fallback={<WatchlistSkeleton />}>
         <WatchlistContent />
       </Suspense>
-      <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
+      <Suspense fallback={<TrendingSkeleton />}>
+        <TrendingContent />
+      </Suspense>
+      <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
         <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
         <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
