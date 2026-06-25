@@ -8,8 +8,10 @@ type Status = "idle" | "running" | "done" | "error";
 interface TriggerResult { ok: boolean; upserted?: number; skipped?: number; error?: string }
 
 const BUTTONS = [
-  { id: "analyst", label: "애널리스트 추천 수집",   endpoint: "/api/collect/analyst" },
-  { id: "13f",     label: "기관투자자 보유 현황 수집 (13F)", endpoint: "/api/collect/13f"    },
+  { id: "analyst",          label: "애널리스트 추천 수집",        endpoint: "/api/collect/analyst"          },
+  { id: "13f",              label: "기관투자자 보유 현황 (13F)",   endpoint: "/api/collect/13f"              },
+  { id: "prices",           label: "주가 히스토리 수집",           endpoint: "/api/collect/prices"           },
+  { id: "earnings-actual",  label: "실적 어닝서프라이즈 업데이트", endpoint: "/api/collect/earnings-actual"  },
 ] as const;
 
 export default function AdminTriggerButtons() {
