@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { IconCircleCheck, IconRefresh, IconX } from "@tabler/icons-react";
 import WatchlistCard, { type WatchlistStock } from "@/components/dashboard/watchlist-card";
 
 const FREE_LIMIT = 5;
@@ -21,6 +22,14 @@ export default function WatchlistClient({
   const [addInput, setAddInput] = useState("");
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
+  const [collectStatus, setCollectStatus] = useState<"collecting" | "done" | null>(null);
+
+  // 수집 완료 3초 후 자동 닫기
+  useEffect(() => {
+    if (collectStatus !== "done") return;
+    const t = setTimeout(() => setCollectStatus(null), 3000);
+    return () => clearTimeout(t);
+  }, [collectStatus]);
 
   const totalFilings = stocks.reduce((sum, s) => sum + s.newFilings, 0);
   const totalNews = stocks.reduce((sum, s) => sum + s.newNews, 0);
@@ -57,6 +66,15 @@ export default function WatchlistClient({
     setAddInput("");
     setShowAddInput(false);
     router.refresh();
+
+    // 백그라운드 수집 시작
+    setCollectStatus("collecting");
+    fetch(`/api/collect/watchlist-ticker?ticker=${ticker}`)
+      .then(() => {
+        setCollectStatus("done");
+        router.refresh();
+      })
+      .catch(() => setCollectStatus("done"));
   }
 
   return (
@@ -174,6 +192,34 @@ export default function WatchlistClient({
               />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* 수집 중 토스트 */}
+      {collectStatus && (
+        <div className="fixed bottom-5 right-5 z-50 w-80 rounded-xl border border-white/[0.08] bg-[#111111] p-4 shadow-xl">
+          <div className="flex items-start gap-3">
+            {collectStatus === "collecting" ? (
+              <IconRefresh size={16} stroke={1.5} className="mt-0.5 shrink-0 animate-spin text-blue-400" />
+            ) : (
+              <IconCircleCheck size={16} stroke={1.5} className="mt-0.5 shrink-0 text-green-400" />
+            )}
+            <p className="flex-1 text-sm leading-relaxed text-white">
+              {collectStatus === "collecting"
+                ? "등록 종목에 대한 최근 30일 이내 공시와 최근 7일 뉴스를 수집하고 있습니다."
+                : "수집이 완료되었습니다."}
+            </p>
+            {collectStatus === "done" && (
+              <button
+                type="button"
+                onClick={() => setCollectStatus(null)}
+                className="shrink-0 text-[#a6a6a6] transition-colors hover:text-white"
+                aria-label="닫기"
+              >
+                <IconX size={14} stroke={1.5} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 

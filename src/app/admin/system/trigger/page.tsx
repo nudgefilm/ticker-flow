@@ -22,6 +22,8 @@ interface TriggerResult {
   skipped?: number;
   total?: number;
   tickers?: number;
+  filings?: number;
+  news?: number;
   summarized?: number;
   error?: string;
   firstError?: string;
@@ -36,6 +38,12 @@ interface Trigger {
 }
 
 const TRIGGERS: Trigger[] = [
+  {
+    id: "watchlist-tickers",
+    label: "와치리스트 종목 수집",
+    desc: "와치리스트에 등록된 모든 종목의 최근 30일 공시(EDGAR)와 최근 7일 뉴스(Finnhub)를 수집합니다.",
+    endpoint: "/api/collect/watchlist-tickers",
+  },
   {
     id: "seed-tickers",
     label: "티커 시드 삽입 (NASDAQ + NYSE)",
@@ -98,6 +106,8 @@ function resultSummary(result: TriggerResult): string {
   if (result.inserted !== undefined) parts.push(`저장 ${result.inserted}건`);
   if (result.skipped !== undefined) parts.push(`스킵 ${result.skipped}건`);
   if (result.tickers !== undefined) parts.push(`티커 ${result.tickers}개`);
+  if (result.filings !== undefined) parts.push(`공시 ${result.filings}건`);
+  if (result.news !== undefined) parts.push(`뉴스 ${result.news}건`);
   if (result.summarized !== undefined) parts.push(`요약 ${result.summarized}건`);
   const summary = parts.join(" · ") || "완료";
   return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
