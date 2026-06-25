@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import FilingCard from "@/components/filing-card";
 
@@ -91,13 +90,6 @@ export default async function Hero() {
         <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
           미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
         </p>
-
-        <Link
-          href="#"
-          className="mt-8 inline-flex h-11 items-center rounded-[6px] border border-foreground px-6 text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
-        >
-          시작하기
-        </Link>
 
         {/* 공시 샘플 카드 */}
         <div className="mt-16 grid w-full max-w-2xl gap-4 text-left md:grid-cols-2">
