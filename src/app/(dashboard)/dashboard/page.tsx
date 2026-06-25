@@ -46,10 +46,10 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
     .order("filed_at", { ascending: false });
 
   const filtered =
-    type === "8-K"  ? base.like("form_type", "8-K%") :
-    type === "10-K" ? base.like("form_type", "10-K%") :
-    type === "10-Q" ? base.like("form_type", "10-Q%") :
-    type === "4"    ? base.like("form_type", "4%") :
+    type === "8k"    ? base.like("form_type", "8-K%") :
+    type === "10k"   ? base.like("form_type", "10-K%") :
+    type === "10q"   ? base.like("form_type", "10-Q%") :
+    type === "form4" ? base.like("form_type", "4%") :
     type === "other" ? base
       .not("form_type", "like", "8-K%")
       .not("form_type", "like", "10-K%")
@@ -90,7 +90,7 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
         ))}
       </div>
       <div className="mt-6">
-        <FeedPagination page={page} lastPage={lastPage} type={type || undefined} />
+        <FeedPagination page={page} lastPage={lastPage} type={type !== "all" ? type : undefined} />
       </div>
     </>
   );
@@ -98,19 +98,20 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
 
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
-export default function DashboardPage({
+export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: { page?: string; type?: string };
+  searchParams: Promise<{ page?: string; type?: string }>;
 }) {
-  const page = Math.max(1, parseInt(searchParams?.page ?? "1") || 1);
-  const type = searchParams?.type ?? "";
+  const { page: pageParam, type: typeParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
+  const type = typeParam ?? "all";
 
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="공시 피드" />
       <div className="mt-6">
-        <FilingFilterBar activeType={type} />
+        <FilingFilterBar currentType={type} />
       </div>
       <div className="mt-5">
         <Suspense fallback={<FilingFeedSkeleton />}>

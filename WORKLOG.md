@@ -763,6 +763,76 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-26 · 세션 20
+
+### 종목 스냅샷(/stocks/[symbol]) 실 데이터 연동
+
+**`src/app/(dashboard)/stocks/[symbol]/page.tsx` 전면 재작성**
+
+- 기존 더미 데이터 전체 제거, 실 Supabase 쿼리로 교체
+- `export const dynamic = "force-dynamic"` 추가
+- Next.js 15+ 비동기 params 패턴: `params: Promise<{ symbol: string }>`, `await params`
+- `createClient` from `@/lib/supabase/server`
+
+**6개 쿼리 Promise.all 병렬 실행**
+
+| 테이블 | 쿼리 조건 | 용도 |
+|--------|-----------|------|
+| `tickers` | ticker = symbol, maybeSingle | 회사명, 거래소, 섹터 |
+| `stock_prices` | ticker = symbol, ASC 30건 | SVG 차트 + 최근 종가 |
+| `filings` | ticker = symbol, DESC 5건 | 최근 공시 목록 |
+| `news` | ticker = symbol, DESC 5건 | 최근 뉴스 목록 |
+| `earnings` | report_date ≥ today, ASC 1건 | 다음 실적 발표일 |
+| `insider_trades` | ticker = symbol, DESC 5건 | 내부자 거래 내역 |
+
+**SVG 주가 차트 (서버사이드 렌더링)**
+
+- viewBox="0 0 600 140", 차트 영역 0~110px, 날짜 라벨 영역 110~140px
+- 선: `polyline` stroke="#60a5fa" strokeWidth=2
+- 면: `polygon` fill rgba(96,165,250,0.08), 선 꼭짓점 + 우하단 + 좌하단
+- Y축: min/max에서 10% 패딩 자동 산출
+- X축 날짜 라벨: 첫날·중간·마지막날 3개, MM/DD 포맷
+- 데이터 2건 미만 시 수집 중 안내 텍스트 표시
+
+**페이지 레이아웃**
+
+- 상단: 티커 배지 + 회사명 + 거래소·섹터·산업
+- 주가 차트 카드: 최근 종가 + 전일 대비(%) + 수집 기간
+- 3열 요약 카드: 최근 종가 / 전일 대비 / 다음 실적 (D-N일, BMO/AMC, EPS 예상)
+- 2/3 + 1/3 레이아웃: [최근 공시, 최근 뉴스] / [내부자 거래]
+- 공시: form_type 배지(8-K amber / 10-K·10-Q blue / Form 4 purple), 상대 시간, summary_kr, SEC 원문 링크
+- 뉴스: 헤드라인, 상대 시간, summary_kr, 소스 배지, 원문 링크
+- 내부자 거래: 거래일, 매수(emerald)/매도(red), 이름, 직책, 주수, 단가
+- 하단 면책 문구 (CLAUDE.md 준수)
+
+### 공시 피드 탭 필터 재구현
+
+**근본 원인:**
+- Next.js 15+에서 `page.tsx`의 `searchParams`가 `Promise` 타입으로 변경됨
+- `DashboardPage`가 동기 함수였기 때문에 `searchParams.type`이 항상 `undefined` 반환
+- 결과: `type`이 항상 `""`(전체)로 고정 → 탭 클릭해도 필터·강조 변화 없음
+
+**수정 내역:**
+
+`src/app/(dashboard)/dashboard/page.tsx`
+- `export default function` → `export default async function`
+- `searchParams` 타입: `{ page?: string; type?: string }` → `Promise<{ page?: string; type?: string }>`
+- `const { page: pageParam, type: typeParam } = await searchParams` 로 추출
+- 기본값: `type = typeParam ?? "all"`
+- 탭 값 매핑 변경: `""/"8-K"/"10-K"/"10-Q"/"4"` → `"all"/"8k"/"10k"/"10q"/"form4"`
+- Supabase 필터 조건 업데이트 (`"8k"` → `.like("form_type", "8-K%")` 등)
+- `<FilingFilterBar activeType={type}>` → `<FilingFilterBar currentType={type}>`
+- `FeedPagination type={type !== "all" ? type : undefined}` (all 일 때 URL 파라미터 제거)
+
+`src/components/dashboard/filing-filter-bar.tsx`
+- `Link` 삭제, `useRouter` from `next/navigation` 추가
+- 탭 `<Link>` → `<button onClick={() => router.push(...)}>`
+- 활성 탭 스타일: `border-b-2 border-white` → `bg-white text-black` (pill 방식)
+- 비활성 탭: `text-[#a6a6a6] hover:text-white`
+- prop 명 `activeType` → `currentType`
+
+---
+
 ## 다음 작업 예정
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
