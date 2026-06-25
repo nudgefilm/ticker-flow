@@ -85,7 +85,7 @@ export default async function Hero() {
           나스닥 모니터링 대시보드
           <br />
           <span className="relative inline-block">
-            <span className="absolute inset-0 animate-pulse rounded-full bg-blue-300/30 blur-xl" />
+            <span className="absolute -inset-3 animate-pulse rounded-full bg-blue-400/50 blur-2xl" />
             <span className="relative">티커플로우</span>
           </span>
         </h1>
