@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
   const adminClient = createAdminClient();
-  const { data, error } = await adminClient
+  const { data, error } = await (adminClient as any)
     .from("collect_runs")
     .select("id, job_type, status, result, error_msg, started_at, finished_at")
     .eq("id", id)

@@ -8,7 +8,12 @@ export async function GET(req: NextRequest) {
   if (authError) return authError;
 
   const adminClient = createAdminClient();
-  const { data, error } = await adminClient
+  type RunRow = {
+    id: string; job_type: string; status: string;
+    result: Record<string, unknown> | null; error_msg: string | null;
+    started_at: string; finished_at: string | null;
+  };
+  const { data, error } = await (adminClient as any)
     .from("collect_runs")
     .select("id, job_type, status, result, error_msg, started_at, finished_at")
     .order("started_at", { ascending: false })
@@ -19,8 +24,8 @@ export async function GET(req: NextRequest) {
   }
 
   // job_type별 최신 1건만 추출
-  const latest = new Map<string, (typeof data)[number]>();
-  for (const row of data ?? []) {
+  const latest = new Map<string, RunRow>();
+  for (const row of (data ?? []) as RunRow[]) {
     if (!latest.has(row.job_type)) latest.set(row.job_type, row);
   }
 

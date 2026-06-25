@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const adminClient = createAdminClient();
 
   // 실행 기록 생성 (status: running)
-  const { data: run, error: insertErr } = await adminClient
+  const { data: run, error: insertErr } = await (adminClient as any)
     .from("collect_runs")
     .insert({ job_type: job, status: "running" })
     .select("id")
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
         ? await res.json().catch(() => ({}))
         : { ok: false, error: `HTTP ${res.status}` };
 
-      await adminClient
+      await (adminClient as any)
         .from("collect_runs")
         .update({
           status: result.ok ? "done" : "error",
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
         })
         .eq("id", runId);
     } catch (err) {
-      await adminClient
+      await (adminClient as any)
         .from("collect_runs")
         .update({
           status: "error",
