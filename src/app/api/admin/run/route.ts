@@ -16,6 +16,7 @@ const JOB_MAP: Record<string, string> = {
   "translate":         "/api/translate",
   "analyst":           "/api/collect/analyst",
   "13f":               "/api/collect/13f",
+  "profile":           "/api/collect/profile",
 };
 
 export async function GET(req: NextRequest) {

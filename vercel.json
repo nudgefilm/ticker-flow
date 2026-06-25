@@ -47,6 +47,10 @@
     {
       "path": "/api/translate",
       "schedule": "47 * * * *"
+    },
+    {
+      "path": "/api/collect/profile",
+      "schedule": "37 1 * * 1"
     }
   ]
 }

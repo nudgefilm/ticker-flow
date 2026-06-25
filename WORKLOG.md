@@ -862,6 +862,27 @@ CREATE TABLE stock_prices (
 - 섹터 요약 테이블: activityScore DESC, hover 하이라이트
 - 하단 면책 문구 3줄
 
+### 종목 프로필 수집 파이프라인 신규 생성
+
+**신규 파일: `src/app/api/collect/profile/route.ts`**
+- Finnhub `/stock/profile2?symbol={ticker}` API 연동
+- 수집 대상: tickers 테이블에서 `sector IS NULL`인 종목 (최대 50개, 이미 있는 건 스킵)
+- `finnhubIndustry` → `INDUSTRY_TO_SECTOR` 매핑 테이블로 sector 추출
+  - 매핑 없는 경우 finnhubIndustry 값을 sector에 그대로 저장
+- tickers 테이블 `.update({ sector, industry })`
+- 종목당 300ms 딜레이 (Finnhub rate limit 대응)
+- 응답: `{ ok, total, updated, skipped, errors, firstError }`
+
+**`vercel.json`** — Cron 추가: `"37 1 * * 1"` (매주 월 01:37 UTC / 10:37 KST)
+
+**`src/app/api/admin/run/route.ts`** — `"profile": "/api/collect/profile"` JOB_MAP 추가
+
+**`src/app/admin/system/trigger/page.tsx`**
+- TRIGGERS 배열에 "종목 프로필 수집 (Finnhub)" 버튼 추가
+- `TriggerResult` 인터페이스에 `updated?: number`, `errors?: number` 추가
+- `resultSummary()` 함수에 `업데이트 N건`, `에러 N건` 표시 추가
+- Cron 스케줄 테이블에 종목 프로필 항목 추가
+
 ---
 
 ## 다음 작업 예정

@@ -19,7 +19,9 @@ interface DebugInfo {
 interface TriggerResult {
   ok: boolean;
   inserted?: number;
+  updated?: number;
   skipped?: number;
+  errors?: number;
   total?: number;
   tickers?: number;
   filings?: number;
@@ -97,16 +99,23 @@ const TRIGGERS: Trigger[] = [
     label: "번역 재실행 (Claude Haiku)",
     desc: "summary_kr이 NULL인 공시·뉴스를 한국어로 번역합니다. 각 최대 20건씩 처리합니다.",
   },
+  {
+    id: "profile",
+    label: "종목 프로필 수집 (Finnhub)",
+    desc: "sector, industry가 없는 종목을 Finnhub에서 조회해 업데이트합니다. 최대 50종목.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
   if (!result.ok) return result.error ?? "오류 발생";
   const parts: string[] = [];
-  if (result.inserted  !== undefined) parts.push(`저장 ${result.inserted}건`);
-  if (result.skipped   !== undefined) parts.push(`스킵 ${result.skipped}건`);
-  if (result.tickers   !== undefined) parts.push(`티커 ${result.tickers}개`);
-  if (result.filings   !== undefined) parts.push(`공시 ${result.filings}건`);
-  if (result.news      !== undefined) parts.push(`뉴스 ${result.news}건`);
+  if (result.inserted   !== undefined) parts.push(`저장 ${result.inserted}건`);
+  if (result.updated    !== undefined) parts.push(`업데이트 ${result.updated}건`);
+  if (result.skipped    !== undefined) parts.push(`스킵 ${result.skipped}건`);
+  if (result.errors     !== undefined && result.errors > 0) parts.push(`에러 ${result.errors}건`);
+  if (result.tickers    !== undefined) parts.push(`티커 ${result.tickers}개`);
+  if (result.filings    !== undefined) parts.push(`공시 ${result.filings}건`);
+  if (result.news       !== undefined) parts.push(`뉴스 ${result.news}건`);
   if (result.summarized !== undefined) parts.push(`요약 ${result.summarized}건`);
   const summary = parts.join(" · ") || "완료";
   return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
@@ -306,6 +315,7 @@ export default function TriggerPage() {
             { name: "주가 히스토리",        schedule: "매일 00:30 UTC (09:30 KST)", path: "/api/collect/prices"         },
             { name: "실적 어닝서프라이즈",  schedule: "매일 00:35 UTC (09:35 KST)", path: "/api/collect/earnings-actual" },
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
+            { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
