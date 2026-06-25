@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -72,6 +72,50 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "filings"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      analyst_ratings: {
+        Row: {
+          buy: number | null
+          collected_at: string | null
+          hold: number | null
+          id: string
+          period: string | null
+          sell: number | null
+          strong_buy: number | null
+          strong_sell: number | null
+          ticker: string
+        }
+        Insert: {
+          buy?: number | null
+          collected_at?: string | null
+          hold?: number | null
+          id?: string
+          period?: string | null
+          sell?: number | null
+          strong_buy?: number | null
+          strong_sell?: number | null
+          ticker: string
+        }
+        Update: {
+          buy?: number | null
+          collected_at?: string | null
+          hold?: number | null
+          id?: string
+          period?: string | null
+          sell?: number | null
+          strong_buy?: number | null
+          strong_sell?: number | null
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_ratings_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
           },
         ]
       }
@@ -241,6 +285,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "insider_trades_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
+          },
+        ]
+      }
+      institutional_holdings: {
+        Row: {
+          filed_at: string | null
+          id: string
+          institution_name: string | null
+          quarter: string | null
+          shares: number | null
+          ticker: string
+          value: number | null
+        }
+        Insert: {
+          filed_at?: string | null
+          id?: string
+          institution_name?: string | null
+          quarter?: string | null
+          shares?: number | null
+          ticker: string
+          value?: number | null
+        }
+        Update: {
+          filed_at?: string | null
+          id?: string
+          institution_name?: string | null
+          quarter?: string | null
+          shares?: number | null
+          ticker?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "institutional_holdings_ticker_fkey"
             columns: ["ticker"]
             isOneToOne: false
             referencedRelation: "tickers"
