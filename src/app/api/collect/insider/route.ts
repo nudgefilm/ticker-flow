@@ -94,9 +94,27 @@ export async function GET(req: NextRequest) {
     // 단일 티커 모드
     tickers = [tickerParam.toUpperCase()];
   } else {
-    // 전체 티커 수집 (어드민 수동 트리거용)
-    const { data: rows } = await adminClient.from("tickers").select("ticker");
-    tickers = rows?.map((r) => r.ticker) ?? [];
+    // 1. 와치리스트에 등록된 종목 (전체 유저 합산)
+    const { data: watchlistRows } = await adminClient
+      .from("watchlist")
+      .select("ticker");
+
+    // 2. 최근 7일 내 공시가 있는 종목
+    const sevenDaysAgo = new Date(
+      Date.now() - 7 * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const { data: filingRows } = await adminClient
+      .from("filings")
+      .select("ticker")
+      .gte("filed_at", sevenDaysAgo);
+
+    // 3. 중복 제거
+    const tickerSet = new Set<string>();
+    watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
+    filingRows?.forEach((r) => tickerSet.add(r.ticker));
+
+    // 4. Vercel 60초 내 처리 범위 제한 (ticker당 ~500ms → 40개 ≈ 20초)
+    tickers = [...tickerSet].slice(0, 40);
   }
 
   let totalInserted = 0;
