@@ -17,6 +17,10 @@
       "schedule": "13 0 * * *"
     },
     {
+      "path": "/api/collect/insider",
+      "schedule": "20 0 * * *"
+    },
+    {
       "path": "/api/translate",
       "schedule": "7 * * * *"
     },

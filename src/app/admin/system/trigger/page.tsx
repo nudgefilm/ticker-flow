@@ -204,6 +204,7 @@ export default function TriggerPage() {
             { name: "번역 (Claude Haiku)", schedule: "매시간 07·27·47분", path: "/api/translate" },
             { name: "실적 캘린더", schedule: "매일 00:07 UTC (09:07 KST)", path: "/api/collect/earnings" },
             { name: "경제지표", schedule: "매일 00:13 UTC (09:13 KST)", path: "/api/collect/macro" },
+            { name: "내부자 거래", schedule: "매일 00:20 UTC (09:20 KST)", path: "/api/collect/insider" },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
