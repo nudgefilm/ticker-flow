@@ -622,6 +622,99 @@ CREATE TABLE stock_prices (
 
 ---
 
+---
+
+## 2026-06-25 · 세션 15
+
+### 어드민 데이터 페이지 더미 데이터 → 실 데이터 교체
+
+**`src/app/admin/data/filings/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- `createAdminClient()` 기반 3개 쿼리 병렬 실행:
+  - 전체 count, 오늘 count, 최근 7일 raw rows (filed_at + form_type)
+- JS에서 날짜별·form_type별 집계: 8-K / 10-K / 10-Q / Form 4 / 기타 분류
+- 기존 하드코딩 5일치 더미 로그 → 실 DB 기반 유형별 분류표 + 7일 날짜별 건수표
+
+**`src/app/admin/data/news/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- 전체 count, 오늘 count, 최근 7일 raw rows (published_at + source) 병렬 조회
+- JS에서 날짜별·소스별 집계 (null → "기타")
+- 기존 더미 로그 → 실 DB 기반 소스별 분류표 + 7일 날짜별 건수표
+
+**`src/app/admin/data/translation/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- 4개 count 쿼리 병렬: filings 전체, filings summary_kr NOT NULL, news 전체, news summary_kr NOT NULL
+- 기존 토큰 비용 더미 데이터 완전 교체 → 번역 완료율 기반 UI로 재설계
+  - 상단 카드: 전체 완료율 / 번역 완료 건수 / 번역 대기 건수
+  - 공시·뉴스 진행률 바 (퍼플 색상, 퍼센트 + 건수 표시)
+  - 하단 상세 테이블: 전체 / 완료 / 대기 / 완료율 4컬럼
+
+---
+
+## 2026-06-25 · 세션 16
+
+### 어드민 추가 페이지 더미 데이터 → 실 데이터 교체
+
+**`src/app/admin/data/api/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- `createAdminClient` 불필요 (Supabase 미사용), 서버 컴포넌트에서 직접 `process.env.*` 접근
+- 환경변수 존재 여부 확인: `FINNHUB_API_KEY`, `FRED_API_KEY`, `ANTHROPIC_API_KEY`
+- 실제 ping 테스트 3개 (`Promise.all` 병렬):
+  - Finnhub: `GET /api/v1/quote?symbol=AAPL` (키 있을 때만)
+  - SEC EDGAR: `efts.sec.gov` 검색 엔드포인트 (키 불필요)
+  - FRED: `/fred/series?series_id=FEDFUNDS` (키 있을 때만)
+  - Anthropic: 키 등록 여부만 확인 (비용 절약 위해 실제 호출 생략)
+- `AbortSignal.timeout(6000)` 으로 6초 타임아웃
+- 응답 시간(ms) 실측 표시, 키 등록/미등록 배지
+
+**`src/app/admin/users/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- `createAdminClient()` 기반 profiles 테이블 조회
+- 전체 count + 최신 100명 병렬 조회 (created_at DESC)
+- 기존 하드코딩 더미 유저 10명 → 실 DB 데이터
+- plan 값 기준 배지: `pro` → 초록, 그 외 → 회색
+- 100명 초과 시 "최신 N명 표시 중" 안내 메시지
+
+**`src/app/admin/users/subscriptions/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- 3개 병렬 쿼리: 전체 count, pro count, pro 유저 목록
+- 상단 카드: Free 인원 / Pro 인원 / 전환율(%) 실 계산
+- Pro 유저 목록: profiles 테이블 email + created_at 기반 표시
+- 결제 상세(갱신일, 금액)는 Polar.sh 연동 전까지 미표시
+
+---
+
+## 2026-06-25 · 세션 17
+
+### 어드민 시스템 페이지 더미 데이터 → 실 데이터 교체
+
+**`src/app/admin/system/costs/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- `createAdminClient()` 기반 번역 건수 조회 (summary_kr IS NOT NULL)
+- 예상 비용 계산: 공시 번역 건수 × $0.0002 + 뉴스 번역 건수 × $0.0001 (누계)
+- 상단 카드 3개: 공시 번역 예상 / 뉴스 번역 예상 / 합계
+- 비용 내역 테이블: 항목 / 건수 / 건당 단가 / 예상 비용
+- Anthropic 직접 연동 / Vercel / Supabase → "준비 중" 섹션으로 분리
+
+**`src/app/admin/system/env/page.tsx`**
+- `export const dynamic = "force-dynamic"` 추가
+- 하드코딩 더미 배열 제거 → `process.env.*` 서버사이드 실시간 확인
+- 확인 항목 8개: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, FINNHUB_API_KEY, FRED_API_KEY, ANTHROPIC_API_KEY, ADMIN_EMAIL, CRON_SECRET
+- 값 미노출 원칙: `!!process.env.KEY` (boolean 변환만) → 설정됨/미설정만 표시
+- 카테고리 구분: Supabase / 외부 API / 앱
+
+## 2026-06-26 · 세션 18
+
+### 와치리스트 기업 동향 공시 유형 약어 풀네임 표기
+**`src/app/(dashboard)/watchlist/page.tsx`**
+- `expandFormType()` 헬퍼 함수 추가: 8-K → 8-K(주요 경영 이벤트), 10-K → 10-K(연간 보고서), 10-Q → 10-Q(분기 보고서), 4 → Form 4(내부자 거래), S-1 → S-1(신규 상장), DEF 14A/DEF14A → DEF 14A(주주총회)
+- 팩트 문장 생성 시 fTypes[0]을 expandFormType()으로 변환하여 적용
+
+### 랜딩 히어로 글로우 애니메이션 CSS 버그 수정
+**`src/app/globals.css`**
+- **원인:** `@theme inline`으로 선언된 `--animate-glow-pulse` 변수는 브라우저 런타임에 CSS custom property로 노출되지 않아 `var()` 참조가 빈 값으로 해석됨
+- **수정:** `.animate-glow-pulse` 클래스의 `animation: var(--animate-glow-pulse)` → `animation: glow-pulse 3s ease-in-out infinite` 직접 값으로 교체
+
 ## 다음 작업 예정
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)

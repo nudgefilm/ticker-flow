@@ -166,6 +166,20 @@ function TrendingSkeleton() {
   );
 }
 
+// ─── 공시 유형 약어 → 풀네임 변환 ─────────────────────────────────────────────
+function expandFormType(raw: string): string {
+  const map: Record<string, string> = {
+    "8-K":     "8-K(주요 경영 이벤트)",
+    "10-K":    "10-K(연간 보고서)",
+    "10-Q":    "10-Q(분기 보고서)",
+    "4":       "Form 4(내부자 거래)",
+    "S-1":     "S-1(신규 상장)",
+    "DEF 14A": "DEF 14A(주주총회)",
+    "DEF14A":  "DEF 14A(주주총회)",
+  };
+  return map[raw] ?? raw;
+}
+
 // ─── 기업 동향 ────────────────────────────────────────────────────────────────
 
 async function TrendingContent() {
@@ -255,7 +269,7 @@ async function TrendingContent() {
     if (sentences.length < 2 && sells > 0)
       sentences.push(`내부자 매도 ${sells}건 확인`);
     if (sentences.length < 2 && fc > 0) {
-      const ft = fTypes[0];
+      const ft = fTypes[0] ? expandFormType(fTypes[0]) : null;
       const suffix = fTypes.length > 1 ? " 등" : "";
       sentences.push(ft ? `최근 7일 ${ft}${suffix} 공시 ${fc}건 제출` : `최근 7일 공시 ${fc}건 제출`);
     }
