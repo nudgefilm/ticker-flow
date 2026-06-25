@@ -171,51 +171,106 @@ function TrendingSkeleton() {
 async function TrendingContent() {
   const supabase = await createClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const sevenDaysAgoDate = sevenDaysAgo.slice(0, 10);
+  const today = new Date().toISOString().slice(0, 10);
 
-  // 최근 7일 공시·뉴스 ticker 수집
+  // ① 최근 7일 공시(form_type 포함)·뉴스 수집
   const [filingsRes, newsRes] = await Promise.all([
-    supabase.from("filings").select("ticker").gte("filed_at", sevenDaysAgo).limit(500),
+    supabase.from("filings").select("ticker, form_type").gte("filed_at", sevenDaysAgo).limit(500),
     supabase.from("news").select("ticker").gte("published_at", sevenDaysAgo).limit(500),
   ]);
 
-  // 종목별 카운트 집계
-  const counts = new Map<string, { filings: number; news: number }>();
+  // 종목별 집계
+  const filingsData = new Map<string, { count: number; formTypes: string[] }>();
   for (const r of filingsRes.data ?? []) {
-    const c = counts.get(r.ticker) ?? { filings: 0, news: 0 };
-    c.filings++;
-    counts.set(r.ticker, c);
+    const d = filingsData.get(r.ticker) ?? { count: 0, formTypes: [] };
+    d.count++;
+    if (r.form_type && !d.formTypes.includes(r.form_type)) d.formTypes.push(r.form_type);
+    filingsData.set(r.ticker, d);
   }
+  const newsCount = new Map<string, number>();
   for (const r of newsRes.data ?? []) {
     if (!r.ticker) continue;
-    const c = counts.get(r.ticker) ?? { filings: 0, news: 0 };
-    c.news++;
-    counts.set(r.ticker, c);
+    newsCount.set(r.ticker, (newsCount.get(r.ticker) ?? 0) + 1);
   }
 
-  // 합산 기준 상위 10개 선별
-  const trending = Array.from(counts.entries())
-    .map(([t, c]) => ({ ticker: t, filings: c.filings, news: c.news, total: c.filings + c.news }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
+  // ② 합산 기준 상위 10개 선별
+  const totalCount = new Map<string, number>();
+  for (const [t, d] of filingsData) totalCount.set(t, (totalCount.get(t) ?? 0) + d.count);
+  for (const [t, n] of newsCount) totalCount.set(t, (totalCount.get(t) ?? 0) + n);
 
-  if (trending.length === 0) return null;
+  const top10 = Array.from(totalCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([t]) => t);
 
-  // 회사명 조회
-  const { data: tickerRows } = await supabase
-    .from("tickers")
-    .select("ticker, name_kr, name_en")
-    .in("ticker", trending.map((t) => t.ticker));
+  if (top10.length === 0) return null;
+
+  // ③ 상위 10개 대상 추가 조회 (회사명·내부자거래·실적 일정)
+  const [tickerNamesRes, insiderRes, earningsRes] = await Promise.all([
+    supabase.from("tickers").select("ticker, name_kr, name_en").in("ticker", top10),
+    supabase.from("insider_trades").select("ticker, transaction_type")
+      .in("ticker", top10).gte("transaction_date", sevenDaysAgoDate).limit(200),
+    supabase.from("earnings").select("ticker, report_date")
+      .in("ticker", top10).gte("report_date", today)
+      .order("report_date", { ascending: true }).limit(20),
+  ]);
 
   const nameMap = new Map(
-    (tickerRows ?? []).map((r) => [r.ticker, r.name_kr ?? r.name_en ?? r.ticker])
+    (tickerNamesRes.data ?? []).map((r) => [r.ticker, r.name_kr ?? r.name_en ?? r.ticker])
   );
+  const insiderBuys  = new Map<string, number>();
+  const insiderSells = new Map<string, number>();
+  for (const r of insiderRes.data ?? []) {
+    if (r.transaction_type === "buy")  insiderBuys.set(r.ticker,  (insiderBuys.get(r.ticker)  ?? 0) + 1);
+    if (r.transaction_type === "sell") insiderSells.set(r.ticker, (insiderSells.get(r.ticker) ?? 0) + 1);
+  }
+  // 종목당 최초 실적일만 보관
+  const earningsMap = new Map<string, string>();
+  for (const r of earningsRes.data ?? []) {
+    if (!earningsMap.has(r.ticker)) earningsMap.set(r.ticker, r.report_date);
+  }
 
-  const items: TrendingItem[] = trending.map((t) => ({
-    ticker: t.ticker,
-    company: nameMap.get(t.ticker) ?? t.ticker,
-    filings: t.filings,
-    news: t.news,
-  }));
+  // ④ 팩트 문장 생성
+  const todayMs = new Date(today + "T00:00:00").getTime();
+
+  const items: TrendingItem[] = top10.map((ticker) => {
+    const fd       = filingsData.get(ticker);
+    const fc       = fd?.count ?? 0;
+    const fTypes   = fd?.formTypes ?? [];
+    const nc       = newsCount.get(ticker) ?? 0;
+    const buys     = insiderBuys.get(ticker) ?? 0;
+    const sells    = insiderSells.get(ticker) ?? 0;
+    const eDate    = earningsMap.get(ticker);
+
+    const sentences: string[] = [];
+
+    // 우선순위: 실적 예정 > 내부자 매수 > 내부자 매도 > 공시 > 뉴스
+    if (eDate) {
+      const dday = Math.round((new Date(eDate + "T00:00:00").getTime() - todayMs) / 86_400_000);
+      sentences.push(dday === 0 ? "실적 발표 오늘 예정" : `실적 발표 D-${dday}일 예정`);
+    }
+    if (sentences.length < 2 && buys > 0)
+      sentences.push(`내부자 매수 ${buys}건 확인`);
+    if (sentences.length < 2 && sells > 0)
+      sentences.push(`내부자 매도 ${sells}건 확인`);
+    if (sentences.length < 2 && fc > 0) {
+      const ft = fTypes[0];
+      const suffix = fTypes.length > 1 ? " 등" : "";
+      sentences.push(ft ? `최근 7일 ${ft}${suffix} 공시 ${fc}건 제출` : `최근 7일 공시 ${fc}건 제출`);
+    }
+    if (sentences.length < 2 && nc > 0)
+      sentences.push(`관련 뉴스 ${nc}건 발생`);
+
+    if (sentences.length === 0)
+      sentences.push("최근 7일 주요 활동 없음");
+
+    return {
+      ticker,
+      company: nameMap.get(ticker) ?? ticker,
+      sentences,
+    };
+  });
 
   return (
     <section className="mt-8 border-t border-white/[0.06] pt-8">
