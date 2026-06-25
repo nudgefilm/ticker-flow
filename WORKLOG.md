@@ -836,6 +836,32 @@ CREATE TABLE stock_prices (
 - **원인:** `labels` 배열의 `anchor` 필드가 `string` 타입으로 추론되어 SVG `textAnchor` 속성(`"start" | "middle" | "end"`)에 할당 불가
 - **수정:** `labels` 배열 타입을 `{ i: number; anchor: "start" | "middle" | "end" }[]`로 명시
 
+### 섹터 히트맵 페이지 실 데이터 연동
+
+**신규 파일: `src/components/dashboard/sector-treemap.tsx`**
+- `"use client"`, `useState(hovered)`
+- SVG viewBox="0 0 800 400", preserveAspectRatio="xMidYMid meet"
+- Squarified Treemap 알고리즘 순수 TypeScript로 직접 구현 (외부 라이브러리 없음)
+- `worstRatio()` — 행의 최악 종횡비 계산
+- `squarify()` — 재귀 레이아웃, w/h 비교로 수평/수직 스트립 선택
+- 유효 값: `activityScore > 0 ? activityScore : tickerCount * 0.5`
+- 최솟값 보정: 각 섹터 전체 면적의 2% 이상 보장
+- 색상: 활동 상위 33% → rgba(96,165,250,0.35), 중위 → rgba(96,165,250,0.18), 하위 → rgba(255,255,255,0.06)
+- 박스 내 텍스트: 섹터명(14px bold) + 종목 수(11px) + 공시·뉴스 건수(11px, width>100 조건)
+- clipPath로 텍스트 박스 넘침 방지
+- hover: stroke rgba(96,165,250,0.6), SVG `<title>` 기반 브라우저 툴팁
+
+**수정 파일: `src/app/(dashboard)/sectors/page.tsx`**
+- 기존 ProGate + SectorsPreview 더미 제거 → 실 데이터 서버 컴포넌트로 재작성
+- `export const dynamic = "force-dynamic"`, async 서버 컴포넌트
+- 3개 쿼리 `Promise.all` 병렬: tickers(sector 있는 것) + filings(30일) + news(7일)
+- JS 서버사이드 집계: ticker→sector 매핑 후 섹터별 종목·공시·뉴스 카운트
+- 활동 점수 = filingCount × 2 + newsCount
+- SECTOR_KR 매핑: 11개 섹터 한국어 변환
+- 범례 (활동 활발/보통/적음) + 활동 점수 계산식 표시
+- 섹터 요약 테이블: activityScore DESC, hover 하이라이트
+- 하단 면책 문구 3줄
+
 ---
 
 ## 다음 작업 예정
