@@ -12,22 +12,6 @@ import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const kpiCards = [
-  { label: "총 가입자", value: "127명", sub: "+18 이번 주", icon: IconUsers, color: "text-blue-400" },
-  { label: "유료 전환율", value: "8.7%", sub: "Pro 11명 / Free 116명", icon: IconTrendingUp, color: "text-green-400" },
-  { label: "일별 방문자", value: "342명", sub: "오늘 기준", icon: IconEye, color: "text-purple-400" },
-  { label: "월 매출", value: "₩1,328,100", sub: "이번 달 예상", icon: IconCurrencyDollar, color: "text-yellow-400" },
-];
-
-const recentActivity = [
-  { label: "오늘 신규 가입", value: "5명", status: "ok" },
-  { label: "오늘 공시 수집", value: "1,203건", status: "ok" },
-  { label: "오늘 뉴스 수집", value: "847건", status: "ok" },
-  { label: "수집 오류", value: "0건", status: "ok" },
-  { label: "Claude API 오늘 비용", value: "$1.24", status: "ok" },
-  { label: "마지막 수집", value: "09:15", status: "ok" },
-];
-
 // ─── 내부 관심 종목 ────────────────────────────────────────────────────────────
 
 type SignalTag = "내부자 매수" | "가이던스" | "실적 상회" | "활동 활발";
@@ -91,7 +75,6 @@ async function AdminWatchSection() {
     newsCount.set(r.ticker, (newsCount.get(r.ticker) ?? 0) + 1);
   }
 
-  // 신호가 있는 종목만 후보로
   const signalTickers = new Set([...insiderBuySet, ...guidanceSet, ...epsBeatSet]);
 
   const candidates = Array.from(signalTickers)
@@ -163,16 +146,50 @@ function AdminWatchSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
       {Array.from({ length: 10 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-28 animate-pulse rounded-[6px] bg-white/[0.04]"
-        />
+        <div key={i} className="h-28 animate-pulse rounded-[6px] bg-white/[0.04]" />
       ))}
     </div>
   );
 }
 
-export default function AdminPage() {
+// ─── 페이지 ────────────────────────────────────────────────────────────────────
+
+export default async function AdminPage() {
+  const admin = createAdminClient();
+
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+  const todayISO = todayStart.toISOString();
+
+  const [
+    { count: totalCount },
+    { count: proCount },
+    { count: newTodayCount },
+    { count: filingsTodayCount },
+    { count: newsTodayCount },
+  ] = await Promise.all([
+    admin.from("profiles").select("*", { count: "exact", head: true }),
+    admin.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
+    admin.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", todayISO),
+    admin.from("filings").select("*", { count: "exact", head: true }).gte("filed_at", todayISO),
+    admin.from("news").select("*", { count: "exact", head: true }).gte("published_at", todayISO),
+  ]);
+
+  const total   = totalCount ?? 0;
+  const pro     = proCount ?? 0;
+  const free    = total - pro;
+  const convRate = total > 0 ? ((pro / total) * 100).toFixed(1) : "—";
+  const freePct  = total > 0 ? (free / total) * 100 : 0;
+
+  const activityItems = [
+    { label: "오늘 신규 가입",      value: `${newTodayCount ?? 0}명` },
+    { label: "오늘 공시 수집",      value: `${(filingsTodayCount ?? 0).toLocaleString("ko-KR")}건` },
+    { label: "오늘 뉴스 수집",      value: `${(newsTodayCount ?? 0).toLocaleString("ko-KR")}건` },
+    { label: "수집 오류",          value: "준비 중" },
+    { label: "Claude API 오늘 비용", value: "준비 중" },
+    { label: "마지막 수집",         value: "준비 중" },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -182,18 +199,55 @@ export default function AdminPage() {
 
       {/* KPI 카드 */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {kpiCards.map((card) => (
-          <div key={card.label} className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs text-[#a6a6a6]">{card.label}</p>
-                <p className="mt-1.5 text-2xl font-semibold text-white">{card.value}</p>
-                <p className="mt-1 text-xs text-[#a6a6a6]">{card.sub}</p>
-              </div>
-              <card.icon size={20} stroke={1.5} className={card.color} />
+        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs text-[#a6a6a6]">총 가입자</p>
+              <p className="mt-1.5 text-2xl font-semibold text-white">
+                {total.toLocaleString("ko-KR")}명
+              </p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">
+                오늘 +{newTodayCount ?? 0}명 신규
+              </p>
             </div>
+            <IconUsers size={20} stroke={1.5} className="text-blue-400" />
           </div>
-        ))}
+        </div>
+
+        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs text-[#a6a6a6]">유료 전환율</p>
+              <p className="mt-1.5 text-2xl font-semibold text-white">{convRate}%</p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">
+                Pro {pro}명 / Free {free}명
+              </p>
+            </div>
+            <IconTrendingUp size={20} stroke={1.5} className="text-green-400" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs text-[#a6a6a6]">일별 방문자</p>
+              <p className="mt-1.5 text-2xl font-semibold text-[#a6a6a6]">준비 중</p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">—</p>
+            </div>
+            <IconEye size={20} stroke={1.5} className="text-purple-400" />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs text-[#a6a6a6]">월 매출</p>
+              <p className="mt-1.5 text-2xl font-semibold text-[#a6a6a6]">준비 중</p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">—</p>
+            </div>
+            <IconCurrencyDollar size={20} stroke={1.5} className="text-yellow-400" />
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -201,14 +255,10 @@ export default function AdminPage() {
         <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
           <h2 className="mb-4 text-sm font-medium text-white">오늘 현황</h2>
           <div className="space-y-3">
-            {recentActivity.map((item) => (
+            {activityItems.map((item) => (
               <div key={item.label} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  {item.status === "ok" ? (
-                    <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
-                  ) : (
-                    <IconAlertCircle size={14} stroke={1.5} className="text-red-400" />
-                  )}
+                  <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
                   <span className="text-sm text-[#a6a6a6]">{item.label}</span>
                 </div>
                 <span className="text-sm font-medium text-white">{item.value}</span>
@@ -217,21 +267,11 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* 일별 방문자 추이 (목업) */}
+        {/* 일별 방문자 (준비 중) */}
         <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
           <h2 className="mb-4 text-sm font-medium text-white">일별 방문자 (7일)</h2>
-          <div className="flex items-end gap-1.5 h-28">
-            {[210, 265, 190, 320, 280, 305, 342].map((v, i) => (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div
-                  className="w-full rounded-sm bg-blue-500/30"
-                  style={{ height: `${(v / 342) * 100}%` }}
-                />
-                <span className="text-[10px] text-[#a6a6a6]">
-                  {["월", "화", "수", "목", "금", "토", "일"][i]}
-                </span>
-              </div>
-            ))}
+          <div className="flex h-28 items-center justify-center">
+            <p className="text-sm text-[#a6a6a6]">준비 중</p>
           </div>
         </div>
       </div>
@@ -240,12 +280,19 @@ export default function AdminPage() {
       <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
         <h2 className="mb-4 text-sm font-medium text-white">플랜 분포</h2>
         <div className="flex items-center gap-4">
-          <div className="flex-1 overflow-hidden rounded-full bg-[#1a1a1a] h-3">
-            <div className="h-full rounded-full bg-blue-500" style={{ width: "91.3%" }} />
+          <div className="h-3 flex-1 overflow-hidden rounded-full bg-[#1a1a1a]">
+            <div
+              className="h-full rounded-full bg-blue-500"
+              style={{ width: `${freePct.toFixed(1)}%` }}
+            />
           </div>
-          <div className="flex items-center gap-4 text-sm shrink-0">
-            <span className="text-[#a6a6a6]">Free <span className="text-white font-medium">116명</span></span>
-            <span className="text-[#a6a6a6]">Pro <span className="text-green-400 font-medium">11명</span></span>
+          <div className="flex shrink-0 items-center gap-4 text-sm">
+            <span className="text-[#a6a6a6]">
+              Free <span className="font-medium text-white">{free}명</span>
+            </span>
+            <span className="text-[#a6a6a6]">
+              Pro <span className="font-medium text-green-400">{pro}명</span>
+            </span>
           </div>
         </div>
       </div>

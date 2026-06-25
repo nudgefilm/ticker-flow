@@ -3,7 +3,8 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import WatchlistClient from "@/components/dashboard/watchlist-client";
 import { type WatchlistStock } from "@/components/dashboard/watchlist-card";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
+import TrendingCarousel from "@/components/dashboard/trending-carousel";
+import type { TrendingItem } from "@/components/dashboard/trending-carousel";
 
 export const dynamic = "force-dynamic";
 
@@ -138,14 +139,22 @@ async function WatchlistContent() {
   return <WatchlistClient initialStocks={stocks} isPro={isPro} />;
 }
 
-// ─── 오늘의 기업 동향 스켈레톤 ────────────────────────────────────────────────────
+// ─── 기업 동향 스켈레톤 ─────────────────────────────────────────────────────────
 
 function TrendingSkeleton() {
   return (
-    <section className="mt-10">
-      <div className="h-4 w-36 animate-pulse rounded bg-white/[0.06]" />
-      <div className="mt-1 h-3 w-64 animate-pulse rounded bg-white/[0.06]" />
-      <div className="mt-4 flex gap-3 overflow-x-hidden pb-2">
+    <section className="mt-8 border-t border-white/[0.06] pt-8">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1.5">
+          <div className="h-4 w-20 animate-pulse rounded bg-white/[0.06]" />
+          <div className="h-3 w-52 animate-pulse rounded bg-white/[0.06]" />
+        </div>
+        <div className="flex gap-1">
+          <div className="h-7 w-7 animate-pulse rounded-[4px] bg-white/[0.06]" />
+          <div className="h-7 w-7 animate-pulse rounded-[4px] bg-white/[0.06]" />
+        </div>
+      </div>
+      <div className="mt-4 flex gap-3 overflow-x-hidden">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
@@ -157,18 +166,11 @@ function TrendingSkeleton() {
   );
 }
 
-// ─── 오늘의 기업 동향 ─────────────────────────────────────────────────────────────
+// ─── 기업 동향 ────────────────────────────────────────────────────────────────
 
 async function TrendingContent() {
   const supabase = await createClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
-
-  // 현재 유저의 와치리스트 (제외 목적)
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: wl } = user
-    ? await supabase.from("watchlist").select("ticker").eq("user_id", user.id)
-    : { data: [] };
-  const excludeSet = new Set((wl ?? []).map((r) => r.ticker));
 
   // 최근 7일 공시·뉴스 ticker 수집
   const [filingsRes, newsRes] = await Promise.all([
@@ -190,9 +192,8 @@ async function TrendingContent() {
     counts.set(r.ticker, c);
   }
 
-  // 와치리스트 제외 후 상위 10개 선별
+  // 합산 기준 상위 10개 선별
   const trending = Array.from(counts.entries())
-    .filter(([t]) => !excludeSet.has(t))
     .map(([t, c]) => ({ ticker: t, filings: c.filings, news: c.news, total: c.filings + c.news }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 10);
@@ -209,41 +210,16 @@ async function TrendingContent() {
     (tickerRows ?? []).map((r) => [r.ticker, r.name_kr ?? r.name_en ?? r.ticker])
   );
 
+  const items: TrendingItem[] = trending.map((t) => ({
+    ticker: t.ticker,
+    company: nameMap.get(t.ticker) ?? t.ticker,
+    filings: t.filings,
+    news: t.news,
+  }));
+
   return (
-    <section className="mt-10">
-      <h2 className="text-base font-semibold text-white">오늘의 기업 동향</h2>
-      <p className="mt-1 text-xs text-[#a6a6a6]">
-        최근 7일 공시·뉴스 활동이 많은 종목입니다. 와치리스트에 추가된 종목은 제외됩니다.
-      </p>
-      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-        {trending.map((item) => (
-          <div
-            key={item.ticker}
-            className="w-44 shrink-0 rounded-[6px] border border-white/[0.08] bg-[#111111] p-4"
-          >
-            <span
-              className={cn(
-                "inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]"
-              )}
-            >
-              {item.ticker}
-            </span>
-            <p className="mt-2 truncate text-sm font-medium text-white">
-              {nameMap.get(item.ticker) ?? item.ticker}
-            </p>
-            <div className="mt-3 space-y-1">
-              <p className="text-xs text-[#a6a6a6]">
-                공시{" "}
-                <span className="font-medium text-[#cccccc]">{item.filings}건</span>
-              </p>
-              <p className="text-xs text-[#a6a6a6]">
-                뉴스{" "}
-                <span className="font-medium text-[#cccccc]">{item.news}건</span>
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+    <section className="mt-8 border-t border-white/[0.06] pt-8">
+      <TrendingCarousel items={items} />
     </section>
   );
 }
