@@ -254,15 +254,15 @@ export default function MyPage() {
               { name: "경제지표", desc: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI, 금리 등)" },
               { name: "내부자 거래", desc: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)" },
             ].map((item) => (
-              <div key={item.name} className="flex items-start gap-3 px-5 py-3.5">
-                <span className="mt-0.5 w-20 shrink-0 text-xs font-medium text-[#cccccc]">
+              <div key={item.name} className="flex items-start gap-3 px-5 py-2">
+                <span className="mt-0.5 w-20 shrink-0 text-xs font-medium text-white">
                   {item.name}
                 </span>
                 <span className="text-xs leading-relaxed text-[#a6a6a6]">{item.desc}</span>
               </div>
             ))}
             <div className="px-5 py-3.5">
-              <p className="text-xs leading-relaxed text-[#555555]">
+              <p className="text-xs leading-relaxed text-[#a6a6a6]">
                 투자 판단의 근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.
               </p>
             </div>

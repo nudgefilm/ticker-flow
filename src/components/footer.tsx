@@ -60,13 +60,23 @@ const TERMS_SECTIONS = [
   },
 ];
 
-type ModalType = "privacy" | "terms" | null;
+type ModalType = "privacy" | "terms" | "data-sources" | null;
 
 interface ModalConfig {
   title: string;
   updated: string;
   sections: { title: string; content: string }[];
+  layout?: "inline";
+  note?: string;
 }
+
+const DATA_SOURCES_SECTIONS = [
+  { title: "공시 정보",   content: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스" },
+  { title: "뉴스",        content: "Finnhub (Reuters·CNBC·Bloomberg 등 주요 매체 제휴)" },
+  { title: "실적 캘린더", content: "Finnhub (나스닥·NYSE 상장 기업 실적 발표 일정)" },
+  { title: "경제지표",    content: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI, 금리 등)" },
+  { title: "내부자 거래", content: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)" },
+];
 
 const MODAL_CONFIG: Record<Exclude<ModalType, null>, ModalConfig> = {
   privacy: {
@@ -78,6 +88,13 @@ const MODAL_CONFIG: Record<Exclude<ModalType, null>, ModalConfig> = {
     title: "이용약관",
     updated: "2026년 6월 24일",
     sections: TERMS_SECTIONS,
+  },
+  "data-sources": {
+    title: "데이터 출처 안내",
+    updated: "2026년 6월 25일",
+    sections: DATA_SOURCES_SECTIONS,
+    layout: "inline",
+    note: "투자 판단의 근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.",
   },
 };
 
@@ -115,14 +132,35 @@ function LegalModal({ type, onClose }: { type: Exclude<ModalType, null>; onClose
 
         {/* 본문 */}
         <div className="no-scrollbar flex-1 overflow-y-auto px-6 py-5">
-          {config.sections.map((section) => (
-            <section key={section.title} className="mb-6 last:mb-0">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">{section.title}</h3>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                {section.content}
-              </p>
-            </section>
-          ))}
+          {config.layout === "inline" ? (
+            <>
+              {config.sections.map((section) => (
+                <div
+                  key={section.title}
+                  className="flex items-baseline gap-3 border-b border-border py-3 last:border-0"
+                >
+                  <span className="w-20 shrink-0 text-sm font-semibold text-foreground">
+                    {section.title}
+                  </span>
+                  <span className="text-sm font-light text-muted-foreground">
+                    {section.content}
+                  </span>
+                </div>
+              ))}
+              {config.note && (
+                <p className="mt-5 text-xs text-muted-foreground">{config.note}</p>
+              )}
+            </>
+          ) : (
+            config.sections.map((section) => (
+              <section key={section.title} className="mb-6 last:mb-0">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">{section.title}</h3>
+                <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {section.content}
+                </p>
+              </section>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -174,9 +212,13 @@ export default function Footer() {
               <span className="text-sm text-muted-foreground">언폴드랩</span>
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="/data-sources" className="transition-colors hover:text-foreground">
+              <button
+                type="button"
+                onClick={() => setModal("data-sources")}
+                className="transition-colors hover:text-foreground"
+              >
                 데이터 출처
-              </Link>
+              </button>
               <button
                 type="button"
                 onClick={() => setModal("privacy")}
