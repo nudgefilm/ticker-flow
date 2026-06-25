@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 function MacroSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
@@ -134,7 +134,7 @@ async function MacroIndicatorList() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {indicators.map((item) => {
         const meta = INDICATOR_META[item.indicator_name];
         const releasedDate = new Date(item.released_at).toLocaleDateString("ko-KR", {
