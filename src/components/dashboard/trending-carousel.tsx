@@ -11,19 +11,23 @@ export type TrendingItem = {
 };
 
 export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   function scroll(dir: "prev" | "next") {
     const el = scrollRef.current;
-    if (!el) return;
+    const wrapper = wrapperRef.current;
+    if (!el || !wrapper) return;
+    // wrapperRef의 실제 렌더링 너비(visible width)만큼 이동
+    const amount = wrapper.getBoundingClientRect().width;
     el.scrollBy({
-      left: (dir === "next" ? 1 : -1) * el.clientWidth,
+      left: (dir === "next" ? 1 : -1) * amount,
       behavior: "smooth",
     });
   }
 
   return (
-    <>
+    <div ref={wrapperRef} className="w-full">
       <div className="flex items-start justify-between">
         <div>
           <h2 className="text-base font-semibold text-white">기업 동향</h2>
@@ -53,7 +57,7 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
 
       <div
         ref={scrollRef}
-        className="mt-4 flex gap-3 overflow-x-auto no-scrollbar"
+        className="mt-4 flex w-full gap-3 overflow-x-auto no-scrollbar"
       >
         {items.map((item) => (
           <div
@@ -75,6 +79,6 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
