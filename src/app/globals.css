@@ -166,12 +166,3 @@
     animation: var(--animate-fade-in);
   }
 }
-
-@keyframes glow-pulse {
-  0%, 100% {
-    text-shadow: 0 0 8px rgba(191,219,254,0.22), 0 0 20px rgba(147,197,253,0.10);
-  }
-  50% {
-    text-shadow: 0 0 14px rgba(191,219,254,0.52), 0 0 30px rgba(147,197,253,0.28);
-  }
-}
