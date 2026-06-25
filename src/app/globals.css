@@ -181,7 +181,6 @@
   }
 }
 
-/* glow-pulse: @layer 밖에 정의하여 Tailwind 레이어 우선순위 충돌 방지 */
-.animate-glow-pulse {
+@utility animate-glow-pulse {
   animation: glow-pulse 3s ease-in-out infinite;
 }
