@@ -63,7 +63,7 @@ const TRIGGERS: Trigger[] = [
   {
     id: "macro",
     label: "경제지표 갱신",
-    desc: "Finnhub에서 경제지표 일정 및 실제 발표값을 수집합니다.",
+    desc: "FRED API에서 GDP, CPI, 실업률, 기준금리, 10년물 국채금리, 소매판매 최신값을 수집합니다.",
     endpoint: "/api/collect/macro",
   },
   {

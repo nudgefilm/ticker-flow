@@ -244,7 +244,32 @@ export default function MyPage() {
           </div>
         </div>
 
-        {/* 7. 계정 관리 */}
+        {/* 7. 데이터 출처 안내 */}
+        <SectionCard label="데이터 출처 안내">
+          <div className="divide-y divide-white/[0.04]">
+            {[
+              { name: "공시 정보", desc: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스" },
+              { name: "뉴스", desc: "Finnhub (Reuters·CNBC·Bloomberg 등 주요 매체 제휴)" },
+              { name: "실적 캘린더", desc: "Finnhub (나스닥·NYSE 상장 기업 실적 발표 일정)" },
+              { name: "경제지표", desc: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI, 금리 등)" },
+              { name: "내부자 거래", desc: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)" },
+            ].map((item) => (
+              <div key={item.name} className="flex items-start gap-3 px-5 py-3.5">
+                <span className="mt-0.5 w-20 shrink-0 text-xs font-medium text-[#cccccc]">
+                  {item.name}
+                </span>
+                <span className="text-xs leading-relaxed text-[#a6a6a6]">{item.desc}</span>
+              </div>
+            ))}
+            <div className="px-5 py-3.5">
+              <p className="text-xs leading-relaxed text-[#555555]">
+                투자 판단의 근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.
+              </p>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* 8. 계정 관리 */}
         <SectionCard label="계정 관리">
           <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
             <div>

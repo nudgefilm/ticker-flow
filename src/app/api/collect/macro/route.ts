@@ -2,83 +2,94 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-interface FinnhubEconomicEvent {
-  actual: number | null;
-  country: string;
-  estimate: number | null;
-  impact: string;
-  prev: number | null;
-  time: string;    // "2024-01-12T13:30:00" or "2024-01-12"
-  unit: string;
-  event: string;   // "US CPI", "Fed Rate Decision" 등
+interface FredObservation {
+  date: string;   // "2024-01-01"
+  value: string;  // "25000.0" or "." for missing
 }
+
+interface FredResponse {
+  observations: FredObservation[];
+}
+
+const FRED_SERIES = [
+  { id: "GDP",      name: "GDP",             source: "BEA" },
+  { id: "CPIAUCSL", name: "CPI",             source: "BLS" },
+  { id: "UNRATE",   name: "실업률",           source: "BLS" },
+  { id: "FEDFUNDS", name: "기준금리",         source: "Fed" },
+  { id: "DGS10",    name: "10년물 국채금리",  source: "Fed" },
+  { id: "RSXFS",    name: "소매판매",         source: "Census" },
+] as const;
 
 export async function GET(req: NextRequest) {
   const authError = await requireCollectAuth(req);
   if (authError) return authError;
 
-  const apiKey = process.env.FINNHUB_API_KEY;
+  const apiKey = process.env.FRED_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "FINNHUB_API_KEY not set" }, { status: 500 });
+    return NextResponse.json({ error: "FRED_API_KEY not set" }, { status: 500 });
   }
 
-  try {
-    const res = await fetch(
-      `https://finnhub.io/api/v1/calendar/economic?token=${apiKey}`
-    );
-    if (!res.ok) throw new Error(`Finnhub macro: HTTP ${res.status}`);
-    const raw = await res.json();
+  const adminClient = createAdminClient();
+  let inserted = 0;
+  let skipped = 0;
 
-    // Finnhub는 배열 또는 {economicCalendar: [...]} 형태로 반환
-    const items: FinnhubEconomicEvent[] = Array.isArray(raw)
-      ? raw
-      : (raw.economicCalendar ?? []);
+  for (const series of FRED_SERIES) {
+    try {
+      const url =
+        `https://api.stlouisfed.org/fred/series/observations` +
+        `?series_id=${series.id}&api_key=${apiKey}&sort_order=desc&limit=2&file_type=json`;
 
-    const adminClient = createAdminClient();
-
-    let inserted = 0;
-    let skipped = 0;
-
-    for (const item of items) {
-      if (!item.event || !item.time) { skipped++; continue; }
-
-      let releasedAt: string;
-      try {
-        releasedAt = new Date(item.time).toISOString();
-      } catch {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error(`[collect/macro] FRED ${series.id}: HTTP ${res.status}`);
         skipped++;
         continue;
       }
 
-      // UNIQUE(indicator_name, released_at): actual 값 업데이트 허용
+      const data: FredResponse = await res.json();
+      const obs = data.observations ?? [];
+      const latest = obs[0];
+      const prev = obs[1];
+
+      // FRED는 결측값을 "."으로 표시
+      if (!latest || latest.value === ".") {
+        skipped++;
+        continue;
+      }
+
+      const value = parseFloat(latest.value);
+      const previousValue =
+        prev && prev.value !== "." ? parseFloat(prev.value) : null;
+      const releasedAt = new Date(latest.date).toISOString();
+
       const { error } = await adminClient.from("macro_indicators").upsert(
         {
-          indicator_name: item.event,
-          value: item.actual ?? null,
-          previous_value: item.prev ?? null,
+          indicator_name: series.name,
+          value,
+          previous_value: previousValue,
           released_at: releasedAt,
-          source: item.country || "Finnhub",
+          source: series.source,
         },
         { onConflict: "indicator_name,released_at" }
       );
 
       if (error) {
-        console.error("[collect/macro] upsert:", error.message);
+        console.error(`[collect/macro] upsert ${series.id}:`, error.message);
         skipped++;
       } else {
         inserted++;
       }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown";
+      console.error(`[collect/macro] ${series.id}:`, message);
+      skipped++;
     }
-
-    return NextResponse.json({
-      ok: true,
-      total: items.length,
-      inserted,
-      skipped,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[collect/macro]", message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
+
+  return NextResponse.json({
+    ok: true,
+    total: FRED_SERIES.length,
+    inserted,
+    skipped,
+  });
 }

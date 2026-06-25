@@ -174,8 +174,8 @@ export default function Footer() {
               <span className="text-sm text-muted-foreground">언폴드랩</span>
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-              <Link href="#pricing" className="transition-colors hover:text-foreground">
-                요금제
+              <Link href="/data-sources" className="transition-colors hover:text-foreground">
+                데이터 출처
               </Link>
               <button
                 type="button"
