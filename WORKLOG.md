@@ -883,6 +883,11 @@ CREATE TABLE stock_prices (
 - `resultSummary()` 함수에 `업데이트 N건`, `에러 N건` 표시 추가
 - Cron 스케줄 테이블에 종목 프로필 항목 추가
 
+### 어드민 트리거 페이지 카드 2열 그리드 배치
+
+- 카드 wrapper: `space-y-3` → `grid grid-cols-1 md:grid-cols-2 gap-4`
+- map 콜백에 `index` 추가, `TRIGGERS.length % 2 !== 0 && index === last` 조건으로 마지막 카드 `md:col-span-2` 자동 처리
+
 ---
 
 ## 다음 작업 예정

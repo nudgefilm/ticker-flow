@@ -219,8 +219,8 @@ export default function TriggerPage() {
         </p>
       </div>
 
-      <div className="space-y-3">
-        {TRIGGERS.map((trigger) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {TRIGGERS.map((trigger, index) => {
           const status   = statuses[trigger.id] ?? "idle";
           const result   = results[trigger.id];
           const lastRun  = lastRuns[trigger.id];
@@ -231,10 +231,12 @@ export default function TriggerPage() {
           const displayStatus: Status =
             status !== "idle" ? status : lastRun ? (lastRun.status === "running" ? "running" : lastRun.status === "done" ? "done" : "error") : "idle";
 
+          const isLastOdd = TRIGGERS.length % 2 !== 0 && index === TRIGGERS.length - 1;
+
           return (
             <div
               key={trigger.id}
-              className="rounded-xl border border-white/[0.08] bg-[#111111] px-5 py-4"
+              className={`rounded-xl border border-white/[0.08] bg-[#111111] px-5 py-4${isLastOdd ? " md:col-span-2" : ""}`}
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
