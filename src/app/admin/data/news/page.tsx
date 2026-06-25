@@ -1,14 +1,43 @@
-import { IconCircleCheck } from "@tabler/icons-react";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const newsLog = [
-  { date: "2026-06-24", time: "10:30", count: 847, sources: "Finnhub" },
-  { date: "2026-06-23", time: "10:25", count: 712, sources: "Finnhub" },
-  { date: "2026-06-22", time: "10:31", count: 803, sources: "Finnhub" },
-  { date: "2026-06-21", time: "10:28", count: 654, sources: "Finnhub" },
-  { date: "2026-06-20", time: "10:30", count: 891, sources: "Finnhub" },
-];
+export const dynamic = "force-dynamic";
 
-export default function NewsDataPage() {
+export default async function NewsDataPage() {
+  const admin = createAdminClient();
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const todayStart = `${todayStr}T00:00:00`;
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [totalRes, todayRes, detailRes] = await Promise.all([
+    admin.from("news").select("*", { count: "exact", head: true }),
+    admin.from("news").select("*", { count: "exact", head: true }).gte("published_at", todayStart),
+    admin.from("news").select("published_at, source").gte("published_at", sevenDaysAgo).order("published_at", { ascending: false }),
+  ]);
+
+  const totalCount = totalRes.count ?? 0;
+  const todayCount = todayRes.count ?? 0;
+  const rows = detailRes.data ?? [];
+
+  const byDate: Record<string, number> = {};
+  const bySource: Record<string, number> = {};
+
+  for (const row of rows) {
+    const date = row.published_at.slice(0, 10);
+    byDate[date] = (byDate[date] ?? 0) + 1;
+
+    const src = row.source ?? "기타";
+    bySource[src] = (bySource[src] ?? 0) + 1;
+  }
+
+  const dailyRows = Object.entries(byDate)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 7);
+
+  const sourceRows = Object.entries(bySource).sort(([, a], [, b]) => b - a);
+  const sevenDayTotal = rows.length;
+
   return (
     <div className="space-y-6">
       <div>
@@ -18,9 +47,9 @@ export default function NewsDataPage() {
 
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "마지막 수집 시각", value: "2026-06-24 10:30" },
-          { label: "오늘 수집 건수", value: "847건" },
-          { label: "데이터 소스", value: "Finnhub" },
+          { label: "총 수집 건수", value: totalCount.toLocaleString() + "건" },
+          { label: "오늘 수집 건수", value: todayCount.toLocaleString() + "건" },
+          { label: "최근 7일", value: sevenDayTotal.toLocaleString() + "건" },
         ].map((card) => (
           <div key={card.label} className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
             <p className="text-xs text-[#a6a6a6]">{card.label}</p>
@@ -31,33 +60,60 @@ export default function NewsDataPage() {
 
       <div className="rounded-xl border border-white/[0.08] bg-[#111111] overflow-hidden">
         <div className="px-4 py-3 border-b border-white/[0.06]">
-          <h2 className="text-sm font-medium text-white">수집 이력 (최근 5일)</h2>
+          <h2 className="text-sm font-medium text-white">소스별 분류 (최근 7일)</h2>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">소스</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">건수</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">비율</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sourceRows.length === 0 ? (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-center text-[#a6a6a6] text-xs">수집된 뉴스가 없습니다</td>
+              </tr>
+            ) : (
+              sourceRows.map(([src, count]) => (
+                <tr key={src} className="border-b border-white/[0.04] hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3 text-white">{src}</td>
+                  <td className="px-4 py-3 text-white">{count.toLocaleString()}건</td>
+                  <td className="px-4 py-3 text-[#a6a6a6]">
+                    {sevenDayTotal > 0 ? ((count / sevenDayTotal) * 100).toFixed(1) : "0.0"}%
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.08] bg-[#111111] overflow-hidden">
+        <div className="px-4 py-3 border-b border-white/[0.06]">
+          <h2 className="text-sm font-medium text-white">날짜별 수집 건수 (최근 7일)</h2>
         </div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06]">
               <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">날짜</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">시각</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">수집 건수</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">소스</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">상태</th>
             </tr>
           </thead>
           <tbody>
-            {newsLog.map((row, i) => (
-              <tr key={i} className="border-b border-white/[0.04] hover:bg-[#1a1a1a] transition-colors">
-                <td className="px-4 py-3 text-white">{row.date}</td>
-                <td className="px-4 py-3 text-[#a6a6a6]">{row.time}</td>
-                <td className="px-4 py-3 text-white">{row.count.toLocaleString()}건</td>
-                <td className="px-4 py-3 text-[#a6a6a6]">{row.sources}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1.5">
-                    <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
-                    <span className="text-green-400 text-xs">정상</span>
-                  </div>
-                </td>
+            {dailyRows.length === 0 ? (
+              <tr>
+                <td colSpan={2} className="px-4 py-6 text-center text-[#a6a6a6] text-xs">수집된 뉴스가 없습니다</td>
               </tr>
-            ))}
+            ) : (
+              dailyRows.map(([date, count]) => (
+                <tr key={date} className="border-b border-white/[0.04] hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3 text-white">{date}</td>
+                  <td className="px-4 py-3 text-white">{count.toLocaleString()}건</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
