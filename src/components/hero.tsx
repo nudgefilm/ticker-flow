@@ -84,9 +84,11 @@ export default async function Hero() {
         <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
           나스닥 모니터링 대시보드
           <br />
-          <span className="relative inline-block">
-            <span className="absolute -inset-3 animate-pulse rounded-full bg-blue-400/50 blur-2xl" />
-            <span className="relative">티커플로우</span>
+          <span
+            className="text-blue-400"
+            style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.7))" }}
+          >
+            티커플로우
           </span>
         </h1>
 
