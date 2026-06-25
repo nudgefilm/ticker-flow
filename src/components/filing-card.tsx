@@ -50,7 +50,7 @@ export default function FilingCard({
   url,
 }: FilingCardProps) {
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-5">
+    <div className="flex flex-col space-y-3 rounded-lg border border-border bg-card p-5">
       {/* 배지 + 시각 */}
       <div className="flex items-center justify-between">
         <FilingBadge color={badgeColor} label={badgeLabel} />
@@ -80,7 +80,7 @@ export default function FilingCard({
       )}
 
       {/* SEC 원문 링크 */}
-      <div className="flex justify-end">
+      <div className="mt-auto flex justify-end">
         <a
           href={url ?? "#"}
           target={url ? "_blank" : undefined}
