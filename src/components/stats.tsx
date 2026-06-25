@@ -1,10 +1,31 @@
-const stats = [
-  { value: "500+", label: "커버 종목" },
-  { value: "15분 이내", label: "변화 알림" },
-  { value: "최근 7일", label: "주요 변화 추적" },
-];
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export default function Stats() {
+export const revalidate = 3600;
+
+function formatStat(n: number | null): string {
+  if (n == null) return "—";
+  if (n >= 10000) return `${Math.floor(n / 10000)}만+`;
+  if (n >= 1000)  return `${Math.floor(n / 1000)}천+`;
+  return `${n}+`;
+}
+
+export default async function Stats() {
+  const admin = createAdminClient();
+
+  const [tickersRes, filingsRes, newsRes, macroRes] = await Promise.all([
+    admin.from("tickers").select("*", { count: "exact", head: true }),
+    admin.from("filings").select("*", { count: "exact", head: true }),
+    admin.from("news").select("*", { count: "exact", head: true }),
+    admin.from("macro_indicators").select("*", { count: "exact", head: true }),
+  ]);
+
+  const stats = [
+    { value: formatStat(tickersRes.count), label: "모니터링 기업" },
+    { value: formatStat(filingsRes.count), label: "수집 공시" },
+    { value: formatStat(newsRes.count),    label: "수집 뉴스" },
+    { value: formatStat(macroRes.count),   label: "경제지표" },
+  ];
+
   return (
     <section className="border-y border-border py-12">
       <div className="mx-auto max-w-6xl px-6">

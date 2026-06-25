@@ -476,6 +476,44 @@ CREATE TABLE institutional_holdings (
 
 ---
 
+## 2026-06-25 · 세션 12
+
+### 랜딩 페이지 실 데이터 연동
+
+**구조 변경**
+- `src/app/page.tsx`: "use client" 제거 → 서버 컴포넌트로 전환
+  - useState(showLogin) 로직을 `src/components/landing-shell.tsx` 클라이언트 컴포넌트로 분리
+  - Hero, RecentChanges, Stats가 서버 컴포넌트로 동작 가능해짐
+- `src/components/landing-shell.tsx` 신규 생성: Navbar + LoginModal 상태 관리
+
+**`src/components/hero.tsx` → 서버 컴포넌트**
+- 최신 공시 2건 (summary_kr 있는 것) Supabase 조회
+- form_type → 배지 색상/한국어 라벨 변환 (10-K, 10-Q, 8-K, Form 4 등)
+- event_type → 한국어 이벤트명 변환 (CEO 교체, 자사주 매입 등)
+- filed_at → 상대적 시간 표시 (오늘 HH:MM KST, 어제, N일 전)
+- 실 데이터 2건 미만 시 기존 정적 카드 폴백
+- `revalidate = 1800` (30분마다 재검증)
+
+**`src/components/filing-card.tsx` 개선**
+- `keyNumbers?: string` 선택적 prop으로 변경 (없으면 해당 섹션 미표시)
+- `url?: string` prop 추가 → SEC 원문 링크 실제 URL 연결
+
+**`src/components/recent-changes.tsx` → 서버 컴포넌트**
+- 최근 7일 공시 중 summary_kr 있는 것 최대 6건 조회
+- 우선순위: event_type 있는 것(ceo_change, buyback, insider_trade, ma, guidance 등) 먼저, 이후 최신순
+- 배지: event_type 기반 색상 분류 (purple: 임원교체, amber: 내부자/자사주, blue: 가이던스/M&A, green: 보고서)
+- 회사명 tickers 테이블 별도 조회
+- 카드 레이아웃: 2열 (sm) → 3열 (lg)
+- `revalidate = 1800`
+
+**`src/components/stats.tsx` → 서버 컴포넌트**
+- 4개 count 쿼리 병렬 실행: tickers, filings, news, macro_indicators
+- 숫자 포맷: 1만 이상 → "N만+", 1천 이상 → "N천+", 이하 → "N+"
+- 4항목 표시: 모니터링 기업, 수집 공시, 수집 뉴스, 경제지표
+- `revalidate = 3600`
+
+---
+
 ## 다음 작업 예정
 - Supabase에 `analyst_ratings`, `institutional_holdings` 테이블 생성 후 `pnpm gen:types` 실행
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)

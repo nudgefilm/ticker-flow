@@ -34,8 +34,9 @@ interface FilingCardProps {
   company: string;
   event?: string;
   summary: string;
-  keyNumbers: string;
+  keyNumbers?: string;
   time: string;
+  url?: string;
 }
 
 export default function FilingCard({
@@ -46,6 +47,7 @@ export default function FilingCard({
   summary,
   keyNumbers,
   time,
+  url,
 }: FilingCardProps) {
   return (
     <div className="space-y-3 rounded-lg border border-border bg-card p-5">
@@ -70,15 +72,19 @@ export default function FilingCard({
       {/* 요약 */}
       <p className="text-sm leading-relaxed text-muted-foreground">{summary}</p>
 
-      {/* 핵심 수치 */}
-      <div className="rounded border border-border bg-secondary/50 px-3 py-2 text-sm tabular-nums text-foreground">
-        {keyNumbers}
-      </div>
+      {/* 핵심 수치 (선택) */}
+      {keyNumbers && (
+        <div className="rounded border border-border bg-secondary/50 px-3 py-2 text-sm tabular-nums text-foreground">
+          {keyNumbers}
+        </div>
+      )}
 
       {/* SEC 원문 링크 */}
       <div className="flex justify-end">
         <a
-          href="#"
+          href={url ?? "#"}
+          target={url ? "_blank" : undefined}
+          rel={url ? "noopener noreferrer" : undefined}
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           SEC 원문 →

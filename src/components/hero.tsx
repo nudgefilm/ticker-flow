@@ -1,7 +1,84 @@
 import Link from "next/link";
+import { createAdminClient } from "@/lib/supabase/admin";
 import FilingCard from "@/components/filing-card";
 
-export default function Hero() {
+export const revalidate = 1800;
+
+type BadgeColor = "blue" | "green" | "amber";
+
+const EVENT_TYPE_KR: Record<string, string> = {
+  ceo_change:    "CEO 교체",
+  cfo_change:    "CFO 교체",
+  buyback:       "자사주 매입",
+  insider_trade: "내부자 거래",
+  ma:            "인수합병",
+  guidance:      "가이던스 변경",
+  contract:      "대규모 계약",
+  dilution:      "증자",
+  bond:          "전환사채",
+};
+
+function getFormTypeBadge(formType: string): { color: BadgeColor; label: string } {
+  const ft = (formType ?? "").toUpperCase().trim();
+  if (ft === "10-K" || ft.startsWith("10-K/")) return { color: "green", label: "10-K 연간보고서" };
+  if (ft === "10-Q" || ft.startsWith("10-Q/")) return { color: "green", label: "10-Q 분기보고서" };
+  if (ft === "8-K" || ft.startsWith("8-K/")) return { color: "blue", label: "8-K 주요이벤트" };
+  if (ft === "4" || ft === "4/A") return { color: "amber", label: "Form 4 내부자거래" };
+  if (ft.startsWith("DEF 14A") || ft.startsWith("DEF14A")) return { color: "blue", label: "위임장 설명서" };
+  if (ft.startsWith("SC 13")) return { color: "amber", label: `${formType} 지분신고` };
+  if (ft.startsWith("S-")) return { color: "amber", label: `${formType} 증권신고` };
+  return { color: "blue", label: formType };
+}
+
+function formatRelativeTime(isoString: string): string {
+  const now = new Date();
+  const date = new Date(isoString);
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) {
+    const kstDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
+    const h = kstDate.getUTCHours().toString().padStart(2, "0");
+    const m = kstDate.getUTCMinutes().toString().padStart(2, "0");
+    return `오늘 ${h}:${m} KST`;
+  }
+  if (diffDays === 1) return "어제";
+  return `${diffDays}일 전`;
+}
+
+export default async function Hero() {
+  const admin = createAdminClient();
+
+  const { data } = await admin
+    .from("filings")
+    .select("ticker, form_type, summary_kr, filed_at, url, event_type")
+    .not("summary_kr", "is", null)
+    .order("filed_at", { ascending: false })
+    .limit(2);
+
+  type FilingRow = {
+    ticker: string;
+    form_type: string;
+    summary_kr: string | null;
+    filed_at: string;
+    url: string | null;
+    event_type: string | null;
+  };
+  const filings = (data ?? []) as unknown as FilingRow[];
+
+  // 회사명 조회
+  const nameMap = new Map<string, string>();
+  if (filings.length > 0) {
+    const { data: tickerRows } = await admin
+      .from("tickers")
+      .select("ticker, name_kr, name_en")
+      .in("ticker", filings.map((f) => f.ticker));
+    for (const t of tickerRows ?? []) {
+      nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+    }
+  }
+
+  const showRealData = filings.length >= 2;
+
   return (
     <section className="mx-auto max-w-6xl px-6 pb-20 pt-36 md:pt-40">
       <div className="animate-fade-in flex flex-col items-center text-center">
@@ -22,26 +99,49 @@ export default function Hero() {
           시작하기
         </Link>
 
-        {/* 샘플 카드 2장 */}
+        {/* 공시 샘플 카드 */}
         <div className="mt-16 grid w-full max-w-2xl gap-4 text-left md:grid-cols-2">
-          <FilingCard
-            badgeColor="blue"
-            badgeLabel="8-K 주요이벤트"
-            event="생산 목표 변경"
-            company="TSLA · 테슬라"
-            summary="머스크 CEO, 2026 2분기 생산 목표 하향 조정. 픽업트럭 사이버트럭 생산량을 기존 계획 대비 15% 축소."
-            keyNumbers="생산 목표 -15% · 완공 연기 2027"
-            time="오늘 10:42 KST"
-          />
-          <FilingCard
-            badgeColor="green"
-            badgeLabel="10-Q 분기보고서"
-            event="가이던스 변경"
-            company="NVDA · 엔비디아"
-            summary="2026 회계연도 2분기 데이터센터 매출 $39B 기록. 전분기 대비 21% 성장."
-            keyNumbers="데이터센터 $39B · +21% QoQ"
-            time="어제 06:02 KST"
-          />
+          {showRealData ? (
+            filings.map((filing) => {
+              const badge = getFormTypeBadge(filing.form_type);
+              const event = filing.event_type ? EVENT_TYPE_KR[filing.event_type] : undefined;
+              const companyName = nameMap.get(filing.ticker) ?? filing.ticker;
+              const company = `${filing.ticker} · ${companyName}`;
+              return (
+                <FilingCard
+                  key={`${filing.ticker}-${filing.filed_at}`}
+                  badgeColor={badge.color}
+                  badgeLabel={badge.label}
+                  event={event}
+                  company={company}
+                  summary={filing.summary_kr ?? ""}
+                  time={formatRelativeTime(filing.filed_at)}
+                  url={filing.url ?? undefined}
+                />
+              );
+            })
+          ) : (
+            <>
+              <FilingCard
+                badgeColor="blue"
+                badgeLabel="8-K 주요이벤트"
+                event="생산 목표 변경"
+                company="TSLA · 테슬라"
+                summary="머스크 CEO, 2026 2분기 생산 목표 하향 조정. 픽업트럭 사이버트럭 생산량을 기존 계획 대비 15% 축소."
+                keyNumbers="생산 목표 -15% · 완공 연기 2027"
+                time="오늘 10:42 KST"
+              />
+              <FilingCard
+                badgeColor="green"
+                badgeLabel="10-Q 분기보고서"
+                event="가이던스 변경"
+                company="NVDA · 엔비디아"
+                summary="2026 회계연도 2분기 데이터센터 매출 $39B 기록. 전분기 대비 21% 성장."
+                keyNumbers="데이터센터 $39B · +21% QoQ"
+                time="어제 06:02 KST"
+              />
+            </>
+          )}
         </div>
       </div>
     </section>
