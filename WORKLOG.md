@@ -590,8 +590,39 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-25 · 세션 14
+
+### /api/collect/prices 버그 수정
+
+- **원인 1 — 컬럼명 불일치**: 코드는 `current_price`, `week52_high`, `week52_low`, `week52_return`, `collected_at` 사용 / 실제 테이블: `close`, `date`, `change_pct`, `volume`
+- **원인 2 — Yahoo Finance API 차단**: `query1` 도메인 + 부족한 헤더로 Vercel 서버사이드 요청이 차단됨
+- **수정**: `query2.finance.yahoo.com` + `Referer: https://finance.yahoo.com/` 헤더 추가
+- **저장 방식 변경**: 스냅샷 1행 → 최근 30일 일별 행 (`range=1mo`, `onConflict: "ticker,date"`)
+- **에러 가시성**: HTTP 상태코드·파싱 오류를 `firstError` 필드에 담아 응답에 포함
+- `trigger-buttons.tsx`: 성공 시 `firstError`를 노란색 경고로 표시
+
+### 어드민 홈 스코어링 — 52주 수익률 추가
+
+- `stock_prices` 테이블에서 종목별 최초·최신 종가 조회
+- 기간 수익률 = `(최신 종가 - 최초 종가) / 최초 종가 × 100`
+- 스코어링: 수익률 20% 이상 → +4, 10% 이상 → +2
+- 현재 30일치 데이터 기준으로 동작, 수집이 누적될수록 52주 실값에 근접
+
+---
+
+## 미완료 스코어링 항목 (추후 업데이트)
+
+기업 동향 스코어링에서 아래 항목은 데이터 또는 파싱 고도화 후 반영 예정:
+
+| 항목 | 현황 | 비고 |
+|------|------|------|
+| 어닝서프라이즈 +6 | `actual_eps` 데이터 축적 중 | `earnings-actual` 크론으로 수집 중, 데이터 쌓이면 자동 반영 |
+| 가이던스 공시 파싱 +6 | `filings.event_type = 'guidance'` 파싱 고도화 필요 | EDGAR 8-K 원문에서 가이던스 언급 여부 추출 필요 |
+| 52주 수익률 | `stock_prices` 수집 완료, 스코어링 연결 완료 | 현재 30일 데이터 기준 → 누적 시 52주 근접 |
+
+---
+
 ## 다음 작업 예정
-- Supabase에 `analyst_ratings`, `institutional_holdings`, `stock_prices` 테이블 생성 후 `pnpm gen:types` 실행
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동
