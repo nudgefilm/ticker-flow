@@ -933,6 +933,21 @@ CREATE TABLE stock_prices (
 - reports / contacts 테이블 없음 확인 (supabase.ts)
 - 빈 상태 UI (IconMessage + "문의·신고 기능은 준비 중입니다.") 로 대체
 
+### 종목 프로필 수집 401 에러 근본 수정
+
+**`src/app/api/admin/run/route.ts`**
+- **원인:** `after()` 콜백은 새 fetch 컨텍스트이므로 브라우저 세션 쿠키가 자동 전달되지 않음
+- **이전 접근:** CRON_SECRET 환경변수에 의존 → 미설정 시 모든 트리거 401
+- **수정:** 원본 요청의 `cookie` 헤더를 캡처해 `after()` fetch에 수동 전달
+  ```typescript
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  headers: {
+    Authorization: `Bearer ${cronSecret}`,
+    ...(cookieHeader && { Cookie: cookieHeader }),
+  }
+  ```
+- 이제 CRON_SECRET 없이 어드민 세션 쿠키만으로 인증 통과
+
 ---
 
 ## 다음 작업 예정
