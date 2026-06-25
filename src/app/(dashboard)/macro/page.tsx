@@ -17,6 +17,71 @@ function MacroSkeleton() {
   );
 }
 
+interface IndicatorMeta {
+  unit: string;
+  desc: string;
+  valueType?: "pct_change";  // CPI: 전월 대비 변화율 계산
+}
+
+const INDICATOR_META: Record<string, IndicatorMeta> = {
+  "10년물 국채금리": {
+    unit: "%",
+    desc: "미국 장기 채권 금리. 금리가 오르면 주식시장에 부담이 될 수 있습니다.",
+  },
+  CPI: {
+    unit: "%",
+    desc: "소비자물가지수. 인플레이션(물가 상승) 수준을 나타냅니다.",
+    valueType: "pct_change",
+  },
+  실업률: {
+    unit: "%",
+    desc: "미국 실업률. 낮을수록 고용 시장이 건강한 상태입니다.",
+  },
+  기준금리: {
+    unit: "%",
+    desc: "미국 연준(Fed)의 기준금리. 모든 금리의 기준이 됩니다.",
+  },
+  소매판매: {
+    unit: "백만 달러",
+    desc: "미국 소비자 지출 규모. 경기 흐름을 파악하는 데 활용됩니다.",
+  },
+  GDP: {
+    unit: "십억 달러",
+    desc: "미국 국내총생산. 경제 전체 규모를 나타냅니다.",
+  },
+};
+
+function formatMainValue(
+  name: string,
+  value: number | null,
+  prevValue: number | null
+): string {
+  const meta = INDICATOR_META[name];
+  if (value == null) return "—";
+
+  if (meta?.valueType === "pct_change") {
+    if (prevValue == null) return "—";
+    const change = ((value - prevValue) / prevValue) * 100;
+    const sign = change >= 0 ? "+" : "";
+    return `${sign}${change.toFixed(2)}%`;
+  }
+
+  const formatted = value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (meta?.unit === "%") return `${formatted}%`;
+  if (meta?.unit) return `${formatted} ${meta.unit}`;
+  return formatted;
+}
+
+function formatPrevValue(name: string, prevValue: number | null): string {
+  if (prevValue == null) return "—";
+  const meta = INDICATOR_META[name];
+  const formatted = prevValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (meta?.valueType === "pct_change") return formatted;  // CPI는 이전 지수값 그대로
+  if (meta?.unit === "%") return `${formatted}%`;
+  if (meta?.unit) return `${formatted} ${meta.unit}`;
+  return formatted;
+}
+
 async function MacroIndicatorList() {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -46,14 +111,10 @@ async function MacroIndicatorList() {
     );
   }
 
-  function fmtValue(v: number | null): string {
-    if (v == null) return "—";
-    return v.toLocaleString("en-US", { maximumFractionDigits: 4 });
-  }
-
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {indicators.map((item) => {
+        const meta = INDICATOR_META[item.indicator_name];
         const releasedDate = new Date(item.released_at).toLocaleDateString("ko-KR", {
           year: "numeric",
           month: "long",
@@ -66,10 +127,15 @@ async function MacroIndicatorList() {
             className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4"
           >
             {/* 지표명 + 출처 배지 */}
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-white">{item.indicator_name}</p>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white">{item.indicator_name}</p>
+                {meta?.desc && (
+                  <p className="mt-0.5 text-xs leading-relaxed text-[#666666]">{meta.desc}</p>
+                )}
+              </div>
               {item.source && (
-                <span className="shrink-0 rounded-[4px] bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a6a6a6]">
+                <span className="mt-0.5 shrink-0 rounded-[4px] bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a6a6a6]">
                   {item.source}
                 </span>
               )}
@@ -77,12 +143,12 @@ async function MacroIndicatorList() {
 
             {/* 현재값 */}
             <p className="text-2xl font-semibold tabular-nums text-white">
-              {fmtValue(item.value)}
+              {formatMainValue(item.indicator_name, item.value, item.previous_value)}
             </p>
 
             {/* 이전값 + 발표일 */}
             <div className="flex items-center justify-between text-xs text-[#a6a6a6]">
-              <span>이전 {fmtValue(item.previous_value)}</span>
+              <span>이전 {formatPrevValue(item.indicator_name, item.previous_value)}</span>
               <span>{releasedDate}</span>
             </div>
           </div>
