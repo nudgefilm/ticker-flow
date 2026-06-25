@@ -9,12 +9,13 @@ import {
 } from "@tabler/icons-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
+import AdminTriggerButtons from "./trigger-buttons";
 
 export const dynamic = "force-dynamic";
 
 // ─── 내부 관심 종목 ────────────────────────────────────────────────────────────
 
-type SignalTag = "내부자 매수" | "가이던스" | "실적 상회" | "활동 활발";
+type SignalTag = "내부자 매수" | "가이던스" | "실적 상회" | "활동 활발" | "애널리스트" | "기관 보유";
 
 function tagStyle(tag: SignalTag): string {
   switch (tag) {
@@ -22,6 +23,8 @@ function tagStyle(tag: SignalTag): string {
     case "가이던스":   return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
     case "실적 상회":  return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
     case "활동 활발":  return "bg-white/[0.06] text-[#a6a6a6] border border-white/[0.08]";
+    case "애널리스트": return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
+    case "기관 보유":  return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
   }
 }
 
@@ -29,8 +32,13 @@ async function AdminWatchSection() {
   const admin = createAdminClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const currentQuarter = (() => {
+    const now = new Date();
+    const q = Math.floor(now.getUTCMonth() / 3) + 1;
+    return `${now.getUTCFullYear()}Q${q}`;
+  })();
 
-  const [insiderRes, guidanceRes, earningsRes, filingsRes, newsRes] = await Promise.all([
+  const [insiderRes, guidanceRes, earningsRes, filingsRes, newsRes, analystRes, holdingsRes] = await Promise.all([
     admin.from("insider_trades")
       .select("ticker")
       .eq("transaction_type", "buy")
@@ -55,6 +63,16 @@ async function AdminWatchSection() {
       .select("ticker")
       .gte("published_at", sevenDaysAgo)
       .limit(1000),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any).from("analyst_ratings")
+      .select("ticker, buy, strong_buy")
+      .gt("buy", 0)
+      .limit(500),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any).from("institutional_holdings")
+      .select("ticker")
+      .eq("quarter", currentQuarter)
+      .limit(500),
   ]);
 
   const insiderBuySet = new Set((insiderRes.data ?? []).map((r) => r.ticker));
@@ -75,9 +93,29 @@ async function AdminWatchSection() {
     newsCount.set(r.ticker, (newsCount.get(r.ticker) ?? 0) + 1);
   }
 
-  const signalTickers = new Set([...insiderBuySet, ...guidanceSet, ...epsBeatSet]);
+  // analyst: buy+strong_buy > 0 인 종목
+  const analystSet = new Set<string>();
+  for (const r of (analystRes.data ?? []) as { ticker: string; buy: number; strong_buy: number }[]) {
+    if ((r.buy ?? 0) + (r.strong_buy ?? 0) > 0) analystSet.add(r.ticker);
+  }
 
-  const candidates = Array.from(signalTickers)
+  // 13F: 현재 분기 기관 보유 종목
+  const in13FSet = new Set<string>(
+    ((holdingsRes.data ?? []) as { ticker: string }[]).map((r) => r.ticker)
+  );
+
+  // 후보 풀: 공시 or 뉴스 활동 있는 모든 종목 + 시그널 종목
+  const allTickers = new Set([
+    ...filingsCount.keys(),
+    ...newsCount.keys(),
+    ...insiderBuySet,
+    ...guidanceSet,
+    ...epsBeatSet,
+    ...analystSet,
+    ...in13FSet,
+  ]);
+
+  const candidates = Array.from(allTickers)
     .map((ticker) => {
       const fc = filingsCount.get(ticker) ?? 0;
       const nc = newsCount.get(ticker) ?? 0;
@@ -85,8 +123,15 @@ async function AdminWatchSection() {
       if (insiderBuySet.has(ticker)) tags.push("내부자 매수");
       if (guidanceSet.has(ticker))   tags.push("가이던스");
       if (epsBeatSet.has(ticker))    tags.push("실적 상회");
+      if (analystSet.has(ticker))    tags.push("애널리스트");
+      if (in13FSet.has(ticker))      tags.push("기관 보유");
       if (fc + nc >= 5)              tags.push("활동 활발");
-      const score = tags.length * 10 + Math.min(fc + nc, 20);
+      const score =
+        fc * 2 +
+        nc +
+        (insiderBuySet.has(ticker) ? 5 : 0) +
+        (analystSet.has(ticker) ? 3 : 0) +
+        (in13FSet.has(ticker) ? 3 : 0);
       return { ticker, tags, filings: fc, news: nc, score };
     })
     .sort((a, b) => b.score - a.score)
@@ -297,17 +342,18 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* 내부 관심 종목 */}
+      {/* 기업 동향 (내부용) */}
       <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
         <div className="mb-4">
-          <h2 className="text-sm font-medium text-white">내부 관심 종목</h2>
+          <h2 className="text-sm font-medium text-white">기업 동향 (내부용)</h2>
           <p className="mt-1 text-xs text-[#a6a6a6]">
-            내부자 매수 + 가이던스 상향 공시 + 실적 예상치 상회 + 뉴스 활발도 증가 종목을 종합해 선정합니다.
+            공시×2 + 뉴스×1 + 내부자 매수+5 + 애널리스트+3 + 기관 보유+3 기준으로 상위 10개 종목을 선정합니다.
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
           <AdminWatchSection />
         </Suspense>
+        <AdminTriggerButtons />
       </div>
     </div>
   );

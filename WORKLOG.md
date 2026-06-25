@@ -398,9 +398,86 @@
 - 점수 산정: 신호당 +10점 + 활동 수 (최대 +20), 상위 10개 표시
 - 어드민 전용, 유저 페이지에 미노출
 
+### 와치리스트 기업 동향 섹션 개선 (세션 10 계속)
+
+- 와치리스트 등록 여부 무관하게 전체 종목 대상으로 변경 (제외 로직 제거)
+- 섹션명: "오늘의 기업 동향" → "기업 동향"
+- 가로 스크롤바 제거, 좌/우 화살표 버튼 추가 (`TrendingCarousel` 클라이언트 컴포넌트)
+- 자동 슬라이드: 3초 간격 카드 1칸 이동, 마우스 오버 시 정지, 끝에서 처음으로 복귀
+- 수동 버튼: 화면 넓이 단위 스크롤
+- 팩트 문장 자동 생성 (Haiku 호출 없이 코드 조합):
+  - 우선순위: 실적 예정일 > 내부자 매수 > 내부자 매도 > 공시(form_type 포함) > 뉴스
+  - 최대 2문장, 활동 없으면 "최근 7일 주요 활동 없음"
+- 섹션 구분선: `border-t border-white/[0.06]`으로 와치리스트와 시각적 분리
+
+### 어드민 홈 더미 데이터 → 실 데이터 교체
+
+- KPI 카드: 총 가입자수, Pro 전환율 Supabase 실 쿼리 연동
+- 오늘 현황: 신규 가입, 공시 수집, 뉴스 수집 실 데이터 표시
+
+---
+
+## 2026-06-25 · 세션 11
+
+### 데이터 수집 파이프라인 추가
+
+**신규 API 라우트**
+
+- `src/app/api/collect/analyst/route.ts`
+  - Finnhub `/stock/recommendation` API 연동
+  - 와치리스트 + 최근 7일 공시 종목 대상 (1회 최대 15개, 300ms 딜레이)
+  - `analyst_ratings` 테이블 upsert (`onConflict: "ticker,period"`)
+  - 가장 최근 3개 기간 보관
+
+- `src/app/api/collect/13f/route.ts`
+  - SEC EDGAR 5개 대형 기관 13F-HR 공시 파싱
+  - 기관 목록: Berkshire Hathaway, Appaloosa, Baupost, Tiger Global, Gates Foundation
+  - EDGAR 제출 내역 → 최신 13F-HR → 파일 인덱스 → infotable XML 다운로드
+  - XML 네임스페이스 허용 정규식으로 파싱
+  - 회사명 정규화(normalizeName) → tickers.name_en 인메모리 매핑 → ticker 추출
+  - `institutional_holdings` 테이블 upsert (`onConflict: "ticker,institution_name,quarter"`)
+  - 분기 레이블: "YYYY-MM-DD" → "YYYYQN" (예: 2023Q4)
+
+**Vercel Cron 추가 (vercel.json)**
+
+- `/api/collect/analyst`: 매일 00:25 UTC (`"25 0 * * *"`)
+- `/api/collect/13f`: 매주 월요일 00:30 UTC (`"30 0 * * 1"`)
+
+### 어드민 홈 — 기업 동향 (내부용) 섹션 개선
+
+- 섹션명: "내부 관심 종목" → "기업 동향 (내부용)"
+- 신규 태그 추가: 애널리스트(teal), 기관 보유(amber)
+- 스코어링 개편: `fc×2 + nc + 내부자매수+5 + 애널리스트+3 + 기관보유+3`
+- 후보 풀 확장: 시그널 종목만 → 공시+뉴스 활동 모든 종목 + 시그널 종목 통합
+- 수동 수집 버튼 추가 (`AdminTriggerButtons` 클라이언트 컴포넌트):
+  - 형광 에메랄드 테두리 박스 내 버튼 2개 (애널리스트 추천, 13F)
+  - 실행 중 스피너, 완료/에러 상태 표시, 저장/스킵 건수 출력
+
+**Supabase 테이블 생성 필요 (미완료 — 유저 직접 실행)**
+
+```sql
+CREATE TABLE analyst_ratings (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticker text NOT NULL, period text NOT NULL,
+  buy integer DEFAULT 0, hold integer DEFAULT 0, sell integer DEFAULT 0,
+  strong_buy integer DEFAULT 0, strong_sell integer DEFAULT 0,
+  collected_at timestamptz DEFAULT now(),
+  UNIQUE(ticker, period)
+);
+CREATE TABLE institutional_holdings (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  ticker text, institution_name text NOT NULL,
+  shares bigint, value bigint, quarter text NOT NULL, filed_at date,
+  UNIQUE(ticker, institution_name, quarter)
+);
+```
+
+- 테이블 생성 후 `pnpm gen:types` 실행 필요
+
 ---
 
 ## 다음 작업 예정
+- Supabase에 `analyst_ratings`, `institutional_holdings` 테이블 생성 후 `pnpm gen:types` 실행
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 결제 연동 (구독 관리, 결제 내역)
 - Resend 이메일 알림 연동

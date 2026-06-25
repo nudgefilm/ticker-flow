@@ -21,6 +21,14 @@
       "schedule": "20 0 * * *"
     },
     {
+      "path": "/api/collect/analyst",
+      "schedule": "25 0 * * *"
+    },
+    {
+      "path": "/api/collect/13f",
+      "schedule": "30 0 * * 1"
+    },
+    {
       "path": "/api/translate",
       "schedule": "7 * * * *"
     },
