@@ -20,7 +20,7 @@ function MacroSkeleton() {
 interface IndicatorMeta {
   unit: string;
   desc: string;
-  valueType?: "pct_change";  // CPI: 전월 대비 변화율 계산
+  valueType?: "pct_change" | "million_to_eok" | "billion_to_jo_eok";
 }
 
 const INDICATOR_META: Record<string, IndicatorMeta> = {
@@ -42,14 +42,30 @@ const INDICATOR_META: Record<string, IndicatorMeta> = {
     desc: "미국 연준(Fed)의 기준금리. 모든 금리의 기준이 됩니다.",
   },
   소매판매: {
-    unit: "백만 달러",
+    unit: "",
     desc: "미국 소비자 지출 규모. 경기 흐름을 파악하는 데 활용됩니다.",
+    valueType: "million_to_eok",
   },
   GDP: {
-    unit: "십억 달러",
+    unit: "",
     desc: "미국 국내총생산. 경제 전체 규모를 나타냅니다.",
+    valueType: "billion_to_jo_eok",
   },
 };
+
+// 백만 달러 → 억 달러 (÷100, 반올림)
+function fmtMillionToEok(v: number): string {
+  const eok = Math.round(v / 100);
+  return `${eok.toLocaleString("ko-KR")}억 달러`;
+}
+
+// 십억 달러 → X조 Y,ZZZ억 달러
+function fmtBillionToJoEok(v: number): string {
+  const jo = Math.floor(v / 1000);
+  const eok = Math.round((v % 1000) * 10);
+  if (jo === 0) return `${eok.toLocaleString("ko-KR")}억 달러`;
+  return `${jo}조 ${eok.toLocaleString("ko-KR")}억 달러`;
+}
 
 function formatMainValue(
   name: string,
@@ -65,6 +81,8 @@ function formatMainValue(
     const sign = change >= 0 ? "+" : "";
     return `${sign}${change.toFixed(2)}%`;
   }
+  if (meta?.valueType === "million_to_eok") return fmtMillionToEok(value);
+  if (meta?.valueType === "billion_to_jo_eok") return fmtBillionToJoEok(value);
 
   const formatted = value.toLocaleString("en-US", { maximumFractionDigits: 2 });
   if (meta?.unit === "%") return `${formatted}%`;
@@ -75,8 +93,12 @@ function formatMainValue(
 function formatPrevValue(name: string, prevValue: number | null): string {
   if (prevValue == null) return "—";
   const meta = INDICATOR_META[name];
+  if (meta?.valueType === "pct_change") {
+    return prevValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  }
+  if (meta?.valueType === "million_to_eok") return fmtMillionToEok(prevValue);
+  if (meta?.valueType === "billion_to_jo_eok") return fmtBillionToJoEok(prevValue);
   const formatted = prevValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  if (meta?.valueType === "pct_change") return formatted;  // CPI는 이전 지수값 그대로
   if (meta?.unit === "%") return `${formatted}%`;
   if (meta?.unit) return `${formatted} ${meta.unit}`;
   return formatted;
