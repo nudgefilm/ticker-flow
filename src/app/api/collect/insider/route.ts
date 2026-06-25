@@ -113,8 +113,8 @@ export async function GET(req: NextRequest) {
     watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
     filingRows?.forEach((r) => tickerSet.add(r.ticker));
 
-    // 4. Vercel 60초 내 처리 범위 제한 (ticker당 ~500ms → 40개 ≈ 20초)
-    tickers = [...tickerSet].slice(0, 40);
+    // 4. 1회 실행당 최대 10개 (ticker당 ~500ms → 10개 ≈ 5초, Vercel 60초 내 여유)
+    tickers = [...tickerSet].slice(0, 10);
   }
 
   let totalInserted = 0;
