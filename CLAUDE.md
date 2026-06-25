@@ -504,7 +504,43 @@ TickerFlow는 두 개의 디자인 시스템을 사용한다.
 
 ---
 
-# 16. 작업 기록 규칙
+# 16. Supabase 타입 운영 원칙
+
+## 자동 생성 타입
+
+`src/types/supabase.ts`는 Supabase CLI로 자동 생성한다. 수동으로 편집하지 않는다.
+
+```bash
+pnpm gen:types   # 또는 npm run gen:types
+```
+
+스키마 변경 후 반드시 재생성한다.
+
+## 조인 쿼리 타입 패턴
+
+Supabase `.select()` 조인 쿼리 결과는 PostgREST 내부 타입과 불일치가 발생할 수 있다.
+이 경우 항상 아래 패턴을 사용한다.
+
+```typescript
+// 직접 선언한 타입 (nullable 필수)
+type MyRow = {
+  ticker: string;
+  tickers: { name_kr: string | null; name_en: string | null } | null;
+};
+
+// 캐스트는 항상 as unknown as MyType[]
+const rows = (data ?? []) as unknown as MyRow[];
+```
+
+규칙
+
+* 조인된 관계 필드는 항상 `| null`을 붙인다.
+* `as MyType[]` 직접 캐스트는 사용하지 않는다. `as unknown as MyType[]`만 사용한다.
+* 생성된 `Database` 타입은 세 클라이언트(`server.ts`, `client.ts`, `admin.ts`)에 모두 주입한다.
+
+---
+
+# 17. 작업 기록 규칙
 
 매 작업 세션 완료 후 반드시 WORKLOG.md를 업데이트한다.
 
