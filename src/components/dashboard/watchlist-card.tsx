@@ -23,7 +23,7 @@ export default function WatchlistCard({
   const { ticker, company, newFilings, earningsDday, newNews } = stock;
 
   return (
-    <article className="rounded-[6px] border border-emerald-400/30 bg-[#111111] p-5 shadow shadow-emerald-400/[0.06]">
+    <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
       {/* Row 1: 티커 + 회사명 + 삭제 */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">

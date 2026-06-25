@@ -109,7 +109,7 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
         {items.map((item) => (
           <div
             key={item.ticker}
-            className="w-44 shrink-0 rounded-[6px] border border-white/[0.08] bg-[#111111] p-4"
+            className="w-44 shrink-0 rounded-[6px] border border-emerald-400/50 bg-[#111111] p-4 shadow shadow-emerald-400/[0.12]"
           >
             <span className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
               {item.ticker}
