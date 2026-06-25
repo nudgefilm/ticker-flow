@@ -11,6 +11,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TickerFlow",
   description: "나스닥 모니터링 대시보드",
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({
