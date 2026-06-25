@@ -82,7 +82,7 @@ export default async function Hero() {
     <section className="mx-auto max-w-6xl px-6 pb-20 pt-36 md:pt-40">
       <div className="animate-fade-in flex flex-col items-center text-center">
         <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-          나스닥 모니터링 대시보드
+          나스닥 모니터링
           <br />
           <span
             className="text-blue-400"
