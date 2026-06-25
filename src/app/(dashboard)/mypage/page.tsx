@@ -247,7 +247,7 @@ export default function MyPage() {
         {/* 7. 데이터 출처 안내 */}
         <SectionCard label="데이터 출처 안내">
           <div className="px-5 pb-5">
-            <div className="overflow-hidden rounded-[4px] border border-white/[0.08]">
+            <div className="overflow-hidden rounded-[4px] border border-white/20">
               {[
                 { name: "공시 정보", desc: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스" },
                 { name: "뉴스", desc: "Finnhub (Reuters·CNBC·Bloomberg 등 주요 매체 제휴)" },
@@ -257,7 +257,7 @@ export default function MyPage() {
               ].map((item) => (
                 <div
                   key={item.name}
-                  className="flex items-start gap-3 border-b border-white/[0.06] px-4 py-2.5 last:border-0"
+                  className="flex items-start gap-3 border-b border-white/10 px-4 py-2.5 last:border-0"
                 >
                   <span className="mt-0.5 w-20 shrink-0 text-xs font-medium text-white">
                     {item.name}
