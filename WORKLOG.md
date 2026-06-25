@@ -831,6 +831,11 @@ CREATE TABLE stock_prices (
 - 비활성 탭: `text-[#a6a6a6] hover:text-white`
 - prop 명 `activeType` → `currentType`
 
+### SVG textAnchor 타입 에러 수정
+
+- **원인:** `labels` 배열의 `anchor` 필드가 `string` 타입으로 추론되어 SVG `textAnchor` 속성(`"start" | "middle" | "end"`)에 할당 불가
+- **수정:** `labels` 배열 타입을 `{ i: number; anchor: "start" | "middle" | "end" }[]`로 명시
+
 ---
 
 ## 다음 작업 예정

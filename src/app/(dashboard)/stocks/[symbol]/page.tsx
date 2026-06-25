@@ -71,7 +71,7 @@ function PriceChart({ prices }: { prices: { date: string; close: number }[] }) {
   const fill = `${pts} ${toX(prices.length - 1).toFixed(1)},${CHART_H} ${toX(0).toFixed(1)},${CHART_H}`;
 
   const n = prices.length;
-  const labels = [
+  const labels: { i: number; anchor: "start" | "middle" | "end" }[] = [
     { i: 0, anchor: "start" },
     { i: Math.floor((n - 1) / 2), anchor: "middle" },
     { i: n - 1, anchor: "end" },
