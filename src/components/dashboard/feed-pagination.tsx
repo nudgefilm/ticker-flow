@@ -20,12 +20,21 @@ function buildPages(current: number, last: number): PageEntry[] {
   return pages;
 }
 
+function pageHref(p: number, type?: string) {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  params.set("page", String(p));
+  return `?${params.toString()}`;
+}
+
 export default function FeedPagination({
   page = 1,
   lastPage = 1,
+  type,
 }: {
   page?: number;
   lastPage?: number;
+  type?: string;
 }) {
   if (lastPage <= 1) return null;
 
@@ -34,7 +43,7 @@ export default function FeedPagination({
   return (
     <div className="flex items-center justify-center gap-1">
       <Link
-        href={`?page=${Math.max(1, page - 1)}`}
+        href={pageHref(Math.max(1, page - 1), type)}
         aria-disabled={page === 1}
         className={cn(
           "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",
@@ -52,7 +61,7 @@ export default function FeedPagination({
         ) : (
           <Link
             key={p}
-            href={`?page=${p}`}
+            href={pageHref(p, type)}
             className={cn(
               "min-w-8 rounded-[6px] px-2 py-1.5 text-center text-sm transition-colors",
               p === page
@@ -66,7 +75,7 @@ export default function FeedPagination({
       )}
 
       <Link
-        href={`?page=${Math.min(lastPage, page + 1)}`}
+        href={pageHref(Math.min(lastPage, page + 1), type)}
         aria-disabled={page === lastPage}
         className={cn(
           "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",

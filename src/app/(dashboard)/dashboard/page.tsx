@@ -36,15 +36,28 @@ function FilingFeedSkeleton() {
 
 // ─── 실 데이터 피드 ────────────────────────────────────────────────────────────
 
-async function FilingFeedList({ page }: { page: number }) {
+async function FilingFeedList({ page, type }: { page: number; type: string }) {
   const supabase = await createClient();
   const offset = (page - 1) * PAGE_SIZE;
 
-  const { data, count, error } = await supabase
+  const base = supabase
     .from("filings")
     .select("id, ticker, form_type, title, summary_kr, filed_at, url", { count: "exact" })
-    .order("filed_at", { ascending: false })
-    .range(offset, offset + PAGE_SIZE - 1);
+    .order("filed_at", { ascending: false });
+
+  const filtered =
+    type === "8-K"  ? base.like("form_type", "8-K%") :
+    type === "10-K" ? base.like("form_type", "10-K%") :
+    type === "10-Q" ? base.like("form_type", "10-Q%") :
+    type === "4"    ? base.like("form_type", "4%") :
+    type === "other" ? base
+      .not("form_type", "like", "8-K%")
+      .not("form_type", "like", "10-K%")
+      .not("form_type", "like", "10-Q%")
+      .not("form_type", "like", "4%")
+    : base;
+
+  const { data, count, error } = await filtered.range(offset, offset + PAGE_SIZE - 1);
 
   if (error) {
     return (
@@ -77,7 +90,7 @@ async function FilingFeedList({ page }: { page: number }) {
         ))}
       </div>
       <div className="mt-6">
-        <FeedPagination page={page} lastPage={lastPage} />
+        <FeedPagination page={page} lastPage={lastPage} type={type || undefined} />
       </div>
     </>
   );
@@ -88,19 +101,20 @@ async function FilingFeedList({ page }: { page: number }) {
 export default function DashboardPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: { page?: string; type?: string };
 }) {
   const page = Math.max(1, parseInt(searchParams?.page ?? "1") || 1);
+  const type = searchParams?.type ?? "";
 
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="공시 피드" />
       <div className="mt-6">
-        <FilingFilterBar />
+        <FilingFilterBar activeType={type} />
       </div>
       <div className="mt-5">
         <Suspense fallback={<FilingFeedSkeleton />}>
-          <FilingFeedList page={page} />
+          <FilingFeedList page={page} type={type} />
         </Suspense>
       </div>
       <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
