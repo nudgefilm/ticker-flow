@@ -17,20 +17,6 @@
   }
 }
 
-@keyframes glow-pulse {
-  0%, 100% {
-    text-shadow:
-      0 0  8px rgba(191, 219, 254, 0.22),
-      0 0 20px rgba(147, 197, 253, 0.10);
-  }
-  50% {
-    text-shadow:
-      0 0 14px rgba(191, 219, 254, 0.52),
-      0 0 30px rgba(147, 197, 253, 0.28),
-      0 0 48px rgba(96,  165, 250, 0.14);
-  }
-}
-
 /* ─── Theme mapping (Tailwind v4 → CSS vars) ────────────────────────────── */
 
 @theme inline {
@@ -181,6 +167,11 @@
   }
 }
 
-@utility animate-glow-pulse {
-  animation: glow-pulse 3s ease-in-out infinite;
+@keyframes glow-pulse {
+  0%, 100% {
+    text-shadow: 0 0 8px rgba(191,219,254,0.22), 0 0 20px rgba(147,197,253,0.10);
+  }
+  50% {
+    text-shadow: 0 0 14px rgba(191,219,254,0.52), 0 0 30px rgba(147,197,253,0.28);
+  }
 }

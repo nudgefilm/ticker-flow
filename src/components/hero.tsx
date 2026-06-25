@@ -84,7 +84,7 @@ export default async function Hero() {
         <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
           나스닥 모니터링 대시보드
           <br />
-          <span className="animate-glow-pulse">티커플로우</span>
+          <span style={{ animation: 'glow-pulse 3s ease-in-out infinite' }}>티커플로우</span>
         </h1>
 
         <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
