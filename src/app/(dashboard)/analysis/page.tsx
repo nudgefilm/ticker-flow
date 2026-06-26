@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import ProGate from "@/components/dashboard/pro-gate";
-import StockCombobox from "@/components/dashboard/insights/stock-combobox";
 import StockHeader from "@/components/dashboard/insights/stock-header";
 import ChangeSummary from "@/components/dashboard/insights/change-summary";
 import RecentFilings from "@/components/dashboard/insights/recent-filings";
@@ -62,12 +61,10 @@ export default async function AnalysisPage({
   const supabase = await createClient();
   const { symbol: symbolParam } = await searchParams;
 
-  // 현재 유저
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 와치리스트 (StockCombobox 옵션용)
   type WatchlistRow = {
     ticker: string;
     tickers: { name_kr: string | null; name_en: string | null } | null;
@@ -87,7 +84,6 @@ export default async function AnalysisPage({
     name: r.tickers?.name_kr ?? r.tickers?.name_en ?? r.ticker,
   }));
 
-  // 심볼 결정: searchParams → 와치리스트 첫 번째 → "AAPL"
   const symbol = symbolParam || watchlistRows[0]?.ticker || "AAPL";
 
   const now = new Date();
@@ -95,7 +91,6 @@ export default async function AnalysisPage({
   const d90  = new Date(now.getTime() - 90  * 86_400_000).toISOString();
   const d180 = new Date(now.getTime() - 180 * 86_400_000).toISOString().slice(0, 10);
 
-  // 6개 쿼리 병렬 실행
   const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes] =
     await Promise.all([
       supabase
@@ -136,23 +131,21 @@ export default async function AnalysisPage({
         .limit(4),
     ]);
 
-  const tickerRow   = tickerRes.data;
-  const prices      = pricesRes.data  ?? [];
-  const filingRows  = filingsRes.data ?? [];
-  const newsRows    = newsRes.data    ?? [];
-  const insiderRows = insiderRes.data ?? [];
+  const tickerRow    = tickerRes.data;
+  const prices       = pricesRes.data   ?? [];
+  const filingRows   = filingsRes.data  ?? [];
+  const newsRows     = newsRes.data     ?? [];
+  const insiderRows  = insiderRes.data  ?? [];
   const earningsRows = earningsRes.data ?? [];
 
-  // ── filings 변환 ──────────────────────────────────────────────────────────
+  // ── filings ───────────────────────────────────────────────────────────────
   const filings: Filing[] = filingRows.map((f) => {
     const eventLabel = f.event_type ? (EVENT_TYPE_LABELS[f.event_type] ?? f.event_type) : undefined;
     const ft = f.form_type;
     const importance =
-      f.event_type
-        ? "high"
-        : ft.startsWith("10-K") || ft.startsWith("10-Q")
-        ? "medium"
-        : "low";
+      f.event_type ? "high"
+      : ft.startsWith("10-K") || ft.startsWith("10-Q") ? "medium"
+      : "low";
     return {
       id: f.id,
       date: f.filed_at.slice(0, 10),
@@ -164,7 +157,7 @@ export default async function AnalysisPage({
     };
   });
 
-  // ── insider 변환 ──────────────────────────────────────────────────────────
+  // ── insider ───────────────────────────────────────────────────────────────
   const insiderTrades: InsiderTrade[] = insiderRows.map((t) => ({
     id: t.id,
     name: t.name ?? "—",
@@ -186,7 +179,7 @@ export default async function AnalysisPage({
     trades: insiderTrades,
   };
 
-  // ── earnings 변환 ─────────────────────────────────────────────────────────
+  // ── earnings ──────────────────────────────────────────────────────────────
   const earnings: EarningsRow[] = earningsRows.map((e) => ({
     id: e.id,
     quarter: deriveQuarter(e.report_date),
@@ -195,7 +188,7 @@ export default async function AnalysisPage({
     reportDate: e.report_date,
   }));
 
-  // ── news 변환 ─────────────────────────────────────────────────────────────
+  // ── news ──────────────────────────────────────────────────────────────────
   const news: NewsItem[] = newsRows.map((n) => ({
     id: n.id,
     headline: n.headline,
@@ -205,7 +198,7 @@ export default async function AnalysisPage({
     summaryKr: n.summary_kr,
   }));
 
-  // ── 타임라인 통합 ─────────────────────────────────────────────────────────
+  // ── timeline ──────────────────────────────────────────────────────────────
   const timeline: TimelineEvent[] = [
     ...filingRows.map((f) => ({
       id: `f-${f.id}`,
@@ -244,7 +237,6 @@ export default async function AnalysisPage({
 
   // ── 주가 정보 ─────────────────────────────────────────────────────────────
   const lastPrice = prices[prices.length - 1];
-  const lastClose = lastPrice?.close ?? null;
   const lastDate  = lastPrice?.date ?? null;
   const updatedAt = lastDate
     ? (() => {
@@ -259,7 +251,7 @@ export default async function AnalysisPage({
     exchange: tickerRow?.exchange ?? null,
     sector: tickerRow?.sector ?? null,
     industry: tickerRow?.industry ?? null,
-    lastClose,
+    lastClose: lastPrice?.close ?? null,
     updatedAt,
     marketCap: "준비 중",
     summary: {
@@ -286,48 +278,39 @@ export default async function AnalysisPage({
           title="공시 인사이트는 Pro 전용 기능입니다"
           description="SEC 공시를 기반으로 기업의 주요 변화를 모니터링합니다.&#10;공시 요약, 내부자 거래, 실적, 뉴스를 하나의 화면에서 확인하세요."
         >
-          {/* 종목 선택 */}
-          <div className="mb-4">
-            <StockCombobox value={symbol} options={watchlistOptions} />
-          </div>
+          <div className="flex flex-col gap-6">
+            {/* 종목 헤더 + 콤보박스 + 5 통계 */}
+            <StockHeader
+              ticker={symbol}
+              name={insight.name}
+              exchange={insight.exchange}
+              sector={insight.sector}
+              industry={insight.industry}
+              updatedAt={insight.updatedAt}
+              summary={insight.summary}
+              comboboxOptions={watchlistOptions}
+            />
 
-          {/* 종목 헤더 */}
-          <StockHeader
-            ticker={symbol}
-            name={insight.name}
-            exchange={insight.exchange}
-            sector={insight.sector}
-            lastClose={insight.lastClose}
-            updatedAt={insight.updatedAt}
-          />
+            {/* 최근 공시 (필터 탭 포함) */}
+            <RecentFilings filings={insight.filings} />
 
-          {/* 요약 카드 */}
-          <div className="mt-4">
-            <ChangeSummary summary={insight.summary} />
-          </div>
-
-          {/* 메인 그리드 */}
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            {/* 왼쪽 2/3 */}
-            <div className="flex flex-col gap-4 lg:col-span-2">
-              <RecentFilings filings={insight.filings} />
-              <RelatedNews news={insight.news} />
-            </div>
-            {/* 오른쪽 1/3 */}
-            <div className="flex flex-col gap-4">
-              <InsiderTrading insider={insight.insider} />
-              <EarningsFlow earnings={insight.earnings} />
-            </div>
-          </div>
-
-          {/* 타임라인 */}
-          <div className="mt-4">
+            {/* 변화 타임라인 */}
             <ChangeTimeline events={insight.timeline} />
-          </div>
 
-          {/* 데이터 출처 */}
-          <div className="mt-4">
-            <DataSources />
+            {/* 내부자 거래 전체 테이블 */}
+            <InsiderTrading insider={insight.insider} />
+
+            {/* 실적 흐름 */}
+            <EarningsFlow earnings={insight.earnings} />
+
+            {/* 관련 뉴스 */}
+            <RelatedNews news={insight.news} />
+
+            {/* 주요 변화 요약 */}
+            <ChangeSummary events={insight.timeline} />
+
+            {/* 데이터 출처 */}
+            <DataSources updatedAt={insight.updatedAt} />
           </div>
         </ProGate>
       </div>

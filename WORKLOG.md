@@ -1415,6 +1415,63 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-27 · 세션 33
+
+### /analysis 공시 인사이트 페이지 v0 디자인 전면 적용
+
+**목표:** 이전 세션에서 구현한 분석 페이지 컴포넌트들을 v0 결과물 디자인으로 교체
+
+**수정 파일 7개**
+
+- `src/components/dashboard/insights/stock-combobox.tsx`
+  - lucide-react ChevronsUpDown / Search / Check 아이콘으로 변경
+  - 드롭다운 배경 `bg-[#161616]`, 티커 배지 + 이름 2열 레이아웃
+  - 선택 항목에 파란 Check 아이콘 표시
+  - useMemo로 검색 필터링 최적화
+
+- `src/components/dashboard/insights/stock-header.tsx`
+  - 회사명 + 티커 배지를 상단에, 거래소·섹터·산업을 한 줄 메타로 배치
+  - 우측에 StockCombobox 직접 임베드 (서버 컴포넌트 → 클라이언트 컴포넌트 렌더링)
+  - 하단에 5개 ChangeStat 카드: 최근 공시/주요 변화/최근 뉴스/최근 실적 발표/최근 내부자 거래
+  - props: `industry`, `summary`, `comboboxOptions` 추가 / `lastClose` 제거
+
+- `src/components/dashboard/insights/recent-filings.tsx`
+  - `"use client"` 추가 (필터 탭 상태 관리)
+  - 필터 탭: 전체/8-K/10-Q/10-K/Insider/기타 — 활성: `bg-[#60a5fa] text-[#0a0a0a]`
+  - 날짜 좌측 고정 `w-12` + 공시 내용 우측
+  - formType/eventType 배지 (blue), 원문 링크 인라인
+
+- `src/components/dashboard/insights/change-timeline.tsx`
+  - lucide-react 아이콘 4종 (FileText/Newspaper/UserRound/TrendingUp)
+  - 수직 타임라인 CSS: `pl-8 before:absolute before:left-[11px] before:w-px`
+  - 아이콘 버블: `ring-4 ring-[#111111]`로 수직선과 분리
+  - 카드: `borderLeft: 2px solid {color}` 컬러 구분선
+
+- `src/components/dashboard/insights/insider-trading.tsx`
+  - 3개 StatCard (매수건수 green / 매도건수 red / 총거래규모 blue)
+  - 전체 테이블: 거래일/내부자/직책/구분/수량/금액 6컬럼
+  - `t.value` 포맷: B/M/K 단위 자동 변환
+
+- `src/components/dashboard/insights/related-news.tsx`
+  - `InsightCard` → `SectionCard` 래퍼로 교체
+  - 출처·날짜 인라인 `·` 구분자
+
+- `src/components/dashboard/insights/change-summary.tsx`
+  - 5개 요약 카드 → CheckCircle2 아이콘 체크리스트로 완전 교체
+  - props: `summary: {...}` → `events: TimelineEvent[]`
+  - 타임라인 이벤트 최신 10건, date ASC → DESC 정렬 표시
+
+**`src/app/(dashboard)/analysis/page.tsx`**
+- 섹션 순서 재조정 (v0 순서 적용):
+  StockHeader → RecentFilings → ChangeTimeline → InsiderTrading → EarningsFlow → RelatedNews → ChangeSummary → DataSources
+- StockCombobox 별도 div 제거 (StockHeader에 통합)
+- StockHeader props 업데이트: `industry`, `summary`, `comboboxOptions` 추가 / `lastClose` 제거
+- ChangeSummary에 `events={insight.timeline}` 전달
+
+**빌드 결과:** ✓ Compiled successfully (에러 없음)
+
+---
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)

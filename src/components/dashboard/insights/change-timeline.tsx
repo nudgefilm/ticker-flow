@@ -1,15 +1,35 @@
-import { IconFileText, IconNews, IconUser, IconTrendingUp } from "@tabler/icons-react";
+import { FileText, Newspaper, UserRound, TrendingUp } from "lucide-react";
 import type { TimelineEvent } from "@/lib/insights/types";
-import { InsightCard, EmptyState } from "./ui";
+import { SectionCard } from "./ui";
 
 const KIND_CONFIG = {
-  filing:   { icon: IconFileText,   color: "#60a5fa", label: "공시" },
-  news:     { icon: IconNews,       color: "#34d399", label: "뉴스" },
-  insider:  { icon: IconUser,       color: "#a78bfa", label: "내부자" },
-  earnings: { icon: IconTrendingUp, color: "#fbbf24", label: "실적" },
+  filing: {
+    color: "#60a5fa",
+    bg: "bg-[#60a5fa]/15",
+    Icon: FileText,
+    label: "공시",
+  },
+  news: {
+    color: "#fbbf24",
+    bg: "bg-[#fbbf24]/15",
+    Icon: Newspaper,
+    label: "뉴스",
+  },
+  insider: {
+    color: "#34d399",
+    bg: "bg-[#34d399]/15",
+    Icon: UserRound,
+    label: "내부자",
+  },
+  earnings: {
+    color: "#c084fc",
+    bg: "bg-[#c084fc]/15",
+    Icon: TrendingUp,
+    label: "실적",
+  },
 } as const;
 
-function formatDate(iso: string): string {
+function fmtDate(iso: string): string {
   if (!iso) return "—";
   const [, m, d] = iso.slice(0, 10).split("-");
   return `${parseInt(m)}/${parseInt(d)}`;
@@ -19,50 +39,64 @@ export default function ChangeTimeline({ events }: { events: TimelineEvent[] }) 
   const displayed = events.slice(0, 20);
 
   return (
-    <InsightCard title="변화 타임라인">
+    <SectionCard
+      title="변화 타임라인"
+      description="최근 90일 이벤트 통합 (공시·뉴스·내부자·실적)"
+    >
       {displayed.length === 0 ? (
-        <EmptyState message="최근 활동 내역이 없습니다." />
+        <p className="py-4 text-center text-sm text-[#a6a6a6]">
+          최근 활동 내역이 없습니다.
+        </p>
       ) : (
-        <div className="relative flex flex-col gap-0">
-          {/* 세로 선 */}
-          <div className="absolute left-[19px] top-0 h-full w-px bg-white/[0.06]" />
-
+        <ol className="relative space-y-4 pl-8 before:absolute before:left-[11px] before:top-3 before:bottom-3 before:w-px before:bg-white/[0.08]">
           {displayed.map((ev) => {
-            const { icon: Icon, color, label } = KIND_CONFIG[ev.kind];
+            const cfg = KIND_CONFIG[ev.kind];
+            const { Icon } = cfg;
             return (
-              <div key={ev.id} className="relative flex gap-3 pb-4 last:pb-0">
-                {/* 아이콘 */}
-                <div
-                  className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a0a0a]"
-                  style={{ color }}
+              <li key={ev.id} className="relative">
+                <span
+                  className={`absolute -left-8 top-3 z-10 flex h-6 w-6 items-center justify-center rounded-full ring-4 ring-[#111111] ${cfg.bg}`}
                 >
-                  <Icon size={16} stroke={1.5} />
-                </div>
-
-                {/* 내용 */}
-                <div className="flex flex-1 flex-col gap-0.5 pt-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wide" style={{ color }}>
-                      {label}
+                  <Icon
+                    className="h-3 w-3"
+                    style={{ color: cfg.color }}
+                    strokeWidth={2}
+                  />
+                </span>
+                <div
+                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4"
+                  style={{ borderLeft: `2px solid ${cfg.color}` }}
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <span
+                      className="text-[11px] font-semibold uppercase tracking-wide"
+                      style={{ color: cfg.color }}
+                    >
+                      {cfg.label}
                     </span>
-                    <span className="text-xs text-[#a6a6a6]">{formatDate(ev.date)}</span>
+                    <time className="text-[11px] text-[#a6a6a6]">
+                      {fmtDate(ev.date)}
+                    </time>
                   </div>
-                  <p className="text-sm font-medium text-[#cccccc] line-clamp-1">{ev.title}</p>
+                  <p className="line-clamp-1 text-sm font-medium text-white">
+                    {ev.title}
+                  </p>
                   {ev.description && (
-                    <p className="text-xs leading-relaxed text-[#a6a6a6] line-clamp-2">{ev.description}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[#a6a6a6]">
+                      {ev.description}
+                    </p>
                   )}
                 </div>
-              </div>
+              </li>
             );
           })}
-
-          {events.length > 20 && (
-            <p className="pt-2 text-center text-xs text-[#a6a6a6]">
-              최근 20건 표시 중 (전체 {events.length}건)
-            </p>
-          )}
-        </div>
+        </ol>
       )}
-    </InsightCard>
+      {events.length > 20 && (
+        <p className="mt-4 text-center text-xs text-[#a6a6a6]">
+          최근 20건 표시 중 (전체 {events.length}건)
+        </p>
+      )}
+    </SectionCard>
   );
 }

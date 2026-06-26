@@ -1,108 +1,112 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconChevronDown, IconSearch } from "@tabler/icons-react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 
 interface Option {
   ticker: string;
   name: string;
 }
 
-interface StockComboboxProps {
+interface Props {
   value: string;
   options: Option[];
 }
 
-export default function StockCombobox({ value, options }: StockComboboxProps) {
-  const router = useRouter();
+export default function StockCombobox({ value, options }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const ref = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const filtered =
-    query.trim()
-      ? options.filter(
-          (o) =>
-            o.ticker.toUpperCase().includes(query.toUpperCase()) ||
-            o.name.toLowerCase().includes(query.toLowerCase())
-        )
-      : options;
+  const selected = options.find((s) => s.ticker === value);
 
-  const current = options.find((o) => o.ticker === value);
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return options;
+    return options.filter(
+      (s) =>
+        s.ticker.toLowerCase().includes(q) ||
+        s.name.toLowerCase().includes(q)
+    );
+  }, [query, options]);
 
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
         setQuery("");
       }
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 10);
-  }, [open]);
-
-  function select(ticker: string) {
+  function handleSelect(ticker: string) {
+    router.push("?symbol=" + ticker);
     setOpen(false);
     setQuery("");
-    router.push(`?symbol=${ticker}`);
   }
 
   return (
-    <div className="relative w-full max-w-xs" ref={ref}>
+    <div ref={containerRef} className="relative w-full sm:w-64">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 py-2 text-sm transition-colors hover:bg-[#1a1a1a]"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white outline-none transition-colors hover:border-white/[0.16] focus:border-[#60a5fa]"
       >
-        <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
-          {value}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-xs font-medium text-white">
+            {selected?.ticker ?? value}
+          </span>
+          <span className="truncate text-[#a6a6a6]">
+            {selected?.name ?? "종목 선택"}
+          </span>
         </span>
-        {current && (
-          <span className="flex-1 truncate text-left text-[#a6a6a6]">{current.name}</span>
-        )}
-        <IconChevronDown size={14} stroke={1.5} className="ml-auto shrink-0 text-[#a6a6a6]" />
+        <ChevronsUpDown className="h-4 w-4 shrink-0 text-[#a6a6a6]" />
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full min-w-[260px] overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#0f0f0f] shadow-xl">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2">
-            <IconSearch size={14} stroke={1.5} className="shrink-0 text-[#a6a6a6]" />
+        <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-md border border-white/[0.08] bg-[#161616] shadow-xl">
+          <div className="flex items-center gap-2 border-b border-white/[0.08] px-3 py-2">
+            <Search className="h-4 w-4 text-[#a6a6a6]" />
             <input
-              ref={inputRef}
-              type="text"
+              autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="종목명 또는 티커 검색"
-              className="flex-1 bg-transparent text-sm text-white placeholder-[#666666] outline-none"
+              placeholder="티커 또는 회사명 검색"
+              className="w-full bg-transparent text-sm text-white placeholder:text-[#6b7280] outline-none"
             />
           </div>
-          <div className="max-h-64 overflow-y-auto">
-            {filtered.length === 0 ? (
-              <p className="px-4 py-3 text-sm text-[#a6a6a6]">결과 없음</p>
-            ) : (
-              filtered.map((o) => (
+          <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
+            {results.map((s) => (
+              <li key={s.ticker} role="option" aria-selected={s.ticker === value}>
                 <button
-                  key={o.ticker}
                   type="button"
-                  onClick={() => select(o.ticker)}
-                  className={`flex w-full items-center gap-2 px-3 py-2.5 text-sm transition-colors hover:bg-white/[0.04] ${
-                    o.ticker === value ? "bg-white/[0.04]" : ""
-                  }`}
+                  onClick={() => handleSelect(s.ticker)}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-white/[0.04]"
                 >
-                  <span className="w-14 shrink-0 text-center rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
-                    {o.ticker}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-xs font-medium text-white">
+                      {s.ticker}
+                    </span>
+                    <span className="truncate text-[#a6a6a6]">{s.name}</span>
                   </span>
-                  <span className="truncate text-[#cccccc]">{o.name}</span>
+                  {s.ticker === value && (
+                    <Check className="h-4 w-4 shrink-0 text-[#60a5fa]" />
+                  )}
                 </button>
-              ))
+              </li>
+            ))}
+            {results.length === 0 && (
+              <li className="px-3 py-6 text-center text-sm text-[#a6a6a6]">
+                검색 결과가 없습니다.
+              </li>
             )}
-          </div>
+          </ul>
         </div>
       )}
     </div>
