@@ -10,7 +10,18 @@ export async function requireCollectAuth(req: NextRequest | Request): Promise<Re
 
   // 2. 브라우저 호출: Supabase 세션 + ADMIN_EMAIL 확인
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+
+  console.log("[auth] cookies =", req.headers.get("cookie") ? "YES" : "NO");
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  console.log("[auth] user =", user?.email ?? null);
+  console.log("[auth] error =", error);
+  console.log("[auth] ADMIN_EMAIL =", process.env.ADMIN_EMAIL);
+
   if (user?.email && user.email === process.env.ADMIN_EMAIL) return null;
 
   return Response.json({ error: "Unauthorized" }, { status: 401 });
