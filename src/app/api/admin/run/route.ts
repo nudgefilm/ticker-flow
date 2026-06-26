@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, after } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -50,41 +50,41 @@ export async function GET(req: NextRequest) {
     process.env.NEXT_PUBLIC_SITE_URL ??
     (host.includes("localhost") ? `http://${host}` : `https://${host}`);
   const cronSecret = process.env.CRON_SECRET ?? "";
-  // after()는 새 fetch이므로 세션 쿠키가 자동 전달되지 않음 — 원본 쿠키를 수동으로 전달
   const cookieHeader = req.headers.get("cookie") ?? "";
 
-  // 응답 반환 후 서버 독립 실행
-  after(async () => {
-    try {
-      const res = await fetch(`${baseUrl}${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${cronSecret}`,
-          ...(cookieHeader && { Cookie: cookieHeader }),
-        },
-      });
-      const result: Record<string, unknown> = res.ok
-        ? await res.json().catch(() => ({}))
-        : { ok: false, error: `HTTP ${res.status}` };
+  try {
+    const res = await fetch(`${baseUrl}${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${cronSecret}`,
+        ...(cookieHeader && { Cookie: cookieHeader }),
+      },
+    });
 
-      await (adminClient as any)
-        .from("collect_runs")
-        .update({
-          status: result.ok ? "done" : "error",
-          result,
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
-    } catch (err) {
-      await (adminClient as any)
-        .from("collect_runs")
-        .update({
-          status: "error",
-          error_msg: err instanceof Error ? err.message : "Unknown error",
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
-    }
-  });
+    const result: Record<string, unknown> = res.ok
+      ? await res.json().catch(() => ({}))
+      : { ok: false, error: `HTTP ${res.status}` };
 
-  return NextResponse.json({ ok: true, runId, status: "running" });
+    await (adminClient as any)
+      .from("collect_runs")
+      .update({
+        status: result.ok ? "done" : "error",
+        result,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", runId);
+
+    return NextResponse.json({ ok: true, runId, ...result });
+  } catch (err) {
+    const error_msg = err instanceof Error ? err.message : "Unknown error";
+    await (adminClient as any)
+      .from("collect_runs")
+      .update({
+        status: "error",
+        error_msg,
+        finished_at: new Date().toISOString(),
+      })
+      .eq("id", runId);
+
+    return NextResponse.json({ ok: false, runId, error: error_msg }, { status: 500 });
+  }
 }
