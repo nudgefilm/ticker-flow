@@ -9,20 +9,18 @@ export async function requireCollectAuth(req: NextRequest | Request): Promise<Re
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) return null;
 
   // 2. 브라우저 호출: Supabase 세션 + ADMIN_EMAIL 확인
+  console.log("[AUTH] cookie", !!req.headers.get("cookie"));
+
   const supabase = await createClient();
 
-  console.log("[auth] cookies =", req.headers.get("cookie") ? "YES" : "NO");
+  const { data, error } = await supabase.auth.getUser();
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  console.log("[AUTH] user", data.user);
+  console.log("[AUTH] email", data.user?.email);
+  console.log("[AUTH] error", error);
+  console.log("[AUTH] ADMIN", process.env.ADMIN_EMAIL);
 
-  console.log("[auth] user =", user?.email ?? null);
-  console.log("[auth] error =", error);
-  console.log("[auth] ADMIN_EMAIL =", process.env.ADMIN_EMAIL);
-
-  if (user?.email && user.email === process.env.ADMIN_EMAIL) return null;
+  if (data.user?.email && data.user.email === process.env.ADMIN_EMAIL) return null;
 
   return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
