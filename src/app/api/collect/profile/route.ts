@@ -76,47 +76,35 @@ interface FinnhubProfile {
   marketCapitalization?: number;
 }
 
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
+export interface ProfileCollectResult {
+  ok: boolean;
+  total: number;
+  updated: number;
+  skipped: number;
+  errors: number;
+  firstError: string | null;
+}
 
-  console.log("[profile] header check", {
-    authExists: !!authHeader,
-    authLength: authHeader?.length,
-    authPrefix: authHeader?.slice(0, 15),
-    cronExists: !!cronSecret,
-    cronLength: cronSecret?.length,
-    cronPrefix: cronSecret?.slice(0, 15),
-    match: authHeader === `Bearer ${cronSecret}`,
-  });
-
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runProfileCollect(limit = 20): Promise<ProfileCollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ ok: false, error: "FINNHUB_API_KEY not set" }, { status: 500 });
+    return { ok: false, total: 0, updated: 0, skipped: 0, errors: 1, firstError: "FINNHUB_API_KEY not set" };
   }
 
   const adminClient = createAdminClient();
+  const clampedLimit = Math.min(Math.max(1, isNaN(limit) ? 20 : limit), 50);
 
-  // ?limit=N 파라미터 (기본 20, 최대 50)
-  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") ?? "20", 10);
-  const limit = Math.min(Math.max(1, isNaN(limitParam) ? 20 : limitParam), 50);
-
-  // sector IS NULL인 종목 조회
   const { data: tickerRows, error: fetchErr } = await adminClient
     .from("tickers")
     .select("ticker")
     .is("sector", null)
-    .limit(limit);
+    .limit(clampedLimit);
 
   if (fetchErr) {
-    return NextResponse.json({ ok: false, error: fetchErr.message }, { status: 500 });
+    return { ok: false, total: 0, updated: 0, skipped: 0, errors: 1, firstError: fetchErr.message };
   }
 
   const tickers = (tickerRows ?? []).map((r) => r.ticker);
-
   let updated = 0;
   let skipped = 0;
   let errors = 0;
@@ -164,12 +152,18 @@ export async function GET(req: NextRequest) {
     await new Promise((r) => setTimeout(r, 200));
   }
 
-  return NextResponse.json({
-    ok: true,
-    total: tickers.length,
-    updated,
-    skipped,
-    errors,
-    firstError,
-  });
+  return { ok: true, total: tickers.length, updated, skipped, errors, firstError };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+
+  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") ?? "20", 10);
+  const result = await runProfileCollect(limitParam);
+
+  if (!result.ok) {
+    return NextResponse.json(result, { status: 500 });
+  }
+  return NextResponse.json(result);
 }

@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runProfileCollect } from "@/app/api/collect/profile/route";
 
 // trigger id → 실제 collection 엔드포인트 경로
 const JOB_MAP: Record<string, string> = {
@@ -22,25 +23,8 @@ const JOB_MAP: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET ?? "";
-
-  console.log("[run] header check", {
-    authExists: !!authHeader,
-    authLength: authHeader?.length,
-    authPrefix: authHeader?.slice(0, 15),
-    cronExists: !!cronSecret,
-    cronLength: cronSecret?.length,
-    cronPrefix: cronSecret?.slice(0, 15),
-    match: authHeader === `Bearer ${cronSecret}`,
-  });
-
   const authError = await requireCollectAuth(req);
-  if (authError) {
-    console.log("[run] → requireCollectAuth 실패, 401 반환");
-    return authError;
-  }
-  console.log("[run] → requireCollectAuth 통과");
+  if (authError) return authError;
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
   const endpoint = JOB_MAP[job];
@@ -50,7 +34,6 @@ export async function GET(req: NextRequest) {
 
   const adminClient = createAdminClient();
 
-  // 실행 기록 생성 (status: running)
   const { data: run, error: insertErr } = await (adminClient as any)
     .from("collect_runs")
     .insert({ job_type: job, status: "running" })
@@ -66,41 +49,28 @@ export async function GET(req: NextRequest) {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     (host.includes("localhost") ? `http://${host}` : `https://${host}`);
+  const cronSecret = process.env.CRON_SECRET ?? "";
   const cookieHeader = req.headers.get("cookie") ?? "";
 
-  const collectUrl = `${baseUrl}${endpoint}`;
-  console.log("[run] after() 예약 → collectUrl:", collectUrl);
-  console.log("[run] cronSecret 존재:", !!cronSecret, "len:", cronSecret.length);
-  console.log("[run] cookieHeader 포워딩:", !!cookieHeader);
-
   after(async () => {
-    console.log("[run/after] collect 호출 직전", {
-      collectUrl,
-      headers: {
-        Authorization: `Bearer ${cronSecret}`.slice(0, 20),
-        hasCookie: !!cookieHeader,
-      },
-    });
-
     try {
-      const res = await fetch(collectUrl, {
-        headers: {
-          Authorization: `Bearer ${cronSecret}`,
-          ...(cookieHeader && { Cookie: cookieHeader }),
-        },
-      });
+      let result: Record<string, unknown>;
 
-      console.log("[run/after] fetch 결과", {
-        url: res.url,
-        redirected: res.redirected,
-        status: res.status,
-      });
-
-      const result: Record<string, unknown> = res.ok
-        ? await res.json().catch(() => ({}))
-        : { ok: false, error: `HTTP ${res.status}` };
-
-      console.log("[run/after] result.ok:", result.ok);
+      if (job === "profile") {
+        // HTTP fetch 없이 함수 직접 호출 (Authorization 헤더 전달 불필요)
+        result = await runProfileCollect() as unknown as Record<string, unknown>;
+      } else {
+        const collectUrl = `${baseUrl}${endpoint}`;
+        const res = await fetch(collectUrl, {
+          headers: {
+            Authorization: `Bearer ${cronSecret}`,
+            ...(cookieHeader && { Cookie: cookieHeader }),
+          },
+        });
+        result = res.ok
+          ? await res.json().catch(() => ({}))
+          : { ok: false, error: `HTTP ${res.status}` };
+      }
 
       await (adminClient as any)
         .from("collect_runs")
@@ -112,7 +82,6 @@ export async function GET(req: NextRequest) {
         .eq("id", runId);
     } catch (err) {
       const error_msg = err instanceof Error ? err.message : "Unknown error";
-      console.log("[run/after] 예외:", error_msg);
       await (adminClient as any)
         .from("collect_runs")
         .update({
