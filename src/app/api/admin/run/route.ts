@@ -5,7 +5,7 @@ import {
   type CollectResult,
   type CollectJob,
   type CollectHandler,
-  COLLECT_JOBS,
+  isCollectJob,
   runFilingsCollect,
   runNewsCollect,
   runEarningsCollect,
@@ -47,10 +47,9 @@ export async function GET(req: NextRequest) {
   if (authError) return authError;
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
-  const isCollectJob = (COLLECT_JOBS as readonly string[]).includes(job);
   const fetchEndpoint = FETCH_JOB_MAP[job];
 
-  if (!isCollectJob && !fetchEndpoint) {
+  if (!isCollectJob(job) && !fetchEndpoint) {
     return NextResponse.json({ error: `Unknown job: ${job}` }, { status: 400 });
   }
 
@@ -72,8 +71,8 @@ export async function GET(req: NextRequest) {
     try {
       let result: CollectResult;
 
-      if (isCollectJob) {
-        result = await COLLECT_MAP[job as CollectJob]();
+      if (isCollectJob(job)) {
+        result = await COLLECT_MAP[job]();
       } else {
         const host = req.headers.get("host") ?? "localhost:3000";
         const baseUrl =

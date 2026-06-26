@@ -22,3 +22,7 @@ export const COLLECT_JOBS = [
 export type CollectJob = typeof COLLECT_JOBS[number];
 
 export type CollectHandler = () => Promise<CollectResult>;
+
+export function isCollectJob(job: string): job is CollectJob {
+  return (COLLECT_JOBS as readonly string[]).includes(job);
+}
