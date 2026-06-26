@@ -74,7 +74,14 @@ export async function GET(req: NextRequest) {
   console.log("[run] cookieHeader 포워딩:", !!cookieHeader);
 
   after(async () => {
-    console.log("[run/after] collect 호출 시작:", collectUrl);
+    console.log("[run/after] collect 호출 직전", {
+      collectUrl,
+      headers: {
+        Authorization: `Bearer ${cronSecret}`.slice(0, 20),
+        hasCookie: !!cookieHeader,
+      },
+    });
+
     try {
       const res = await fetch(collectUrl, {
         headers: {
@@ -83,7 +90,11 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      console.log("[run/after] collect 응답 status:", res.status);
+      console.log("[run/after] fetch 결과", {
+        url: res.url,
+        redirected: res.redirected,
+        status: res.status,
+      });
 
       const result: Record<string, unknown> = res.ok
         ? await res.json().catch(() => ({}))
