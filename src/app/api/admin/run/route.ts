@@ -2,18 +2,17 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "@/lib/collect/types";
-import { runFilingsCollect } from "@/app/api/collect/filings/route";
-import { runNewsCollect } from "@/app/api/collect/news/route";
-import { runEarningsCollect } from "@/app/api/collect/earnings/route";
-import { runEarningsActualCollect } from "@/app/api/collect/earnings-actual/route";
-import { runPricesCollect } from "@/app/api/collect/prices/route";
-import { runInsiderCollect } from "@/app/api/collect/insider/route";
-import { runAnalystCollect } from "@/app/api/collect/analyst/route";
-import { run13fCollect } from "@/app/api/collect/13f/route";
-import { runMacroCollect } from "@/app/api/collect/macro/route";
-import { runProfileCollect } from "@/app/api/collect/profile/route";
+import { runFilingsCollect } from "@/lib/collect/filings";
+import { runNewsCollect } from "@/lib/collect/news";
+import { runEarningsCollect, runEarningsActualCollect } from "@/lib/collect/earnings";
+import { runPricesCollect } from "@/lib/collect/prices";
+import { runInsiderCollect } from "@/lib/collect/insider";
+import { runAnalystCollect } from "@/lib/collect/analyst";
+import { run13fCollect } from "@/lib/collect/institutional";
+import { runMacroCollect } from "@/lib/collect/economic";
+import { runProfileCollect } from "@/lib/collect/profile";
 
-// collect job id → 직접 호출 함수 (HTTP fetch 없음)
+// collect job id → 서비스 계층 직접 호출
 const COLLECT_MAP: Record<string, () => Promise<CollectResult>> = {
   "filings":         runFilingsCollect,
   "news":            runNewsCollect,
