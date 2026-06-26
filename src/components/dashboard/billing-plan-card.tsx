@@ -1,12 +1,16 @@
-import { IconCheck } from "@tabler/icons-react";
-import { cn } from "@/lib/utils";
+import { IconCheck } from "@tabler/icons-react"
+import { cn } from "@/lib/utils"
+import CheckoutButton from "@/components/dashboard/checkout-button"
 
 interface BillingPlanCardProps {
-  name: string;
-  price: string;
-  annual?: string;
-  features: string[];
-  featured?: boolean;
+  name: string
+  price: string
+  annual?: string
+  features: string[]
+  featured?: boolean
+  isPro?: boolean
+  userEmail?: string
+  productId?: string
 }
 
 export default function BillingPlanCard({
@@ -15,7 +19,12 @@ export default function BillingPlanCard({
   annual,
   features,
   featured = false,
+  isPro = false,
+  userEmail = "",
+  productId = "",
 }: BillingPlanCardProps) {
+  const isCurrentPlan = featured ? isPro : !isPro
+
   return (
     <div
       className={cn(
@@ -61,12 +70,21 @@ export default function BillingPlanCard({
       {/* CTA */}
       <div className="mt-6 flex flex-col gap-2">
         {featured ? (
-          <>
-            <button className="w-full rounded-[6px] bg-white py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90">
-              Pro 시작하기
+          isCurrentPlan ? (
+            <button
+              disabled
+              className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#a6a6a6]"
+            >
+              현재 Pro 플랜 이용 중
             </button>
-            <p className="text-center text-xs text-[#a6a6a6]">언제든 해지 가능 · 연간 할인 제공</p>
-          </>
+          ) : (
+            <>
+              <CheckoutButton productId={productId} userEmail={userEmail}>
+                Pro 시작하기
+              </CheckoutButton>
+              <p className="text-center text-xs text-[#a6a6a6]">언제든 해지 가능 · 연간 할인 제공</p>
+            </>
+          )
         ) : (
           <button
             disabled
@@ -77,5 +95,5 @@ export default function BillingPlanCard({
         )}
       </div>
     </div>
-  );
+  )
 }

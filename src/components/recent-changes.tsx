@@ -69,35 +69,37 @@ type FilingRow = {
 };
 
 export default async function RecentChanges() {
-  const admin = createAdminClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
-
-  // 이벤트 유형 있는 공시 우선, 최대 20건 가져와 JS에서 정렬
-  const { data } = await admin
-    .from("filings")
-    .select("ticker, form_type, event_type, summary_kr, filed_at")
-    .not("summary_kr", "is", null)
-    .gte("filed_at", sevenDaysAgo)
-    .order("filed_at", { ascending: false })
-    .limit(30);
-
-  const all = (data ?? []) as unknown as FilingRow[];
-
-  // 우선순위 정렬: 지정 event_type 먼저, 그 다음 최신순
-  const priority  = all.filter((r) => r.event_type && PRIORITY_EVENT_TYPES.includes(r.event_type));
-  const remaining = all.filter((r) => !r.event_type || !PRIORITY_EVENT_TYPES.includes(r.event_type));
-  const filings   = [...priority, ...remaining].slice(0, 6);
-
-  // 회사명 조회
+  let filings: FilingRow[] = [];
   const nameMap = new Map<string, string>();
-  if (filings.length > 0) {
-    const { data: tickerRows } = await admin
-      .from("tickers")
-      .select("ticker, name_kr, name_en")
-      .in("ticker", filings.map((f) => f.ticker));
-    for (const t of tickerRows ?? []) {
-      nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+
+  try {
+    const admin = createAdminClient();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+    const { data } = await admin
+      .from("filings")
+      .select("ticker, form_type, event_type, summary_kr, filed_at")
+      .not("summary_kr", "is", null)
+      .gte("filed_at", sevenDaysAgo)
+      .order("filed_at", { ascending: false })
+      .limit(30);
+
+    const all = (data ?? []) as unknown as FilingRow[];
+    const priority  = all.filter((r) => r.event_type && PRIORITY_EVENT_TYPES.includes(r.event_type));
+    const remaining = all.filter((r) => !r.event_type || !PRIORITY_EVENT_TYPES.includes(r.event_type));
+    filings = [...priority, ...remaining].slice(0, 6);
+
+    if (filings.length > 0) {
+      const { data: tickerRows } = await admin
+        .from("tickers")
+        .select("ticker, name_kr, name_en")
+        .in("ticker", filings.map((f) => f.ticker));
+      for (const t of tickerRows ?? []) {
+        nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+      }
     }
+  } catch {
+    // admin 자격증명 없으면 빈 상태로 fallback
   }
 
   // 데이터가 없으면 안내 메시지

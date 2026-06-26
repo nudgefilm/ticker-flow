@@ -60,37 +60,44 @@ function getMockupBadgeClass(formType: string): string {
   return "bg-white/10 text-white/40";
 }
 
+type FilingRow = {
+  id: string;
+  ticker: string;
+  form_type: string;
+  summary_kr: string | null;
+  filed_at: string;
+  url: string | null;
+  event_type: string | null;
+};
+
 export default async function Hero() {
-  const admin = createAdminClient();
-
-  const { data } = await admin
-    .from("filings")
-    .select("id, ticker, form_type, summary_kr, filed_at, url, event_type")
-    .not("summary_kr", "is", null)
-    .order("filed_at", { ascending: false })
-    .limit(3);
-
-  type FilingRow = {
-    id: string;
-    ticker: string;
-    form_type: string;
-    summary_kr: string | null;
-    filed_at: string;
-    url: string | null;
-    event_type: string | null;
-  };
-  const filings = (data ?? []) as unknown as FilingRow[];
-
-  // 회사명 조회
+  let filings: FilingRow[] = [];
   const nameMap = new Map<string, string>();
-  if (filings.length > 0) {
-    const { data: tickerRows } = await admin
-      .from("tickers")
-      .select("ticker, name_kr, name_en")
-      .in("ticker", filings.map((f) => f.ticker));
-    for (const t of tickerRows ?? []) {
-      nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+
+  try {
+    const admin = createAdminClient();
+
+    const { data } = await admin
+      .from("filings")
+      .select("id, ticker, form_type, summary_kr, filed_at, url, event_type")
+      .not("summary_kr", "is", null)
+      .order("filed_at", { ascending: false })
+      .limit(3);
+
+    filings = (data ?? []) as unknown as FilingRow[];
+
+    // 회사명 조회
+    if (filings.length > 0) {
+      const { data: tickerRows } = await admin
+        .from("tickers")
+        .select("ticker, name_kr, name_en")
+        .in("ticker", filings.map((f) => f.ticker));
+      for (const t of tickerRows ?? []) {
+        nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+      }
     }
+  } catch {
+    // admin 자격증명 없으면 더미 데이터로 fallback
   }
 
   const showRealData = filings.length >= 2;

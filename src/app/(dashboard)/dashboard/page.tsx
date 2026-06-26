@@ -3,11 +3,36 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import FilingFilterBar from "@/components/dashboard/filing-filter-bar";
 import FilingFeedCard, { type Filing } from "@/components/dashboard/filing-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import DisclosureTypeChart from "@/components/dashboard/disclosure-type-chart";
+import DisclosureTrendChart from "@/components/dashboard/disclosure-trend-chart";
+import SectorActivityChart from "@/components/dashboard/sector-activity-chart";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
+
+const SECTOR_KR: Record<string, string> = {
+  "Technology": "기술",
+  "Healthcare": "헬스케어",
+  "Financials": "금융",
+  "Consumer Discretionary": "경기소비재",
+  "Industrials": "산업재",
+  "Communication Services": "커뮤니케이션",
+  "Consumer Staples": "필수소비재",
+  "Energy": "에너지",
+  "Utilities": "유틸리티",
+  "Real Estate": "부동산",
+  "Materials": "소재",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  "8-K": "#fbbf24",
+  "10-K": "#60a5fa",
+  "10-Q": "#93c5fd",
+  "Form 4": "#c084fc",
+  "기타": "#6b7280",
+};
 
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
@@ -107,9 +132,94 @@ export default async function DashboardPage({
   const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
   const type = typeParam ?? "all";
 
+  // ── 차트용 집계 데이터 ──────────────────────────────────────────────────────
+  const supabase = await createClient();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [filingsRaw, tickersRaw] = await Promise.all([
+    supabase
+      .from("filings")
+      .select("form_type, filed_at, ticker")
+      .gte("filed_at", thirtyDaysAgo),
+    supabase
+      .from("tickers")
+      .select("ticker, sector")
+      .not("sector", "is", null),
+  ]);
+
+  const allFilings = filingsRaw.data ?? [];
+  const allTickers = tickersRaw.data ?? [];
+
+  // 1. 공시 유형 분포
+  const typeCounts: Record<string, number> = {};
+  for (const f of allFilings) {
+    const key =
+      f.form_type.startsWith("8-K")  ? "8-K"    :
+      f.form_type.startsWith("10-K") ? "10-K"   :
+      f.form_type.startsWith("10-Q") ? "10-Q"   :
+      f.form_type.startsWith("4")    ? "Form 4" :
+      "기타";
+    typeCounts[key] = (typeCounts[key] ?? 0) + 1;
+  }
+
+  const total = allFilings.length;
+  const typeData = Object.entries(typeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value, color: TYPE_COLORS[name] ?? "#6b7280" }));
+
+  // 2. 최근 7일 트렌드
+  const sevenDaysAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const trendMap: Record<string, number> = {};
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    trendMap[key] = 0;
+  }
+
+  for (const f of allFilings) {
+    const d = new Date(f.filed_at);
+    if (d >= sevenDaysAgoDate) {
+      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      if (key in trendMap) trendMap[key] = (trendMap[key] ?? 0) + 1;
+    }
+  }
+
+  const trendData = Object.entries(trendMap).map(([day, count]) => ({ day, count }));
+
+  // 3. 섹터별 공시 활동 (상위 5개)
+  const tickerSectorMap: Record<string, string> = {};
+  for (const t of allTickers) {
+    if (t.ticker && t.sector) tickerSectorMap[t.ticker] = t.sector;
+  }
+
+  const sectorCounts: Record<string, number> = {};
+  for (const f of allFilings) {
+    const sector = tickerSectorMap[f.ticker];
+    if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+  }
+
+  const sectorData = Object.entries(sectorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([sector, count]) => ({
+      sector,
+      sectorKr: SECTOR_KR[sector] ?? sector,
+      count,
+    }));
+
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="공시 피드" />
+
+      {/* 시각화 섹션 */}
+      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <DisclosureTypeChart data={typeData} total={total} />
+        <DisclosureTrendChart data={trendData} />
+        <SectorActivityChart data={sectorData} />
+      </section>
+
+      {/* 필터 탭 + 피드 */}
       <div className="mt-6">
         <FilingFilterBar currentType={type} />
       </div>
@@ -118,6 +228,7 @@ export default async function DashboardPage({
           <FilingFeedList page={page} type={type} />
         </Suspense>
       </div>
+
       <footer className="mt-6 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
         <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>

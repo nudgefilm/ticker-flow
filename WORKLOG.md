@@ -982,10 +982,93 @@ CREATE TABLE stock_prices (
 - filings 쿼리: `id` 필드 추가, `limit(2 → 3)` 확장
 - `revalidate = 1800` 유지
 
+### Resend 이메일 연동
+
+**설치**
+- `pnpm add resend` (v6.14.0)
+
+**이메일 클라이언트**
+- `src/lib/email/resend.ts`: `Resend` 인스턴스 + `FROM` 상수
+
+**템플릿 4종** (`src/lib/email/templates.ts`)
+- `welcomeEmail()`: 환영 이메일 — 서비스 소개 + 주요 기능 3가지 + CTA
+- `proUpgradeEmail()`: Pro 전환 알림 — Pro 기능 5가지 목록 + CTA
+- `inboundForwardEmail()`: 수신 이메일 포워딩 (관리자용)
+- `dailyDigestEmail()`: 일보 다이제스트 — 공시 5건 + 뉴스 5건 + KST 날짜
+
+**API 라우트**
+- `src/app/api/email/welcome/route.ts` — POST `{ email }`, `requireCollectAuth`
+- `src/app/api/email/pro-upgrade/route.ts` — POST `{ email }`, `requireCollectAuth`
+- `src/app/api/webhooks/resend/route.ts` — POST (Resend 수신 웹훅, 인증 없음), nudgefilm@gmail.com으로 포워딩
+- `src/app/api/email/digest/route.ts` — GET/POST, `requireCollectAuth`, Pro 유저 전원 발송
+
+**Vercel Cron**
+- `/api/email/digest` — `0 1 * * *` (매일 01:00 UTC = 10:00 KST)
+
+**어드민 트리거**
+- `src/app/admin/system/trigger/page.tsx`: "일보 다이제스트 발송 (Pro 유저)" 트리거 추가
+- `src/app/api/admin/run/route.ts`: `JOB_MAP["digest"]` 추가
+
+**도메인 설정 (별도 수동 작업 필요)**
+- Resend 도메인 인증: tickerflow.net (Tokyo ap-northeast-1 권장)
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL` 환경변수 등록 (Vercel + .env.local)
+
+### Polar.sh 결제 연동
+
+**설치**
+- `pnpm add @polar-sh/sdk` (v0.48.1)
+
+**웹훅 처리** (`src/app/api/webhooks/polar/route.ts`)
+- `subscription.active` / `subscription.created` → `profiles.plan = 'pro'` 업데이트 + Pro 전환 이메일 발송
+- `subscription.canceled` / `subscription.revoked` → `profiles.plan = 'free'` 업데이트
+- `order.paid` → 로그만 (추가 처리 없음)
+- POLAR_WEBHOOK_SECRET 설정 시 HMAC-SHA256 서명 검증
+- 페이로드: `data.user.email` 또는 `data.customer.email`
+
+**체크아웃 API** (`src/app/api/polar/checkout/route.ts`)
+- POST `{ productId, userEmail }` → Polar `/v1/checkouts` 호출 → `{ checkoutUrl }` 반환
+- 로그인 세션 필수 (Supabase auth 확인)
+- `success_url`: `/billing?success=true`
+
+**클라이언트 버튼** (`src/components/dashboard/checkout-button.tsx`)
+- "use client" — 로딩 상태, 에러 메시지 표시
+- `handleCheckout()`: POST `/api/polar/checkout` → `window.location.href` 이동
+
+**billing 페이지** (`src/app/(dashboard)/billing/page.tsx`)
+- 서버 컴포넌트 전환 (`export const dynamic = "force-dynamic"`)
+- `createClient()` + `createAdminClient()`로 현재 유저 plan 조회
+- `?success=true` 쿼리 파라미터 시 성공 배너 표시
+- Pro 플랜이면 "현재 Pro 플랜 이용 중" 버튼 비활성화
+
+**컴포넌트 업데이트**
+- `billing-current.tsx`: plan/email/productId props 수신, Free일 때만 업그레이드 버튼
+- `billing-plan-card.tsx`: isPro/userEmail/productId props 수신, 상태별 버튼 분기
+
+**필요 환경변수**
+- `POLAR_ACCESS_TOKEN` (기존)
+- `POLAR_WEBHOOK_SECRET` (Polar 웹훅 Signing Secret)
+- `POLAR_PRODUCT_ID_MONTHLY` (Pro 월간 상품 ID)
+
+### 공시 피드 상단 시각화 섹션 추가
+
+**신규 컴포넌트 3종**
+- `src/components/dashboard/disclosure-type-chart.tsx`: 유형 분포 도넛 차트 (conic-gradient, 범례 포함)
+- `src/components/dashboard/disclosure-trend-chart.tsx`: 최근 7일 바 차트 (일별 건수)
+- `src/components/dashboard/sector-activity-chart.tsx`: 섹터별 수평 바 차트 (상위 5개)
+
+**`src/app/(dashboard)/dashboard/page.tsx` 수정**
+- 차트용 집계 쿼리 2개 추가 (`filings`, `tickers`) — 기존 피드 쿼리와 독립적으로 실행
+- JS 집계 3종:
+  - 유형 분포: form_type 카테고리별 건수 → 퍼센트 변환 (8-K/#fbbf24, 10-K/#60a5fa, 10-Q/#93c5fd, Form 4/#c084fc, 기타/#6b7280)
+  - 7일 트렌드: 날짜별 건수 (빈 날짜 0으로 초기화)
+  - 섹터 활동: tickerSectorMap 빌드 후 섹터별 건수 상위 5개, SECTOR_KR 한국어 매핑
+- 시각화 섹션(`md:grid-cols-3`)을 FilingFilterBar 위에 배치
+- SECTOR_KR 매핑 sectors/page.tsx와 동일하게 유지
+
 ---
 
 ## 다음 작업 예정
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
-- Polar.sh 결제 연동 (구독 관리, 결제 내역)
-- Resend 이메일 알림 연동
+- Polar.sh 환경변수 등록 후 결제 플로우 테스트
+- Resend 도메인 인증 후 이메일 발송 테스트

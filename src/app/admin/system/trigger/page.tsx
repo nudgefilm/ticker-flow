@@ -104,6 +104,11 @@ const TRIGGERS: Trigger[] = [
     label: "종목 프로필 수집 (Finnhub)",
     desc: "sector, industry가 없는 종목을 Finnhub에서 조회해 업데이트합니다. 최대 50종목.",
   },
+  {
+    id: "digest",
+    label: "일보 다이제스트 발송 (Pro 유저)",
+    desc: "Pro 플랜 유저에게 오늘의 주요 공시·뉴스를 이메일로 발송합니다.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -318,6 +323,7 @@ export default function TriggerPage() {
             { name: "실적 어닝서프라이즈",  schedule: "매일 00:35 UTC (09:35 KST)", path: "/api/collect/earnings-actual" },
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
             { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
+            { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

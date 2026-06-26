@@ -10,21 +10,30 @@ function formatStat(n: number | null): string {
 }
 
 export default async function Stats() {
-  const admin = createAdminClient();
-
-  const [tickersRes, filingsRes, newsRes, macroRes] = await Promise.all([
-    admin.from("tickers").select("*", { count: "exact", head: true }),
-    admin.from("filings").select("*", { count: "exact", head: true }),
-    admin.from("news").select("*", { count: "exact", head: true }),
-    admin.from("macro_indicators").select("*", { count: "exact", head: true }),
-  ]);
-
-  const stats = [
-    { value: formatStat(tickersRes.count), label: "모니터링 기업" },
-    { value: formatStat(filingsRes.count), label: "수집 공시" },
-    { value: formatStat(newsRes.count),    label: "수집 뉴스" },
-    { value: formatStat(macroRes.count),   label: "경제지표" },
+  let stats = [
+    { value: "—", label: "모니터링 기업" },
+    { value: "—", label: "수집 공시" },
+    { value: "—", label: "수집 뉴스" },
+    { value: "—", label: "경제지표" },
   ];
+
+  try {
+    const admin = createAdminClient();
+    const [tickersRes, filingsRes, newsRes, macroRes] = await Promise.all([
+      admin.from("tickers").select("*", { count: "exact", head: true }),
+      admin.from("filings").select("*", { count: "exact", head: true }),
+      admin.from("news").select("*", { count: "exact", head: true }),
+      admin.from("macro_indicators").select("*", { count: "exact", head: true }),
+    ]);
+    stats = [
+      { value: formatStat(tickersRes.count), label: "모니터링 기업" },
+      { value: formatStat(filingsRes.count), label: "수집 공시" },
+      { value: formatStat(newsRes.count),    label: "수집 뉴스" },
+      { value: formatStat(macroRes.count),   label: "경제지표" },
+    ];
+  } catch {
+    // admin 자격증명 없으면 기본값("—") 유지
+  }
 
   return (
     <section className="border-y border-border py-12">
