@@ -2,6 +2,9 @@ import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function requireCollectAuth(req: NextRequest | Request): Promise<Response | null> {
+  console.log("[COLLECT RAW AUTH]", req.headers.get("authorization"));
+  console.log("[COLLECT RAW COOKIE]", !!req.headers.get("cookie"));
+
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
 
