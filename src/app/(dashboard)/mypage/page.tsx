@@ -117,24 +117,11 @@ export default function MyPage() {
         {/* 2. 구독 플랜 */}
         <SectionCard label="구독 플랜">
           {isPro ? (
-            <>
-              <InfoRow label="현재 플랜">
-                <span className="rounded-[4px] bg-[#3b82f6] px-2 py-0.5 text-xs font-medium text-white">
-                  Pro
-                </span>
-              </InfoRow>
-              <InfoRow label="결제 정보">
-                <span className="text-[#a6a6a6]">Polar.sh 연동 후 제공 예정</span>
-              </InfoRow>
-              <div className="px-5 py-4">
-                <a
-                  href="mailto:support@tickerflow.net?subject=Pro 플랜 해지 요청"
-                  className="text-sm text-[#a6a6a6] underline underline-offset-2 transition-colors hover:text-[#cccccc]"
-                >
-                  플랜 해지 문의 →
-                </a>
-              </div>
-            </>
+            <InfoRow label="현재 플랜">
+              <span className="rounded-[4px] bg-[#3b82f6] px-2 py-0.5 text-xs font-medium text-white">
+                Pro
+              </span>
+            </InfoRow>
           ) : (
             <>
               <InfoRow label="현재 플랜">Free</InfoRow>

@@ -1317,6 +1317,18 @@ CREATE TABLE stock_prices (
   - 우: `NewsTrendChart` + `NewsSectorChart` (flex-col gap-4)
 - 기존 필터바·피드·면책 문구 유지
 
+## 2026-06-27 · 세션 29
+
+### /mypage 구독 플랜 섹션 정리
+
+**`src/app/(dashboard)/mypage/page.tsx`**
+- Pro 유저 상태에서 "결제 정보 — Polar.sh 연동 후 제공 예정" InfoRow 제거
+- Pro 유저 상태에서 "플랜 해지 문의 →" mailto 링크 (`mailto:support@tickerflow.net?subject=Pro 플랜 해지 요청`) 제거
+- Pro 유저 구독 플랜 섹션은 "현재 플랜: Pro 배지" 한 행만 표시
+- 해지 방법은 `/billing` 페이지의 Polar.sh 포털 링크로 통일 (별도 안내 불필요)
+
+---
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
