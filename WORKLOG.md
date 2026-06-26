@@ -1248,6 +1248,28 @@ CREATE TABLE stock_prices (
 - 하단 면책 문구 3줄 유지
 - 기존 BillingCurrent / BillingPlanCard 컴포넌트 의존 제거 (인라인 구현)
 
+---
+
+## 2026-06-27 · 세션 26
+
+### billing 페이지 플랜 비교 UI 개편
+
+**`src/components/dashboard/billing-plans-client.tsx`** (신규)
+- `"use client"` — 탭 상태(`useState`) 필요
+- 2열 그리드 (Free 카드 | Pro 카드)
+- Free 카드: 와치리스트(최대 5종목), 공시 피드, 뉴스 피드, 실적 캘린더, 종목 스냅샷, 경제지표
+- Pro 카드: 월간 / 연간 탭 스위처 (`bg-[#1a1a1a]` 탭 바)
+  - 월간 탭: ₩14,900 / 월, "월간 구독 시작" 링크
+  - 연간 탭: ₩142,800 / 년 (월 ₩11,900 상당), "2개월 무료" 배지, "연간 구독 시작" 링크
+  - 체크아웃 링크는 탭 상태에 따라 동적 전환 (`buy.polar.sh` 정적 URL)
+- 현재 플랜 강조: 해당 카드 `border-2 border-blue-400/60` + "현재 플랜" 배지
+- Pro 유저: 체크아웃 링크 → "현재 플랜" 비활성 버튼
+- `mt-auto` 로 CTA 버튼 카드 하단 고정
+
+**`src/app/(dashboard)/billing/page.tsx`** 수정
+- 기존 인라인 월간/연간 카드 제거 → `BillingPlansClient isPro={isPro}` 위임
+- 상단 현재 플랜 상태 카드 유지
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
