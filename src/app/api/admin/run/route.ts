@@ -18,6 +18,7 @@ const JOB_MAP: Record<string, string> = {
   "13f":               "/api/collect/13f",
   "profile":           "/api/collect/profile",
   "digest":            "/api/email/digest",
+  "debug-env":         "/api/debug/env",
 };
 
 export async function GET(req: NextRequest) {
