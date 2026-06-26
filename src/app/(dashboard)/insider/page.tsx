@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import ProGate from "@/components/dashboard/pro-gate";
@@ -127,9 +128,9 @@ async function InsiderTradeList() {
             >
               {/* 종목 */}
               <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
+                <Link href={`/stocks/${tx.ticker}`} className="shrink-0 rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
                   {tx.ticker}
-                </span>
+                </Link>
                 <span className="truncate text-sm text-[#a6a6a6]">{company}</span>
               </div>
 

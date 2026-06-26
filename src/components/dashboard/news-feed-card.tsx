@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconExternalLink } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -51,9 +52,9 @@ export default function NewsFeedCard({ news, className }: { news: NewsItem; clas
       {/* Row 4: 티커 태그 + 원문 보기 */}
       <div className="mt-3 flex items-center justify-between">
         {ticker ? (
-          <span className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#a6a6a6]">
+          <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#a6a6a6]">
             {ticker}
-          </span>
+          </Link>
         ) : (
           <span />
         )}

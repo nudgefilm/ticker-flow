@@ -77,7 +77,7 @@ export default async function BillingPage({
             href="https://polar.sh/tickerflow/portal"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-bold text-[#a6a6a6] transition-colors hover:text-white"
+            className="text-sm font-bold text-red-400 transition-colors hover:text-red-300"
           >
             구독 해지 또는 플랜 변경
           </a>

@@ -5,6 +5,7 @@ import { type WatchlistStock } from "@/components/dashboard/watchlist-card";
 import { createClient } from "@/lib/supabase/server";
 import TrendingCarousel from "@/components/dashboard/trending-carousel";
 import type { TrendingItem } from "@/components/dashboard/trending-carousel";
+import WeeklySummaryCard, { type SummaryMetric } from "@/components/dashboard/weekly-summary-card";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,17 @@ async function WatchlistContent() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const today = new Date().toISOString().slice(0, 10);
+  const sevenDaysLater = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);
+
+  // 날짜 키 배열 (과거 7일: 공시·뉴스, 미래 7일: 실적)
+  const pastKeys: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    pastKeys.push(new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10));
+  }
+  const futureKeys: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    futureKeys.push(new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10));
+  }
 
   // 1. watchlist + 회사명 + plan 병렬 조회
   const [{ data: wl }, { data: profile }] = await Promise.all([
@@ -92,51 +104,126 @@ async function WatchlistContent() {
   };
   const rows = (wl ?? []) as unknown as WlRow[];
 
+  const emptyMetrics: SummaryMetric[] = [
+    { label: "신규 공시", color: "#60a5fa", unit: "건",   value: 0, series: [0, 0, 0, 0, 0, 0, 0] },
+    { label: "신규 뉴스", color: "#93c5fd", unit: "건",   value: 0, series: [0, 0, 0, 0, 0, 0, 0] },
+    { label: "실적 임박", color: "#fbbf24", unit: "종목", value: 0, series: [0, 0, 0, 0, 0, 0, 0] },
+  ];
+
   if (rows.length === 0) {
-    return <WatchlistClient initialStocks={[]} isPro={isPro} />;
+    return (
+      <>
+        <WeeklySummaryCard metrics={emptyMetrics} />
+        <WatchlistClient initialStocks={[]} isPro={isPro} />
+      </>
+    );
   }
 
-  // 2. 종목별 통계 병렬 조회 (count 쿼리 + 다음 실적)
-  const stocks: WatchlistStock[] = await Promise.all(
-    rows.map(async (row) => {
-      const t = row.tickers as { name_kr: string | null; name_en: string | null } | null;
+  const tickers = rows.map(r => r.ticker);
 
-      const [filingsRes, newsRes, earningsRes] = await Promise.all([
-        supabase
-          .from("filings")
-          .select("*", { count: "exact", head: true })
-          .eq("ticker", row.ticker)
-          .gte("filed_at", sevenDaysAgo),
-        supabase
-          .from("news")
-          .select("*", { count: "exact", head: true })
-          .eq("ticker", row.ticker)
-          .gte("published_at", sevenDaysAgo),
-        supabase
-          .from("earnings")
-          .select("report_date")
-          .eq("ticker", row.ticker)
-          .gte("report_date", today)
-          .order("report_date", { ascending: true })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+  // 2. 주간 요약 배치 쿼리 + 종목별 통계 병렬 실행
+  const [batchResults, stocks] = await Promise.all([
+    Promise.all([
+      // 쿼리 1: 최근 7일 공시 (와치리스트 ticker 한정)
+      supabase.from("filings").select("filed_at").in("ticker", tickers).gte("filed_at", sevenDaysAgo),
+      // 쿼리 2: 최근 7일 뉴스 (와치리스트 ticker 한정)
+      supabase.from("news").select("published_at").in("ticker", tickers).gte("published_at", sevenDaysAgo),
+      // 쿼리 3: 오늘~7일 이내 실적 (와치리스트 ticker 한정)
+      supabase.from("earnings").select("report_date, ticker").in("ticker", tickers).gte("report_date", today).lte("report_date", sevenDaysLater),
+    ]),
+    Promise.all(
+      rows.map(async (row): Promise<WatchlistStock> => {
+        const t = row.tickers as { name_kr: string | null; name_en: string | null } | null;
 
-      if (filingsRes.error) console.error(`[watchlist] filings count ${row.ticker}:`, filingsRes.error.message);
-      if (newsRes.error)    console.error(`[watchlist] news count ${row.ticker}:`, newsRes.error.message);
-      if (earningsRes.error) console.error(`[watchlist] earnings ${row.ticker}:`, earningsRes.error.message);
+        const [filingsRes, newsRes, earningsRes] = await Promise.all([
+          supabase
+            .from("filings")
+            .select("*", { count: "exact", head: true })
+            .eq("ticker", row.ticker)
+            .gte("filed_at", sevenDaysAgo),
+          supabase
+            .from("news")
+            .select("*", { count: "exact", head: true })
+            .eq("ticker", row.ticker)
+            .gte("published_at", sevenDaysAgo),
+          supabase
+            .from("earnings")
+            .select("report_date")
+            .eq("ticker", row.ticker)
+            .gte("report_date", today)
+            .order("report_date", { ascending: true })
+            .limit(1)
+            .maybeSingle(),
+        ]);
 
-      return {
-        ticker: row.ticker,
-        company: t?.name_kr ?? t?.name_en ?? row.ticker,
-        newFilings: filingsRes.count ?? 0,
-        newNews: newsRes.count ?? 0,
-        earningsDday: formatDday(earningsRes.data?.report_date ?? null),
-      };
-    })
+        if (filingsRes.error) console.error(`[watchlist] filings count ${row.ticker}:`, filingsRes.error.message);
+        if (newsRes.error)    console.error(`[watchlist] news count ${row.ticker}:`, newsRes.error.message);
+        if (earningsRes.error) console.error(`[watchlist] earnings ${row.ticker}:`, earningsRes.error.message);
+
+        return {
+          ticker: row.ticker,
+          company: t?.name_kr ?? t?.name_en ?? row.ticker,
+          newFilings: filingsRes.count ?? 0,
+          newNews: newsRes.count ?? 0,
+          earningsDday: formatDday(earningsRes.data?.report_date ?? null),
+        };
+      })
+    ),
+  ]);
+
+  const [filingsWeekRes, newsWeekRes, earningsWeekRes] = batchResults;
+
+  // 3. 주간 요약 집계
+  const filingsByDay = Object.fromEntries(pastKeys.map(k => [k, 0])) as Record<string, number>;
+  for (const row of filingsWeekRes.data ?? []) {
+    const key = String(row.filed_at ?? "").slice(0, 10);
+    if (key in filingsByDay) filingsByDay[key]++;
+  }
+
+  const newsByDay = Object.fromEntries(pastKeys.map(k => [k, 0])) as Record<string, number>;
+  for (const row of newsWeekRes.data ?? []) {
+    const key = String(row.published_at ?? "").slice(0, 10);
+    if (key in newsByDay) newsByDay[key]++;
+  }
+
+  const earningsByDay = Object.fromEntries(futureKeys.map(k => [k, 0])) as Record<string, number>;
+  const earningsTickerSet = new Set<string>();
+  for (const row of earningsWeekRes.data ?? []) {
+    const key = String(row.report_date ?? "");
+    if (key in earningsByDay) earningsByDay[key]++;
+    if (row.ticker) earningsTickerSet.add(row.ticker);
+  }
+
+  const metrics: SummaryMetric[] = [
+    {
+      label: "신규 공시",
+      color: "#60a5fa",
+      unit: "건",
+      value: (filingsWeekRes.data ?? []).length,
+      series: pastKeys.map(k => filingsByDay[k]),
+    },
+    {
+      label: "신규 뉴스",
+      color: "#93c5fd",
+      unit: "건",
+      value: (newsWeekRes.data ?? []).length,
+      series: pastKeys.map(k => newsByDay[k]),
+    },
+    {
+      label: "실적 임박",
+      color: "#fbbf24",
+      unit: "종목",
+      value: earningsTickerSet.size,
+      series: futureKeys.map(k => earningsByDay[k]),
+    },
+  ];
+
+  return (
+    <>
+      <WeeklySummaryCard metrics={metrics} />
+      <WatchlistClient initialStocks={stocks} isPro={isPro} />
+    </>
   );
-
-  return <WatchlistClient initialStocks={stocks} isPro={isPro} />;
 }
 
 // ─── 기업 동향 스켈레톤 ─────────────────────────────────────────────────────────

@@ -1329,6 +1329,31 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-27 · 세션 30
+
+### 와치리스트 "최근 7일 변화 요약" 카드 추가
+
+**신규 파일: `src/components/dashboard/weekly-summary-card.tsx`**
+- `SummaryMetric` 인터페이스 export: `{ label, value, unit, color, series }`
+- props로 `metrics: SummaryMetric[]` 수신 (더미 데이터 없음)
+- 카드 내 3열 그리드: 각 metric마다 스파크라인(7개 바) + 수치 + 레이블
+- 스파크라인: `flex h-10 items-end`, 바 높이 = `max(10, round(v/peak*100))%`, 데이터 없는 날 opacity 0.15
+- 대시보드 HEX 토큰 사용 (`#111111`, `#a6a6a6` 등), HSL 토큰 사용 없음
+
+**수정 파일: `src/app/(dashboard)/watchlist/page.tsx`**
+- `WeeklySummaryCard`, `SummaryMetric` import 추가
+- `WatchlistContent`에 3개 일자 키 배열 추가: `pastKeys`(과거 7일), `futureKeys`(미래 7일), `sevenDaysLater`
+- 와치리스트 비어있을 때: `emptyMetrics`(전부 0) 으로 WeeklySummaryCard 표시
+- 와치리스트 있을 때: 기존 per-ticker 쿼리와 3개 배치 쿼리를 `Promise.all` 1회로 병렬 실행
+  - 쿼리 1: `filings.filed_at` 최근 7일, 와치리스트 ticker 한정
+  - 쿼리 2: `news.published_at` 최근 7일, 와치리스트 ticker 한정
+  - 쿼리 3: `earnings.report_date` 오늘~+6일, 와치리스트 ticker 한정
+- JS 집계: `filingsByDay`, `newsByDay`, `earningsByDay` (초기값 0), `earningsTickerSet`(Set)
+- metrics 배열: 신규 공시(`#60a5fa`), 신규 뉴스(`#93c5fd`), 실적 임박(`#fbbf24`)
+- 반환: `<WeeklySummaryCard metrics={metrics} />` → `<WatchlistClient ...>` 순서
+
+---
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)

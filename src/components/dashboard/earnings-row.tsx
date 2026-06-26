@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconClock } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +63,9 @@ export default function EarningsRow({
           {dday}
         </span>
         <span className="text-sm font-medium text-white">{company}</span>
-        <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
+        <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
           {ticker}
-        </span>
+        </Link>
       </div>
 
       {/* 중: 세션 + 시각 */}

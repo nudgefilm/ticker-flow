@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import {
   IconUsers,
@@ -188,9 +189,9 @@ async function AdminWatchSection() {
           key={item.ticker}
           className="rounded-[6px] border border-white/[0.08] bg-[#0f0f0f] p-4"
         >
-          <span className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
+          <Link href={`/stocks/${item.ticker}`} className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
             {item.ticker}
-          </span>
+          </Link>
           <p className="mt-2 truncate text-sm font-medium text-white">
             {nameMap.get(item.ticker) ?? item.ticker}
           </p>

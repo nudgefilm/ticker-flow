@@ -1,10 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { IconChevronDown } from "@tabler/icons-react";
-import { cn } from "@/lib/utils";
-
-type View = "캘린더 뷰" | "리스트 뷰";
 
 const WEEK_DAYS = [
   { day: "월", count: 1, tickers: ["NVDA"] },
@@ -15,26 +11,17 @@ const WEEK_DAYS = [
 ];
 
 export default function EarningsFilterBar() {
-  const [view, setView] = useState<View>("캘린더 뷰");
-
   return (
     <div className="flex flex-col gap-4">
-      {/* 상단 행: 뷰 토글 + 드롭다운 */}
+      {/* 상단 행: 뷰 탭 + 드롭다운 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center rounded-[6px] border border-white/[0.08] bg-[#111111] p-1">
-          {(["캘린더 뷰", "리스트 뷰"] as View[]).map((v) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => setView(v)}
-              className={cn(
-                "rounded-[4px] px-3 py-1.5 text-sm transition-colors",
-                view === v ? "bg-[#1a1a1a] text-white" : "text-[#a6a6a6] hover:text-[#cccccc]"
-              )}
-            >
-              {v}
-            </button>
-          ))}
+          <button
+            type="button"
+            className="rounded-[4px] bg-[#1a1a1a] px-3 py-1.5 text-sm text-white"
+          >
+            캘린더 뷰
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -56,31 +43,29 @@ export default function EarningsFilterBar() {
       </div>
 
       {/* 주간 캘린더 바 */}
-      {view === "캘린더 뷰" && (
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
-          <div className="grid grid-cols-5 gap-2">
-            {WEEK_DAYS.map((d) => (
-              <div
-                key={d.day}
-                className="flex flex-col items-center gap-1 rounded-[4px] bg-[#0a0a0a] px-2 py-3 text-center"
-              >
-                <span className="text-xs text-[#a6a6a6]">{d.day}</span>
-                <span className="text-lg font-semibold text-white">{d.count}건</span>
-                <div className="flex flex-wrap justify-center gap-1">
-                  {d.tickers.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-[10px] text-[#cccccc]"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
+      <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+        <div className="grid grid-cols-5 gap-2">
+          {WEEK_DAYS.map((d) => (
+            <div
+              key={d.day}
+              className="flex flex-col items-center gap-1 rounded-[4px] border border-white/[0.08] bg-blue-500/[0.06] px-2 py-3 text-center"
+            >
+              <span className="text-xs text-[#a6a6a6]">{d.day}</span>
+              <span className="text-lg font-semibold text-white">{d.count}건</span>
+              <div className="flex flex-wrap justify-center gap-1">
+                {d.tickers.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-[10px] text-[#cccccc]"
+                  >
+                    {t}
+                  </span>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   );
 }

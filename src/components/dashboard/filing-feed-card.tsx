@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { IconExternalLink } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -62,7 +63,9 @@ export default function FilingFeedCard({ filing, className }: { filing: Filing; 
         >
           {label}
         </span>
-        <span className="text-sm font-medium text-white">{ticker}</span>
+        <Link href={`/stocks/${ticker}`} className="text-sm font-medium text-white">
+          {ticker}
+        </Link>
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-[#a6a6a6]">{formatFiledAt(filed_at)}</span>
           {url && (

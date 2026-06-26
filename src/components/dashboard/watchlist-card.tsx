@@ -26,12 +26,12 @@ export default function WatchlistCard({
     <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
       {/* Row 1: 티커 + 회사명 + 삭제 */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <Link href={`/stocks/${ticker}`} className="flex items-center gap-2">
           <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
             {ticker}
           </span>
           <span className="text-sm font-medium text-[#60a5fa]">{company}</span>
-        </div>
+        </Link>
         <button
           type="button"
           onClick={onDelete}
