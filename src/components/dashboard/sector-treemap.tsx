@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export type SectorStat = {
   sector: string;
@@ -134,6 +134,8 @@ function hexToRgba(hex: string, opacity: number): string {
 
 export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
   const [hovered, setHovered] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   if (sectors.length === 0) {
     return (
@@ -177,96 +179,128 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
   // 6. 레이아웃
   const rects = squarify(normalized, 0, 0, W, H);
 
+  const hoveredSector = hovered !== null ? sorted[hovered] : null;
+
+  // 툴팁 위치 보정: 하단 120px 이내면 위로 반전
+  const TOOLTIP_H = 120;
+  const containerH = containerRef.current?.offsetHeight ?? H;
+  const tipTop =
+    mousePos && mousePos.y + 14 + TOOLTIP_H > containerH
+      ? mousePos.y - 14 - TOOLTIP_H
+      : (mousePos?.y ?? 0) + 14;
+  const tipLeft = (mousePos?.x ?? 0) + 14;
+
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
-      style={{ height: "400px" }}
-      preserveAspectRatio="xMidYMid meet"
-    >
-      <defs>
-        {rects.map((r, i) => (
-          <clipPath key={`clip-${i}`} id={`clip-${i}`}>
-            <rect
-              x={r.x + PAD}
-              y={r.y + PAD}
-              width={Math.max(0, r.w - PAD * 2)}
-              height={Math.max(0, r.h - PAD * 2)}
-            />
-          </clipPath>
-        ))}
-      </defs>
+    <div className="relative" ref={containerRef}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ height: "400px" }}
+        preserveAspectRatio="xMidYMid meet"
+      >
+        <defs>
+          {rects.map((r, i) => (
+            <clipPath key={`clip-${i}`} id={`clip-${i}`}>
+              <rect
+                x={r.x + PAD}
+                y={r.y + PAD}
+                width={Math.max(0, r.w - PAD * 2)}
+                height={Math.max(0, r.h - PAD * 2)}
+              />
+            </clipPath>
+          ))}
+        </defs>
 
-      {sorted.map((s, i) => {
-        const r = rects[i];
-        if (!r || r.w < 1 || r.h < 1) return null;
+        {sorted.map((s, i) => {
+          const r = rects[i];
+          if (!r || r.w < 1 || r.h < 1) return null;
 
-        const isHovered = hovered === i;
-        const cx = r.x + r.w / 2;
-        const hasRoom = r.h > 50;
-        const showDetails = r.w > 100 && r.h > 70;
-        const textBaseY = r.y + r.h / 2 - (showDetails ? 14 : hasRoom ? 8 : 0);
+          const isHovered = hovered === i;
+          const cx = r.x + r.w / 2;
+          const hasRoom = r.h > 50;
+          const showDetails = r.w > 100 && r.h > 70;
+          const textBaseY = r.y + r.h / 2 - (showDetails ? 14 : hasRoom ? 8 : 0);
 
-        return (
-          <g
-            key={s.sector}
-            onMouseEnter={() => setHovered(i)}
-            onMouseLeave={() => setHovered(null)}
-            style={{ cursor: "default" }}
-          >
-            <title>{`${s.sectorKr} (${s.sector})\n종목 수: ${s.tickerCount}개\n공시(30일): ${s.filingCount}건\n뉴스(7일): ${s.newsCount}건`}</title>
-            <rect
-              x={r.x + PAD}
-              y={r.y + PAD}
-              width={Math.max(0, r.w - PAD * 2)}
-              height={Math.max(0, r.h - PAD * 2)}
-              fill={colors[i]}
-              stroke={isHovered ? "rgba(96,165,250,0.6)" : "rgba(255,255,255,0.06)"}
-              strokeWidth={isHovered ? 1.5 : 1}
-              rx={4}
-            />
-            {r.w > 40 && r.h > 28 && (
-              <g clipPath={`url(#clip-${i})`}>
-                <text
-                  x={cx}
-                  y={textBaseY}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontSize="14"
-                  fontWeight="600"
-                  fill="white"
-                >
-                  {s.sectorKr}
-                </text>
-                {hasRoom && (
+          return (
+            <g
+              key={s.sector}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => { setHovered(null); setMousePos(null); }}
+              onMouseMove={(e) => {
+                if (containerRef.current) {
+                  const rect = containerRef.current.getBoundingClientRect();
+                  setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                }
+              }}
+              style={{ cursor: "default" }}
+            >
+              <rect
+                x={r.x + PAD}
+                y={r.y + PAD}
+                width={Math.max(0, r.w - PAD * 2)}
+                height={Math.max(0, r.h - PAD * 2)}
+                fill={colors[i]}
+                stroke={isHovered ? "rgba(96,165,250,0.6)" : "rgba(255,255,255,0.06)"}
+                strokeWidth={isHovered ? 1.5 : 1}
+                rx={4}
+              />
+              {r.w > 40 && r.h > 28 && (
+                <g clipPath={`url(#clip-${i})`}>
                   <text
                     x={cx}
-                    y={textBaseY + 18}
+                    y={textBaseY}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    fontSize="11"
-                    fill="#a6a6a6"
+                    fontSize="14"
+                    fontWeight="600"
+                    fill="white"
                   >
-                    {s.tickerCount}종목
+                    {s.sectorKr}
                   </text>
-                )}
-                {showDetails && (
-                  <text
-                    x={cx}
-                    y={textBaseY + 34}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize="11"
-                    fill="#a6a6a6"
-                  >
-                    {`공시 ${s.filingCount}건 · 뉴스 ${s.newsCount}건`}
-                  </text>
-                )}
-              </g>
-            )}
-          </g>
-        );
-      })}
-    </svg>
+                  {hasRoom && (
+                    <text
+                      x={cx}
+                      y={textBaseY + 18}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize="11"
+                      fill="#a6a6a6"
+                    >
+                      {s.tickerCount}종목
+                    </text>
+                  )}
+                  {showDetails && (
+                    <text
+                      x={cx}
+                      y={textBaseY + 34}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize="11"
+                      fill="#a6a6a6"
+                    >
+                      {`공시 ${s.filingCount}건 · 뉴스 ${s.newsCount}건`}
+                    </text>
+                  )}
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* 커스텀 툴팁 */}
+      {hoveredSector && mousePos && (
+        <div
+          className="pointer-events-none absolute z-50 rounded-lg border border-white/[0.12] bg-[#1a1a1a] px-3 py-2 text-sm shadow-lg"
+          style={{ left: tipLeft, top: tipTop }}
+        >
+          <p className="font-medium text-white">{hoveredSector.sectorKr}</p>
+          <p className="mt-1 text-[#a6a6a6]">종목 수 {hoveredSector.tickerCount}개</p>
+          <p className="text-[#a6a6a6]">공시 {hoveredSector.filingCount}건</p>
+          <p className="text-[#a6a6a6]">뉴스 {hoveredSector.newsCount}건</p>
+          <p className="text-[#a6a6a6]">활동 점수 {hoveredSector.activityScore}</p>
+        </div>
+      )}
+    </div>
   );
 }
