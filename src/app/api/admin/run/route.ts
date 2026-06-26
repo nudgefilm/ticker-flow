@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
   const { data: run, error: insertErr } = await (adminClient as any)
     .from("collect_runs")
-    .insert({ job_type: job, status: "running" })
+    .insert({ job_type: job, status: "running", source: "admin" })
     .select("id")
     .single();
 
