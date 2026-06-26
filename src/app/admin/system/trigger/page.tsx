@@ -230,11 +230,10 @@ export default function TriggerPage() {
           const result   = results[trigger.id];
           const lastRun  = lastRuns[trigger.id];
 
-          // 현재 세션에 결과가 없으면 DB의 마지막 실행 결과 표시
-          const displayResult: TriggerResult | null =
-            result ?? (lastRun?.result ?? null);
-          const displayStatus: Status =
-            status !== "idle" ? status : lastRun ? (lastRun.status === "running" ? "running" : lastRun.status === "done" ? "done" : "error") : "idle";
+          // 버튼 상태: 현재 세션만 반영 (페이지 로드 시 항상 "실행")
+          const displayStatus: Status = status;
+          // 결과 텍스트: 현재 세션 결과 → 없으면 이전 실행 결과(참고용)
+          const displayResult: TriggerResult | null = result ?? lastRun?.result ?? null;
 
           const isLastOdd = TRIGGERS.length % 2 !== 0 && index === TRIGGERS.length - 1;
 
@@ -263,9 +262,9 @@ export default function TriggerPage() {
                     </p>
                   )}
 
-                  {displayResult?.debug && (
+                  {result?.debug && (
                     <pre className="mt-2 max-h-48 overflow-auto rounded-lg bg-[#0a0a0a] p-3 text-[10px] leading-relaxed text-[#a6a6a6]">
-                      {JSON.stringify(displayResult.debug, null, 2)}
+                      {JSON.stringify(result.debug, null, 2)}
                     </pre>
                   )}
                 </div>
