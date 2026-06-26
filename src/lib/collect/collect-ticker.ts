@@ -43,13 +43,9 @@ async function findCik(ticker: string): Promise<string | null> {
   return null;
 }
 
-export interface CollectResult {
-  filings: number;
-  news: number;
-  cikNotFound?: boolean;
-}
+type TickerData = { filings: number; news: number; cikNotFound?: boolean };
 
-export async function collectTickerData(ticker: string): Promise<CollectResult> {
+export async function collectTickerData(ticker: string): Promise<TickerData> {
   const adminClient = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);

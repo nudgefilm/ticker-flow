@@ -8,3 +8,4 @@ export * from "./insider";
 export * from "./analyst";
 export * from "./prices";
 export * from "./institutional";
+export * from "./watchlist";

@@ -1132,9 +1132,49 @@ CREATE TABLE stock_prices (
 - `FETCH_JOB_MAP`: collect 외 job (watchlist-tickers, translate, digest 등)만 fetch 유지
 - `after()` 블록: `COLLECT_MAP[job]?.()` 우선, 없으면 fetch fallback
 
+---
+
+## 2026-06-26 · 세션 22
+
+### 수집 아키텍처 개선 — watchlist-tickers COLLECT_MAP 승격 완료
+
+**배경**: HTTP 자기 호출 → Authorization 헤더 드롭(RFC 9110 redirect 규칙) → 401. 근본 해결은 HTTP 실행 모델 제거.
+
+**`src/lib/collect/types.ts`**
+- `COLLECT_JOBS`에 `"watchlist-tickers"` 추가 (11번째)
+- `FETCH_JOBS`에서 `"watchlist-tickers"` 제거 → 4개 잔류
+
+**`src/lib/collect/collect-ticker.ts`**
+- `export interface CollectResult` 제거 (Method A — 공통 타입과 충돌 해소)
+- 내부 반환 타입을 파일-로컬 `type TickerData`로 대체 (미노출)
+
+**신규 `src/lib/collect/watchlist.ts`**
+- `runWatchlistTickersCollect(): Promise<CollectResult>` — 순수 서비스 함수
+- `NextRequest` / `NextResponse` 의존 없음
+- watchlist 테이블 조회 → 중복 제거 → `collectTickerData(ticker)` 루프
+- 반환: `{ ok, tickers, filings, news, errors? }`
+
+**`src/lib/collect/index.ts`**
+- `export * from "./watchlist"` 추가
+
+**`src/app/api/collect/watchlist-tickers/route.ts`**
+- 기존 인라인 로직(adminClient 조회 + 루프) 완전 제거
+- `runWatchlistTickersCollect()` 호출하는 thin wrapper로 교체
+
+**`src/app/api/admin/run/route.ts`**
+- `runWatchlistTickersCollect` import 추가
+- `COLLECT_MAP`에 `"watchlist-tickers": runWatchlistTickersCollect` 추가
+- `FETCH_JOB_MAP`에서 `"watchlist-tickers"` 항목 제거
+
+**결과**
+- COLLECT_MAP: 11개 (profile, filings, news, earnings, earnings-actual, prices, insider, analyst, 13f, macro, watchlist-tickers)
+- FETCH_JOB_MAP: 4개 (seed-tickers, translate, digest, debug-env)
+- watchlist-tickers 401 완전 해소
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
+- seed-tickers / debug-env 등 나머지 FETCH_JOB 401 원인 조사
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 환경변수 등록 후 결제 플로우 테스트

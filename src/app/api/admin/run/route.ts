@@ -18,6 +18,7 @@ import {
   run13fCollect,
   runMacroCollect,
   runProfileCollect,
+  runWatchlistTickersCollect,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -31,18 +32,18 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "prices":          runPricesCollect,
   "insider":         runInsiderCollect,
   "analyst":         runAnalystCollect,
-  "13f":             run13fCollect,
-  "macro":           runMacroCollect,
+  "13f":                run13fCollect,
+  "macro":              runMacroCollect,
+  "watchlist-tickers":  runWatchlistTickersCollect,
 };
 
 // collect 외 job — fetch 방식 유지
 // Record<FetchJob, string>: 누락·오타는 컴파일 오류로 즉시 검출
 const FETCH_JOB_MAP: Record<FetchJob, string> = {
-  "watchlist-tickers": "/api/collect/watchlist-tickers",
-  "seed-tickers":      "/api/seed/tickers",
-  "translate":         "/api/translate",
-  "digest":            "/api/email/digest",
-  "debug-env":         "/api/debug/env",
+  "seed-tickers": "/api/seed/tickers",
+  "translate":    "/api/translate",
+  "digest":       "/api/email/digest",
+  "debug-env":    "/api/debug/env",
 };
 
 export async function GET(req: NextRequest) {

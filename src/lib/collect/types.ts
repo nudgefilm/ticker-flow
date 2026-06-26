@@ -17,6 +17,7 @@ export const COLLECT_JOBS = [
   "analyst",
   "13f",
   "macro",
+  "watchlist-tickers",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];
@@ -28,7 +29,6 @@ export function isCollectJob(job: string): job is CollectJob {
 }
 
 export const FETCH_JOBS = [
-  "watchlist-tickers",
   "seed-tickers",
   "translate",
   "digest",
