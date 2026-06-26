@@ -30,7 +30,7 @@ export default function WatchlistCard({
           <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
             {ticker}
           </span>
-          <span className="text-sm font-medium text-white">{company}</span>
+          <span className="text-sm font-medium text-[#60a5fa]">{company}</span>
         </div>
         <button
           type="button"

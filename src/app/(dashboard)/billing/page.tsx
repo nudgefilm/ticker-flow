@@ -60,21 +60,6 @@ export default async function BillingPage({
             </span>
           )}
         </div>
-        {isPro && (
-          <div className="mt-4 border-t border-white/[0.06] pt-4">
-            <a
-              href="https://polar.sh/tickerflow/portal"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              구독 해지 또는 플랜 변경
-            </a>
-            <p className="mt-1.5 text-xs text-[#a6a6a6]">
-              구독 해지 후에도 현재 결제 기간 종료일까지 Pro 기능을 이용할 수 있습니다.
-            </p>
-          </div>
-        )}
       </div>
 
       {/* 플랜 비교 */}
@@ -84,6 +69,23 @@ export default async function BillingPage({
           <BillingPlansClient isPro={isPro} />
         </div>
       </div>
+
+      {/* 구독 해지 — Pro 유저 전용, 페이지 최하단 */}
+      {isPro && (
+        <div className="mt-8 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+          <a
+            href="https://polar.sh/tickerflow/portal"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold text-[#a6a6a6] transition-colors hover:text-white"
+          >
+            구독 해지 또는 플랜 변경
+          </a>
+          <p className="mt-1.5 text-xs text-[#a6a6a6]">
+            구독 해지 후에도 현재 결제 기간 종료일까지 Pro 기능을 이용할 수 있습니다.
+          </p>
+        </div>
+      )}
 
       <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
         <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>

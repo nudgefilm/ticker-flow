@@ -3,11 +3,16 @@ import DashboardHeader from "@/components/dashboard/dashboard-header";
 import NewsFilterBar from "@/components/dashboard/news-filter-bar";
 import NewsFeedCard, { type NewsItem } from "@/components/dashboard/news-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import NewsSourceChart from "@/components/dashboard/news-source-chart";
+import NewsTrendChart from "@/components/dashboard/news-trend-chart";
+import NewsSectorChart from "@/components/dashboard/news-sector-chart";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 50;
+
+const SOURCE_COLORS = ["#60a5fa", "#93c5fd", "#fbbf24", "#c084fc", "#6b7280"];
 
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
@@ -92,16 +97,95 @@ async function NewsFeedList({ page }: { page: number }) {
 
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
-export default function NewsPage({
+export default async function NewsPage({
   searchParams,
 }: {
   searchParams: { page?: string };
 }) {
   const page = Math.max(1, parseInt(searchParams?.page ?? "1") || 1);
 
+  // ── 차트용 집계 데이터 ──────────────────────────────────────────────────────
+  const supabase = await createClient();
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [sourceRaw, trendRaw, sectorNewsRaw, tickersRaw] = await Promise.all([
+    // 쿼리 1: 출처 분포 (최근 30일)
+    supabase.from("news").select("source").gte("published_at", thirtyDaysAgo),
+    // 쿼리 2: 7일 추이
+    supabase.from("news").select("published_at").gte("published_at", sevenDaysAgo),
+    // 쿼리 3: 섹터별 활동 (최근 7일 ticker)
+    supabase
+      .from("news")
+      .select("ticker")
+      .gte("published_at", sevenDaysAgo)
+      .not("ticker", "is", null),
+    // ticker → sector 매핑
+    supabase.from("tickers").select("ticker, sector").not("sector", "is", null),
+  ]);
+
+  // 1. 출처 분포 집계
+  const sourceCounts: Record<string, number> = {};
+  for (const row of sourceRaw.data ?? []) {
+    const key = row.source ?? "기타";
+    sourceCounts[key] = (sourceCounts[key] ?? 0) + 1;
+  }
+  const totalNews = (sourceRaw.data ?? []).length;
+  const sortedSources = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+  const top5 = sortedSources.slice(0, 5);
+  const otherCount = sortedSources.slice(5).reduce((sum, [, v]) => sum + v, 0);
+  const sourceData = top5.map(([name, value], i) => ({
+    name,
+    value,
+    color: SOURCE_COLORS[i] ?? "#6b7280",
+  }));
+  if (otherCount > 0) {
+    sourceData.push({ name: "기타", value: otherCount, color: "#6b7280" });
+  }
+
+  // 2. 7일 트렌드 집계
+  const trendMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    trendMap[`${d.getMonth() + 1}/${d.getDate()}`] = 0;
+  }
+  for (const row of trendRaw.data ?? []) {
+    const d = new Date(row.published_at);
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    if (key in trendMap) trendMap[key] = (trendMap[key] ?? 0) + 1;
+  }
+  const trendData = Object.entries(trendMap).map(([day, count]) => ({ day, count }));
+
+  // 3. 섹터별 활동 집계
+  const tickerSectorMap: Record<string, string> = {};
+  for (const t of tickersRaw.data ?? []) {
+    if (t.ticker && t.sector) tickerSectorMap[t.ticker] = t.sector;
+  }
+  const sectorCounts: Record<string, number> = {};
+  for (const row of sectorNewsRaw.data ?? []) {
+    const sector = tickerSectorMap[row.ticker ?? ""];
+    if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+  }
+  const sectorData = Object.entries(sectorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([sector, count]) => ({ sector, count }));
+
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="뉴스 피드" />
+
+      {/* 시각화 섹션 */}
+      <section className="mt-6 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
+        {/* 좌측: 출처 분포 (전체 높이) */}
+        <NewsSourceChart sources={sourceData} total={totalNews} />
+        {/* 우측: 추이 + 섹터 위아래 */}
+        <div className="flex flex-col gap-4">
+          <NewsTrendChart trend={trendData} />
+          <NewsSectorChart sectors={sectorData} />
+        </div>
+      </section>
+
       <div className="mt-6">
         <NewsFilterBar />
       </div>

@@ -1283,6 +1283,40 @@ CREATE TABLE stock_prices (
   - 색상: `text-[#a6a6a6]` → hover `text-white`
 - 안내 문구: "구독 해지 후에도 현재 결제 기간 종료일까지 Pro 기능을 이용할 수 있습니다."
 
+---
+
+## 2026-06-27 · 세션 28
+
+### 뉴스 피드 상단 시각화 섹션 추가
+
+**신규 컴포넌트 3개**
+
+- `src/components/dashboard/news-source-chart.tsx`
+  - 뉴스 출처 분포 도넛 차트 (conic-gradient)
+  - props: `sources: { name, value, color }[], total: number`
+  - 범례: 출처명 + 퍼센트 + 건수
+
+- `src/components/dashboard/news-trend-chart.tsx`
+  - 최근 7일 뉴스 추이 막대 차트
+  - props: `trend: { day, count }[]`
+  - 막대 색상: `linear-gradient(to top, rgba(59,130,246,0.4), #60a5fa)`
+
+- `src/components/dashboard/news-sector-chart.tsx`
+  - 섹터별 뉴스 활동 수평 바 차트
+  - props: `sectors: { sector, count }[]`
+  - SECTOR_KR 매핑 컴포넌트 내부 처리, 바 색상 `#60a5fa`
+
+**`src/app/(dashboard)/news/page.tsx`** 수정
+- `async` 서버 컴포넌트로 전환
+- 4개 쿼리 `Promise.all` 병렬 실행:
+  - 출처 분포: news 최근 30일 source 집계 → 상위 5개 + 기타
+  - 7일 추이: news 최근 7일 published_at 집계 (빈 날짜 0 초기화)
+  - 섹터별: news 최근 7일 ticker + tickers sector 매핑 → 상위 5개
+- 시각화 레이아웃: `md:grid-cols-2 items-stretch`
+  - 좌: `NewsSourceChart` (전체 높이)
+  - 우: `NewsTrendChart` + `NewsSectorChart` (flex-col gap-4)
+- 기존 필터바·피드·면책 문구 유지
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
