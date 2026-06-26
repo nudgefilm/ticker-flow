@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -22,8 +22,25 @@ const JOB_MAP: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET ?? "";
+
+  console.log("[run] header check", {
+    authExists: !!authHeader,
+    authLength: authHeader?.length,
+    authPrefix: authHeader?.slice(0, 15),
+    cronExists: !!cronSecret,
+    cronLength: cronSecret?.length,
+    cronPrefix: cronSecret?.slice(0, 15),
+    match: authHeader === `Bearer ${cronSecret}`,
+  });
+
   const authError = await requireCollectAuth(req);
-  if (authError) return authError;
+  if (authError) {
+    console.log("[run] → requireCollectAuth 실패, 401 반환");
+    return authError;
+  }
+  console.log("[run] → requireCollectAuth 통과");
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
   const endpoint = JOB_MAP[job];
@@ -49,42 +66,52 @@ export async function GET(req: NextRequest) {
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     (host.includes("localhost") ? `http://${host}` : `https://${host}`);
-  const cronSecret = process.env.CRON_SECRET ?? "";
   const cookieHeader = req.headers.get("cookie") ?? "";
 
-  try {
-    const res = await fetch(`${baseUrl}${endpoint}`, {
-      headers: {
-        Authorization: `Bearer ${cronSecret}`,
-        ...(cookieHeader && { Cookie: cookieHeader }),
-      },
-    });
+  const collectUrl = `${baseUrl}${endpoint}`;
+  console.log("[run] after() 예약 → collectUrl:", collectUrl);
+  console.log("[run] cronSecret 존재:", !!cronSecret, "len:", cronSecret.length);
+  console.log("[run] cookieHeader 포워딩:", !!cookieHeader);
 
-    const result: Record<string, unknown> = res.ok
-      ? await res.json().catch(() => ({}))
-      : { ok: false, error: `HTTP ${res.status}` };
+  after(async () => {
+    console.log("[run/after] collect 호출 시작:", collectUrl);
+    try {
+      const res = await fetch(collectUrl, {
+        headers: {
+          Authorization: `Bearer ${cronSecret}`,
+          ...(cookieHeader && { Cookie: cookieHeader }),
+        },
+      });
 
-    await (adminClient as any)
-      .from("collect_runs")
-      .update({
-        status: result.ok ? "done" : "error",
-        result,
-        finished_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+      console.log("[run/after] collect 응답 status:", res.status);
 
-    return NextResponse.json({ ok: true, runId, ...result });
-  } catch (err) {
-    const error_msg = err instanceof Error ? err.message : "Unknown error";
-    await (adminClient as any)
-      .from("collect_runs")
-      .update({
-        status: "error",
-        error_msg,
-        finished_at: new Date().toISOString(),
-      })
-      .eq("id", runId);
+      const result: Record<string, unknown> = res.ok
+        ? await res.json().catch(() => ({}))
+        : { ok: false, error: `HTTP ${res.status}` };
 
-    return NextResponse.json({ ok: false, runId, error: error_msg }, { status: 500 });
-  }
+      console.log("[run/after] result.ok:", result.ok);
+
+      await (adminClient as any)
+        .from("collect_runs")
+        .update({
+          status: result.ok ? "done" : "error",
+          result,
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", runId);
+    } catch (err) {
+      const error_msg = err instanceof Error ? err.message : "Unknown error";
+      console.log("[run/after] 예외:", error_msg);
+      await (adminClient as any)
+        .from("collect_runs")
+        .update({
+          status: "error",
+          error_msg,
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", runId);
+    }
+  });
+
+  return NextResponse.json({ ok: true, runId, started: true });
 }

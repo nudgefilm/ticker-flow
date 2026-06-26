@@ -77,6 +77,19 @@ interface FinnhubProfile {
 }
 
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+
+  console.log("[profile] header check", {
+    authExists: !!authHeader,
+    authLength: authHeader?.length,
+    authPrefix: authHeader?.slice(0, 15),
+    cronExists: !!cronSecret,
+    cronLength: cronSecret?.length,
+    cronPrefix: cronSecret?.slice(0, 15),
+    match: authHeader === `Bearer ${cronSecret}`,
+  });
+
   const authError = await requireCollectAuth(req);
   if (authError) return authError;
 
