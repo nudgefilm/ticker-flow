@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 const INDUSTRY_TO_SECTOR: Record<string, string> = {
   // Technology
@@ -76,16 +77,7 @@ interface FinnhubProfile {
   marketCapitalization?: number;
 }
 
-export interface ProfileCollectResult {
-  ok: boolean;
-  total: number;
-  updated: number;
-  skipped: number;
-  errors: number;
-  firstError: string | null;
-}
-
-export async function runProfileCollect(limit = 20): Promise<ProfileCollectResult> {
+export async function runProfileCollect(limit = 20): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
     return { ok: false, total: 0, updated: 0, skipped: 0, errors: 1, firstError: "FINNHUB_API_KEY not set" };

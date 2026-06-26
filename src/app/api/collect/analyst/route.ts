@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 // Finnhub /stock/recommendation 응답 형식
 interface FinnhubRecommendation {
@@ -64,24 +65,18 @@ async function collectAnalystForTicker(
   return { upserted, skipped };
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runAnalystCollect(
+  tickerParam?: string | null
+): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "FINNHUB_API_KEY not set" }, { status: 500 });
-  }
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
 
   const adminClient = createAdminClient();
-  const tickerParam = req.nextUrl.searchParams.get("ticker");
-
   let tickers: string[];
 
   if (tickerParam) {
     tickers = [tickerParam.toUpperCase()];
   } else {
-    // 와치리스트 종목 + 최근 7일 공시 종목
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const [{ data: watchlistRows }, { data: filingRows }] = await Promise.all([
@@ -93,7 +88,6 @@ export async function GET(req: NextRequest) {
     watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
     filingRows?.forEach((r) => tickerSet.add(r.ticker));
 
-    // 1회 실행당 최대 15개 (Finnhub 1 req/ticker → ~10초)
     tickers = [...tickerSet].slice(0, 15);
   }
 
@@ -110,10 +104,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    tickers: tickers.length,
-    upserted: totalUpserted,
-    skipped: totalSkipped,
-  });
+  return { ok: true, tickers: tickers.length, upserted: totalUpserted, skipped: totalSkipped };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const tickerParam = req.nextUrl.searchParams.get("ticker");
+  const result = await runAnalystCollect(tickerParam);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

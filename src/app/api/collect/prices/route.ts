@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 // Yahoo Finance v8 chart API
 // query2 도메인 + Referer 헤더가 서버사이드 호출 차단 우회에 더 효과적
@@ -98,13 +99,10 @@ async function fetchDayPrices(ticker: string): Promise<
   return { rows };
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runPricesCollect(
+  tickerParam?: string | null
+): Promise<CollectResult> {
   const adminClient = createAdminClient();
-  const tickerParam = req.nextUrl.searchParams.get("ticker");
-
   let tickers: string[];
 
   if (tickerParam) {
@@ -133,7 +131,6 @@ export async function GET(req: NextRequest) {
       if (result?.error && !firstError) firstError = `${ticker}: ${result.error}`;
       skipped++;
     } else {
-      // stock_prices 테이블: (ticker, date) 복합 PK
       const insertRows = result.rows.map((r) => ({ ticker, ...r }));
       const { error } = await adminClient
         .from("stock_prices")
@@ -153,11 +150,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    tickers: tickers.length,
-    upserted,
-    skipped,
-    firstError,
-  });
+  return { ok: true, tickers: tickers.length, upserted, skipped, firstError };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const tickerParam = req.nextUrl.searchParams.get("ticker");
+  const result = await runPricesCollect(tickerParam);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { summarizeNews } from "@/lib/collect/summarize";
+import type { CollectResult } from "@/lib/collect/types";
 
 interface FinnhubNewsItem {
   category: string;
@@ -14,14 +15,9 @@ interface FinnhubNewsItem {
   url: string;
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runNewsCollect(): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "FINNHUB_API_KEY not set" }, { status: 500 });
-  }
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
 
   try {
     const res = await fetch(
@@ -32,7 +28,6 @@ export async function GET(req: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // FK 검증용 티커 목록 (루프 안에서 신규 추가 시 tickerSet도 갱신)
     const { data: knownRows } = await adminClient
       .from("tickers")
       .select("ticker");
@@ -45,8 +40,6 @@ export async function GET(req: NextRequest) {
     for (const item of items) {
       if (!item.url || !item.headline) { skipped++; continue; }
 
-      // related 티커가 DB에 없으면 자동 upsert (이름 정보가 없으므로 ticker를 placeholder로 사용,
-      // ignoreDuplicates: true로 시드된 실제 이름은 덮어쓰지 않음)
       let ticker: string | null = null;
       if (item.related) {
         if (!tickerSet.has(item.related)) {
@@ -79,7 +72,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 한국어 요약 — summary_kr NULL 항목, 최근순 최대 20건
     let summarized = 0;
     let summarizeFailed = 0;
     if (process.env.ANTHROPIC_API_KEY) {
@@ -88,7 +80,7 @@ export async function GET(req: NextRequest) {
       summarizeFailed = s.failed;
     }
 
-    return NextResponse.json({
+    return {
       ok: true,
       total: items.length,
       inserted,
@@ -96,10 +88,18 @@ export async function GET(req: NextRequest) {
       summarized,
       ...(summarizeFailed > 0 && { summarizeFailed }),
       ...(firstError && { firstError }),
-    });
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[collect/news]", message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return { ok: false, error: message };
   }
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const result = await runNewsCollect();
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 interface FinnhubEarningsItem {
   date: string;               // "2024-01-25"
@@ -18,27 +19,24 @@ interface FinnhubEarningsResponse {
   earningsCalendar: FinnhubEarningsItem[];
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runEarningsCollect(
+  from?: string | null,
+  to?: string | null
+): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "FINNHUB_API_KEY not set" }, { status: 500 });
-  }
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
 
   const today = new Date().toISOString().slice(0, 10);
-  // 기본: 오늘부터 30일치 수집
   const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
 
-  const from = req.nextUrl.searchParams.get("from") ?? today;
-  const to = req.nextUrl.searchParams.get("to") ?? thirtyDaysLater;
+  const fromDate = from ?? today;
+  const toDate = to ?? thirtyDaysLater;
 
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/calendar/earnings?from=${from}&to=${to}&token=${apiKey}`
+      `https://finnhub.io/api/v1/calendar/earnings?from=${fromDate}&to=${toDate}&token=${apiKey}`
     );
     if (!res.ok) throw new Error(`Finnhub earnings: HTTP ${res.status}`);
     const data: FinnhubEarningsResponse = await res.json();
@@ -46,7 +44,6 @@ export async function GET(req: NextRequest) {
 
     const adminClient = createAdminClient();
 
-    // 신규 티커도 자동 upsert (실적 캘린더는 나스닥 전종목 대상)
     const { data: knownRows } = await adminClient
       .from("tickers")
       .select("ticker");
@@ -58,7 +55,6 @@ export async function GET(req: NextRequest) {
     for (const item of items) {
       if (!item.symbol || !item.date) { skipped++; continue; }
 
-      // 신규 티커 자동 추가
       if (!tickerSet.has(item.symbol)) {
         await adminClient
           .from("tickers")
@@ -69,7 +65,6 @@ export async function GET(req: NextRequest) {
       const timeOfDay =
         item.hour === "amc" || item.hour === "bmo" ? item.hour : null;
 
-      // UNIQUE(ticker, report_date): 중복 시 업데이트 (실적 발표 후 actual 값 갱신)
       const { error } = await adminClient.from("earnings").upsert(
         {
           ticker: item.symbol,
@@ -91,17 +86,20 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      from,
-      to,
-      total: items.length,
-      inserted,
-      skipped,
-    });
+    return { ok: true, from: fromDate, to: toDate, total: items.length, inserted, skipped };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[collect/earnings]", message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return { ok: false, error: message };
   }
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const from = req.nextUrl.searchParams.get("from");
+  const to = req.nextUrl.searchParams.get("to");
+  const result = await runEarningsCollect(from, to);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 // 대형 기관투자자 CIK 목록 (EDGAR 기준)
 const INSTITUTIONS = [
@@ -194,12 +195,10 @@ async function collectForInstitution(
 
 // ── 핸들러 ────────────────────────────────────────────────────────────────────
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function run13fCollect(
+  institutionParam?: string | null
+): Promise<CollectResult> {
   const adminClient = createAdminClient();
-  const institutionParam = req.nextUrl.searchParams.get("institution");
 
   const targets = institutionParam
     ? INSTITUTIONS.filter((i) => i.name.toLowerCase().includes(institutionParam.toLowerCase()))
@@ -207,25 +206,27 @@ export async function GET(req: NextRequest) {
 
   let totalUpserted = 0;
   let totalSkipped = 0;
-  const results: Record<string, { upserted: number; skipped: number }> = {};
+  const detail: Record<string, { upserted: number; skipped: number }> = {};
 
   for (const inst of targets) {
     const res = await collectForInstitution(inst, adminClient);
-    results[inst.name] = res;
+    detail[inst.name] = res;
     totalUpserted += res.upserted;
     totalSkipped  += res.skipped;
 
-    // EDGAR rate limit 대응
     if (targets.length > 1) {
       await new Promise((r) => setTimeout(r, 500));
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    institutions: targets.length,
-    upserted: totalUpserted,
-    skipped: totalSkipped,
-    detail: results,
-  });
+  return { ok: true, institutions: targets.length, upserted: totalUpserted, skipped: totalSkipped, detail };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const institutionParam = req.nextUrl.searchParams.get("institution");
+  const result = await run13fCollect(institutionParam);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

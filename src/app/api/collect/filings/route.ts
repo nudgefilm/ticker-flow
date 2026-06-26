@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { summarizeFilings } from "@/lib/collect/summarize";
+import type { CollectResult } from "@/lib/collect/types";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
 const EFTS_URL = "https://efts.sec.gov/LATEST/search-index";
@@ -92,20 +93,14 @@ async function fetchAllHits(startdt: string, enddt: string): Promise<EFTSHit[]> 
   return allHits;
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runFilingsCollect(
+  dateParam?: string | null
+): Promise<CollectResult> {
   const today = new Date().toISOString().slice(0, 10);
-
-  // ?date=YYYY-MM-DD → 단일 날짜 (수동 백필용)
-  // 미지정 → 최근 7일
-  const dateParam = req.nextUrl.searchParams.get("date");
   const startdt = dateParam ?? new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
   const enddt = dateParam ?? today;
 
   try {
-    // 1. SEC CIK → exchange 매핑 (exchange 보강용, 없어도 수집 진행)
     const secRes = await fetch(SEC_TICKERS_URL, {
       headers: { "User-Agent": USER_AGENT },
       next: { revalidate: 3600 },
@@ -118,15 +113,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2. EDGAR EFTS에서 공시 수집 (페이지네이션)
     const hits = await fetchAllHits(startdt, enddt);
-
     const adminClient = createAdminClient();
 
-    // 3. DB에 있는 티커 목록 (FK 검증 + 중복 upsert 방지)
-    const { data: knownRows } = await adminClient
-      .from("tickers")
-      .select("ticker");
+    const { data: knownRows } = await adminClient.from("tickers").select("ticker");
     const tickerSet = new Set<string>(knownRows?.map((r) => r.ticker) ?? []);
 
     let inserted = 0;
@@ -144,8 +134,6 @@ export async function GET(req: NextRequest) {
       const entityName = String(src.entity_name ?? ticker);
       const exchange = paddedCik ? (cikToExchange.get(paddedCik) ?? null) : null;
 
-      // 신규 티커는 tickers 테이블에 자동 upsert
-      // ignoreDuplicates: true → 시드된 name_en은 덮어쓰지 않음
       if (!tickerSet.has(ticker)) {
         const { error: tickerErr } = await adminClient
           .from("tickers")
@@ -191,7 +179,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 4. 한국어 요약 — summary_kr NULL 항목, 최근순 최대 20건
     let summarized = 0;
     let summarizeFailed = 0;
     if (process.env.ANTHROPIC_API_KEY) {
@@ -200,7 +187,7 @@ export async function GET(req: NextRequest) {
       summarizeFailed = s.failed;
     }
 
-    return NextResponse.json({
+    return {
       ok: true,
       period: { startdt, enddt },
       total: hits.length,
@@ -208,17 +195,20 @@ export async function GET(req: NextRequest) {
       skipped: skipNoTicker + skipTickerErr + skipFilingErr,
       summarized,
       ...(summarizeFailed > 0 && { summarizeFailed }),
-      debug: {
-        skipNoTicker,
-        skipTickerErr,
-        skipFilingErr,
-        firstError: firstError ?? null,
-        sampleSource: hits[0]?._source ?? null,
-      },
-    });
+      debug: { skipNoTicker, skipTickerErr, skipFilingErr, firstError: firstError ?? null, sampleSource: hits[0]?._source ?? null },
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[collect/filings]", message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    return { ok: false, error: message };
   }
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const dateParam = req.nextUrl.searchParams.get("date");
+  const result = await runFilingsCollect(dateParam);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

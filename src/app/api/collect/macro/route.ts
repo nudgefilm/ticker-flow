@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 interface FredObservation {
   date: string;   // "2024-01-01"
@@ -20,14 +21,9 @@ const FRED_SERIES = [
   { id: "RSXFS",    name: "소매판매",         source: "Census" },
 ] as const;
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runMacroCollect(): Promise<CollectResult> {
   const apiKey = process.env.FRED_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "FRED_API_KEY not set" }, { status: 500 });
-  }
+  if (!apiKey) return { ok: false, error: "FRED_API_KEY not set" };
 
   const adminClient = createAdminClient();
   let inserted = 0;
@@ -51,7 +47,6 @@ export async function GET(req: NextRequest) {
       const latest = obs[0];
       const prev = obs[1];
 
-      // FRED는 결측값을 "."으로 표시
       if (!latest || latest.value === ".") {
         skipped++;
         continue;
@@ -86,10 +81,13 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    total: FRED_SERIES.length,
-    inserted,
-    skipped,
-  });
+  return { ok: true, total: FRED_SERIES.length, inserted, skipped };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const result = await runMacroCollect();
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

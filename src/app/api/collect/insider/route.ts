@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
 
 interface FinnhubInsiderTransaction {
   name: string;
@@ -80,44 +81,32 @@ async function collectForTicker(
   return { inserted, skipped };
 }
 
-export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
-
+export async function runInsiderCollect(
+  tickerParam?: string | null
+): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "FINNHUB_API_KEY not set" }, { status: 500 });
-  }
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
 
   const adminClient = createAdminClient();
-  const tickerParam = req.nextUrl.searchParams.get("ticker");
-
   let tickers: string[];
 
   if (tickerParam) {
-    // 단일 티커 모드
     tickers = [tickerParam.toUpperCase()];
   } else {
-    // 1. 와치리스트에 등록된 종목 (전체 유저 합산)
     const { data: watchlistRows } = await adminClient
       .from("watchlist")
       .select("ticker");
 
-    // 2. 최근 7일 내 공시가 있는 종목
-    const sevenDaysAgo = new Date(
-      Date.now() - 7 * 24 * 60 * 60 * 1000
-    ).toISOString();
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data: filingRows } = await adminClient
       .from("filings")
       .select("ticker")
       .gte("filed_at", sevenDaysAgo);
 
-    // 3. 중복 제거
     const tickerSet = new Set<string>();
     watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
     filingRows?.forEach((r) => tickerSet.add(r.ticker));
 
-    // 4. 1회 실행당 최대 10개 (ticker당 ~500ms → 10개 ≈ 5초, Vercel 60초 내 여유)
     tickers = [...tickerSet].slice(0, 10);
   }
 
@@ -129,16 +118,19 @@ export async function GET(req: NextRequest) {
     totalInserted += inserted;
     totalSkipped += skipped;
 
-    // Finnhub 요청 간 200ms 딜레이 (rate limit 대응)
     if (tickers.length > 1) {
       await new Promise((r) => setTimeout(r, 200));
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    tickers: tickers.length,
-    inserted: totalInserted,
-    skipped: totalSkipped,
-  });
+  return { ok: true, tickers: tickers.length, inserted: totalInserted, skipped: totalSkipped };
+}
+
+export async function GET(req: NextRequest) {
+  const authError = await requireCollectAuth(req);
+  if (authError) return authError;
+  const tickerParam = req.nextUrl.searchParams.get("ticker");
+  const result = await runInsiderCollect(tickerParam);
+  if (!result.ok) return NextResponse.json(result, { status: 500 });
+  return NextResponse.json(result);
 }

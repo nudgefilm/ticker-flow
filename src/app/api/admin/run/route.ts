@@ -1,23 +1,37 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "@/lib/collect/types";
+import { runFilingsCollect } from "@/app/api/collect/filings/route";
+import { runNewsCollect } from "@/app/api/collect/news/route";
+import { runEarningsCollect } from "@/app/api/collect/earnings/route";
+import { runEarningsActualCollect } from "@/app/api/collect/earnings-actual/route";
+import { runPricesCollect } from "@/app/api/collect/prices/route";
+import { runInsiderCollect } from "@/app/api/collect/insider/route";
+import { runAnalystCollect } from "@/app/api/collect/analyst/route";
+import { run13fCollect } from "@/app/api/collect/13f/route";
+import { runMacroCollect } from "@/app/api/collect/macro/route";
 import { runProfileCollect } from "@/app/api/collect/profile/route";
 
-// trigger id → 실제 collection 엔드포인트 경로
-const JOB_MAP: Record<string, string> = {
+// collect job id → 직접 호출 함수 (HTTP fetch 없음)
+const COLLECT_MAP: Record<string, () => Promise<CollectResult>> = {
+  "filings":         runFilingsCollect,
+  "news":            runNewsCollect,
+  "earnings":        runEarningsCollect,
+  "earnings-actual": runEarningsActualCollect,
+  "prices":          runPricesCollect,
+  "insider":         runInsiderCollect,
+  "analyst":         runAnalystCollect,
+  "13f":             run13fCollect,
+  "macro":           runMacroCollect,
+  "profile":         runProfileCollect,
+};
+
+// collect 외 job은 기존 fetch 방식 유지
+const FETCH_JOB_MAP: Record<string, string> = {
   "watchlist-tickers": "/api/collect/watchlist-tickers",
   "seed-tickers":      "/api/seed/tickers",
-  "filings":           "/api/collect/filings",
-  "news":              "/api/collect/news",
-  "earnings":          "/api/collect/earnings",
-  "macro":             "/api/collect/macro",
-  "insider":           "/api/collect/insider",
-  "prices":            "/api/collect/prices",
-  "earnings-actual":   "/api/collect/earnings-actual",
   "translate":         "/api/translate",
-  "analyst":           "/api/collect/analyst",
-  "13f":               "/api/collect/13f",
-  "profile":           "/api/collect/profile",
   "digest":            "/api/email/digest",
   "debug-env":         "/api/debug/env",
 };
@@ -27,8 +41,10 @@ export async function GET(req: NextRequest) {
   if (authError) return authError;
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
-  const endpoint = JOB_MAP[job];
-  if (!endpoint) {
+  const isCollectJob = job in COLLECT_MAP;
+  const fetchEndpoint = FETCH_JOB_MAP[job];
+
+  if (!isCollectJob && !fetchEndpoint) {
     return NextResponse.json({ error: `Unknown job: ${job}` }, { status: 400 });
   }
 
@@ -45,30 +61,29 @@ export async function GET(req: NextRequest) {
   }
 
   const runId = run.id as string;
-  const host = req.headers.get("host") ?? "localhost:3000";
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (host.includes("localhost") ? `http://${host}` : `https://${host}`);
-  const cronSecret = process.env.CRON_SECRET ?? "";
-  const cookieHeader = req.headers.get("cookie") ?? "";
 
   after(async () => {
     try {
-      let result: Record<string, unknown>;
+      let result: CollectResult;
 
-      if (job === "profile") {
-        // HTTP fetch 없이 함수 직접 호출 (Authorization 헤더 전달 불필요)
-        result = await runProfileCollect() as unknown as Record<string, unknown>;
+      if (isCollectJob) {
+        result = await COLLECT_MAP[job]();
       } else {
-        const collectUrl = `${baseUrl}${endpoint}`;
-        const res = await fetch(collectUrl, {
+        const host = req.headers.get("host") ?? "localhost:3000";
+        const baseUrl =
+          process.env.NEXT_PUBLIC_SITE_URL ??
+          (host.includes("localhost") ? `http://${host}` : `https://${host}`);
+        const cronSecret = process.env.CRON_SECRET ?? "";
+        const cookieHeader = req.headers.get("cookie") ?? "";
+
+        const res = await fetch(`${baseUrl}${fetchEndpoint}`, {
           headers: {
             Authorization: `Bearer ${cronSecret}`,
             ...(cookieHeader && { Cookie: cookieHeader }),
           },
         });
         result = res.ok
-          ? await res.json().catch(() => ({}))
+          ? await res.json().catch(() => ({ ok: false }))
           : { ok: false, error: `HTTP ${res.status}` };
       }
 
