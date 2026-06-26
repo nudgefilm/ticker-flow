@@ -1,7 +1,8 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { CollectResult } from "@/lib/collect/types";
+import type { CollectResult, CollectJob, CollectHandler } from "@/lib/collect/types";
+import { COLLECT_JOBS } from "@/lib/collect/types";
 import { runFilingsCollect } from "@/lib/collect/filings";
 import { runNewsCollect } from "@/lib/collect/news";
 import { runEarningsCollect, runEarningsActualCollect } from "@/lib/collect/earnings";
@@ -13,7 +14,9 @@ import { runMacroCollect } from "@/lib/collect/economic";
 import { runProfileCollect } from "@/lib/collect/profile";
 
 // collect job id → 서비스 계층 직접 호출
-const COLLECT_MAP: Record<string, () => Promise<CollectResult>> = {
+// Record<CollectJob, CollectHandler>: 누락·오타는 컴파일 오류로 즉시 검출
+const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
+  "profile":         runProfileCollect,
   "filings":         runFilingsCollect,
   "news":            runNewsCollect,
   "earnings":        runEarningsCollect,
@@ -23,7 +26,6 @@ const COLLECT_MAP: Record<string, () => Promise<CollectResult>> = {
   "analyst":         runAnalystCollect,
   "13f":             run13fCollect,
   "macro":           runMacroCollect,
-  "profile":         runProfileCollect,
 };
 
 // collect 외 job은 기존 fetch 방식 유지
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
   if (authError) return authError;
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
-  const isCollectJob = job in COLLECT_MAP;
+  const isCollectJob = (COLLECT_JOBS as readonly string[]).includes(job);
   const fetchEndpoint = FETCH_JOB_MAP[job];
 
   if (!isCollectJob && !fetchEndpoint) {
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
       let result: CollectResult;
 
       if (isCollectJob) {
-        result = await COLLECT_MAP[job]();
+        result = await COLLECT_MAP[job as CollectJob]();
       } else {
         const host = req.headers.get("host") ?? "localhost:3000";
         const baseUrl =
