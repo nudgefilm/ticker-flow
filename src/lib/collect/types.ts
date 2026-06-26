@@ -1,6 +1,8 @@
 export interface CollectResult {
   ok: boolean;
   error?: string;
+  /** 일시적 오류(네트워크, rate limit 등)는 true, 설정 오류는 false. queue retry 판단에 사용. */
+  retryable?: boolean;
   [key: string]: unknown;
 }
 

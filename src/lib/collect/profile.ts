@@ -58,7 +58,7 @@ interface FinnhubProfile {
 
 export async function runProfileCollect(limit = 20): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
   const clampedLimit = Math.min(Math.max(1, isNaN(limit) ? 20 : limit), 50);

@@ -21,7 +21,7 @@ const FRED_SERIES = [
 
 export async function runMacroCollect(): Promise<CollectResult> {
   const apiKey = process.env.FRED_API_KEY;
-  if (!apiKey) return { ok: false, error: "FRED_API_KEY not set" };
+  if (!apiKey) return { ok: false, error: "FRED_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
   let inserted = 0;

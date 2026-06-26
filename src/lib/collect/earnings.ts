@@ -24,7 +24,7 @@ export async function runEarningsCollect(
   to?: string | null
 ): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const today = new Date().toISOString().slice(0, 10);
   const thirtyDaysLater = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -164,7 +164,7 @@ export async function runEarningsActualCollect(
   tickerParam?: string | null
 ): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set" };
+  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
   let tickers: string[];
