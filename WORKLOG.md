@@ -1074,7 +1074,34 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-26 · 세션 22
+
+### 401 Unauthorized 근본 원인 분석 및 수정
+
+**원인 확정**
+- `requireCollectAuth()`에서 세션 쿠키 체크 경로가 제거된 상태에서 브라우저 요청이 `/api/admin/run`에 진입
+- 브라우저는 `Authorization: Bearer CRON_SECRET` 헤더를 보내지 않으므로 무조건 401 반환
+- collect 엔드포인트 호출 자체가 이루어지지 않았음
+
+**수정 1: requireCollectAuth() 세션 경로 복원**
+- `src/lib/collect/auth.ts`
+- 인증 순서: ① CRON_SECRET → ② Supabase 세션 + ADMIN_EMAIL 확인 → ③ 401
+- `user.email === process.env.ADMIN_EMAIL` 조건으로 브라우저 관리자 요청 허용
+
+**수정 2: profile collect 함수 직접 호출 리팩토링**
+- `src/app/api/collect/profile/route.ts`
+  - `runProfileCollect(limit?: number)` 함수로 수집 로직 분리 export
+  - GET 핸들러는 `requireCollectAuth` 후 `runProfileCollect()` 호출만 수행
+  - Cron 직접 GET 호출 동작 유지
+- `src/app/api/admin/run/route.ts`
+  - `job === "profile"` 분기: HTTP fetch 제거 → `runProfileCollect()` 직접 호출
+  - 나머지 job은 기존 `JOB_MAP + fetch()` 구조 그대로 유지
+  - `collect_runs` insert/update 로직 변경 없음
+- **효과:** after() 컨텍스트에서 Authorization 헤더 릴레이 불필요, 리다이렉트 위험 제거
+
 ## 다음 작업 예정
+- profile 버튼 실제 동작 확인 (Vercel 배포 후 테스트)
+- 나머지 collect job도 동일 패턴(함수 직접 호출)으로 순차 리팩토링 검토
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 환경변수 등록 후 결제 플로우 테스트
