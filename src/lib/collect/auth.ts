@@ -4,16 +4,20 @@ export async function requireCollectAuth(req: NextRequest | Request): Promise<Re
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
 
-  // CRON_SECRET 설정됨 + 헤더 일치 → 통과
+  // 디버그 로그
+  console.log("=== requireCollectAuth ===");
+  console.log("cronSecret length:", cronSecret?.length);
+  console.log("cronSecret first 10 chars:", cronSecret?.substring(0, 10));
+  console.log("authHeader:", authHeader?.substring(0, 20));
+  console.log("match:", cronSecret && authHeader === `Bearer ${cronSecret}`);
+
   if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
     return null;
   }
 
-  // CRON_SECRET 미설정 → 개발 환경, 무조건 통과
   if (!cronSecret) {
     return null;
   }
 
-  // CRON_SECRET 설정됐는데 헤더 불일치 → 401
   return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
