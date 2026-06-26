@@ -1065,6 +1065,13 @@ CREATE TABLE stock_prices (
 - 시각화 섹션(`md:grid-cols-3`)을 FilingFilterBar 위에 배치
 - SECTOR_KR 매핑 sectors/page.tsx와 동일하게 유지
 
+### profile 수집 파라미터 조정
+
+**`src/app/api/collect/profile/route.ts`**
+- 기본 수집 종목 수: 50 → 20으로 축소 (타임아웃 방지)
+- Finnhub API 딜레이: 300ms → 200ms로 단축
+- `?limit=N` 쿼리 파라미터 추가 (기본 20, 최대 50 상한)
+
 ---
 
 ## 다음 작업 예정

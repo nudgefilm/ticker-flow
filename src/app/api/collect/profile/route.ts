@@ -87,12 +87,16 @@ export async function GET(req: NextRequest) {
 
   const adminClient = createAdminClient();
 
-  // sector IS NULL인 종목 최대 50개
+  // ?limit=N 파라미터 (기본 20, 최대 50)
+  const limitParam = parseInt(req.nextUrl.searchParams.get("limit") ?? "20", 10);
+  const limit = Math.min(Math.max(1, isNaN(limitParam) ? 20 : limitParam), 50);
+
+  // sector IS NULL인 종목 조회
   const { data: tickerRows, error: fetchErr } = await adminClient
     .from("tickers")
     .select("ticker")
     .is("sector", null)
-    .limit(50);
+    .limit(limit);
 
   if (fetchErr) {
     return NextResponse.json({ ok: false, error: fetchErr.message }, { status: 500 });
@@ -113,7 +117,7 @@ export async function GET(req: NextRequest) {
 
       if (!res.ok) {
         skipped++;
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 200));
         continue;
       }
 
@@ -121,7 +125,7 @@ export async function GET(req: NextRequest) {
 
       if (!profile.finnhubIndustry) {
         skipped++;
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 200));
         continue;
       }
 
@@ -144,7 +148,7 @@ export async function GET(req: NextRequest) {
       if (!firstError) firstError = err instanceof Error ? err.message : "Unknown error";
     }
 
-    await new Promise((r) => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 200));
   }
 
   return NextResponse.json({

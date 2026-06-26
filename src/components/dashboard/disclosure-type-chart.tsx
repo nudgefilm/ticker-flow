@@ -18,17 +18,17 @@ export default function DisclosureTypeChart({ data, total }: Props) {
     : ""
 
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+      <p className="mb-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         공시 유형 분포
       </p>
 
       {total === 0 ? (
-        <p className="py-6 text-center text-xs text-[#a6a6a6]">데이터 없음</p>
+        <p className="flex flex-1 items-center justify-center text-xs text-[#a6a6a6]">데이터 없음</p>
       ) : (
-        <div className="flex items-center gap-4">
+        <div className="flex flex-1 items-center gap-8">
           {/* 도넛 */}
-          <div className="relative h-[84px] w-[84px] shrink-0">
+          <div className="relative h-48 w-48 shrink-0">
             <div
               className="h-full w-full rounded-full"
               style={{
@@ -38,26 +38,29 @@ export default function DisclosureTypeChart({ data, total }: Props) {
               }}
             />
             {/* 가운데 구멍 */}
-            <div className="absolute inset-[22px] flex items-center justify-center rounded-full bg-[#111111]">
-              <span className="text-[11px] font-semibold tabular-nums text-white">
+            <div className="absolute inset-[48px] flex items-center justify-center rounded-full bg-[#111111]">
+              <span className="text-2xl font-semibold tabular-nums text-white">
                 {total}
               </span>
             </div>
           </div>
 
           {/* 범례 */}
-          <ul className="flex min-w-0 flex-1 flex-col gap-2">
+          <ul className="flex min-w-0 flex-1 flex-col gap-3">
             {data.map((d) => (
-              <li key={d.name} className="flex items-center gap-2">
+              <li key={d.name} className="flex items-center gap-2.5">
                 <span
-                  className="h-2 w-2 shrink-0 rounded-full"
+                  className="h-3 w-3 shrink-0 rounded-full"
                   style={{ background: d.color }}
                 />
-                <span className="min-w-0 truncate text-[11px] text-[#a6a6a6]">
+                <span className="min-w-0 truncate text-sm text-[#a6a6a6]">
                   {d.name}
                 </span>
-                <span className="ml-auto text-[11px] font-medium tabular-nums text-white">
+                <span className="ml-auto text-sm font-medium tabular-nums text-white">
                   {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+                </span>
+                <span className="text-xs tabular-nums text-[#a6a6a6]">
+                  ({d.value})
                 </span>
               </li>
             ))}

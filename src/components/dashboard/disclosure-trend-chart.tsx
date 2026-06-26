@@ -9,7 +9,7 @@ export default function DisclosureTrendChart({ data }: Props) {
   const BAR_HEIGHT = 52 // 바 최대 높이(px)
 
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
       <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         최근 7일 트렌드
       </p>

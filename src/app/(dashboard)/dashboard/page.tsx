@@ -213,10 +213,16 @@ export default async function DashboardPage({
       <DashboardHeader title="공시 피드" />
 
       {/* 시각화 섹션 */}
-      <section className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <DisclosureTypeChart data={typeData} total={total} />
-        <DisclosureTrendChart data={trendData} />
-        <SectorActivityChart data={sectorData} />
+      <section className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* 좌측: 공시 유형 분포 — 2열 차지 */}
+        <div className="lg:col-span-2">
+          <DisclosureTypeChart data={typeData} total={total} />
+        </div>
+        {/* 우측: 트렌드 + 섹터 위아래 */}
+        <div className="flex flex-col gap-4">
+          <DisclosureTrendChart data={trendData} />
+          <SectorActivityChart data={sectorData} />
+        </div>
       </section>
 
       {/* 필터 탭 + 피드 */}
