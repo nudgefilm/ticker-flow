@@ -60,6 +60,21 @@ export default async function BillingPage({
             </span>
           )}
         </div>
+        {isPro && (
+          <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <a
+              href="https://polar.sh/tickerflow/portal"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-[#a6a6a6] transition-colors hover:text-white"
+            >
+              구독 해지 또는 플랜 변경
+            </a>
+            <p className="mt-1.5 text-xs text-[#a6a6a6]">
+              구독 해지 후에도 현재 결제 기간 종료일까지 Pro 기능을 이용할 수 있습니다.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 플랜 비교 */}

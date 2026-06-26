@@ -1270,6 +1270,19 @@ CREATE TABLE stock_prices (
 - 기존 인라인 월간/연간 카드 제거 → `BillingPlansClient isPro={isPro}` 위임
 - 상단 현재 플랜 상태 카드 유지
 
+---
+
+## 2026-06-27 · 세션 27
+
+### billing 페이지 — 구독 해지 링크 추가
+
+**`src/app/(dashboard)/billing/page.tsx`**
+- 현재 플랜 카드 하단 (Pro 유저 전용): `border-t border-white/[0.06]` 구분선 + 해지 섹션 추가
+- "구독 해지 또는 플랜 변경" 텍스트 링크 → `https://polar.sh/tickerflow/portal`
+  - `target="_blank" rel="noopener noreferrer"`
+  - 색상: `text-[#a6a6a6]` → hover `text-white`
+- 안내 문구: "구독 해지 후에도 현재 결제 기간 종료일까지 Pro 기능을 이용할 수 있습니다."
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
