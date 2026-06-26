@@ -47,6 +47,12 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+
+  // Polar 웹훅은 인증 없이 통과
+  if (pathname.startsWith("/api/webhooks/")) {
+    return NextResponse.next()
+  }
+
   const isProtected = PROTECTED_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + "/")
   );

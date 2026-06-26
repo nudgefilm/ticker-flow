@@ -1,6 +1,5 @@
 import { IconCheck } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
-import CheckoutButton from "@/components/dashboard/checkout-button"
 
 interface BillingPlanCardProps {
   name: string
@@ -9,8 +8,8 @@ interface BillingPlanCardProps {
   features: string[]
   featured?: boolean
   isPro?: boolean
-  userEmail?: string
-  productId?: string
+  monthlyCheckoutUrl?: string
+  annualCheckoutUrl?: string
 }
 
 export default function BillingPlanCard({
@@ -20,8 +19,8 @@ export default function BillingPlanCard({
   features,
   featured = false,
   isPro = false,
-  userEmail = "",
-  productId = "",
+  monthlyCheckoutUrl = "",
+  annualCheckoutUrl = "",
 }: BillingPlanCardProps) {
   const isCurrentPlan = featured ? isPro : !isPro
 
@@ -79,10 +78,22 @@ export default function BillingPlanCard({
             </button>
           ) : (
             <>
-              <CheckoutButton productId={productId} userEmail={userEmail}>
-                Pro 시작하기
-              </CheckoutButton>
-              <p className="text-center text-xs text-[#a6a6a6]">언제든 해지 가능 · 연간 할인 제공</p>
+              <a
+                href={monthlyCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90"
+              >
+                월간 구독 시작
+              </a>
+              <a
+                href={annualCheckoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-[6px] border border-white/[0.2] py-2.5 text-center text-sm text-white transition-colors hover:bg-white/[0.05]"
+              >
+                연간 구독 시작 (₩11,900/월)
+              </a>
             </>
           )
         ) : (

@@ -1171,11 +1171,88 @@ CREATE TABLE stock_prices (
 - FETCH_JOB_MAP: 4개 (seed-tickers, translate, digest, debug-env)
 - watchlist-tickers 401 완전 해소
 
+---
+
+## 2026-06-27 · 세션 24
+
+### Polar.sh 결제 연동 완성
+
+**`src/app/api/webhooks/polar/route.ts`** (재작성)
+- `export const dynamic = "force-dynamic"` 추가
+- 수신 이벤트: `subscription.created`, `subscription.updated`, `subscription.canceled`, `subscription.revoked`
+- `subscription.created` / `subscription.updated` + `status === "active"` → `profiles.plan = "pro"` 업데이트 + Pro 전환 이메일 발송
+- `subscription.canceled` / `subscription.revoked` → `profiles.plan = "free"` 업데이트
+- DB 업데이트 실패 시 500 반환 (Polar 재시도)
+- 서명 검증: `X-Polar-Signature` 헤더 값 == `HMAC-SHA256(rawBody, POLAR_WEBHOOK_SECRET)` hex
+- 유저 식별: `event.data.customer.email` 우선, 없으면 `event.data.user.email`
+
+**`src/middleware.ts`**
+- `/api/webhooks/` 경로 조기 반환 추가 (`NextResponse.next()`, Supabase 세션 조회 없이 통과)
+
+**`src/app/(dashboard)/billing/page.tsx`**
+- `PRODUCT_ID` 환경변수 참조 제거
+- 정적 체크아웃 URL 상수 2개 추가:
+  - `MONTHLY_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_b4362962-9365-4bfb-be40-1f5ad65b45af"`
+  - `ANNUAL_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_046ffe47-7b01-4427-b69b-63202cf5ae85"`
+- `BillingCurrent` prop: `productId` → `monthlyCheckoutUrl`
+- `BillingPlanCard` prop: `userEmail`, `productId` → `monthlyCheckoutUrl`, `annualCheckoutUrl`
+
+**`src/components/dashboard/billing-plan-card.tsx`**
+- `CheckoutButton` 제거 → `<a>` 링크 2개 (`target="_blank" rel="noopener noreferrer"`)
+  - 월간: "월간 구독 시작" → `monthlyCheckoutUrl`
+  - 연간: "연간 구독 시작 (₩11,900/월)" → `annualCheckoutUrl`
+- Pro 유저: "현재 Pro 플랜 이용 중" 비활성 버튼 유지
+
+**`src/components/dashboard/billing-current.tsx`**
+- `CheckoutButton` 제거 → `<a>` 링크 (`monthlyCheckoutUrl`, `target="_blank"`)
+- prop: `productId` → `monthlyCheckoutUrl`
+
+**필요 Vercel 환경변수**
+- `POLAR_WEBHOOK_SECRET` — Polar 웹훅 Signing Secret
+- `POLAR_ACCESS_TOKEN` — `/api/polar/checkout` API용 (체크아웃 API는 유지됨)
+
+### Polar.sh 웹훅 등록 완료
+
+- Polar 대시보드 웹훅 엔드포인트 등록 완료 (tickerflow-production)
+- `POLAR_WEBHOOK_SECRET` Vercel + `.env.local` 등록 완료
+- 상품 ID 확정:
+  - 월간: `b4362962-9365-4bfb-be40-1f5ad65b45af`
+  - 연간: `046ffe47-7b01-4427-b69b-63202cf5ae85`
+
+### .env.local.example 신규 생성
+
+- `.env.local.example` 프로젝트 루트에 생성
+- 포함 항목: Supabase / Finnhub / FRED / Anthropic / Polar / Resend / 앱 설정
+- Polar 항목: `POLAR_ACCESS_TOKEN`, `POLAR_WEBHOOK_SECRET`, `POLAR_PRODUCT_ID_MONTHLY`, `POLAR_PRODUCT_ID_ANNUAL`
+
+---
+
+## 2026-06-27 · 세션 25
+
+### 사이드바 구독 관리 메뉴 추가
+
+**`src/components/dashboard/sidebar.tsx`**
+- `IconCreditCard` import 추가
+- [설정] 그룹에 `{ href: "/billing", label: "구독 관리", icon: IconCreditCard }` 추가 (알림 설정 ↔ 마이페이지 사이)
+- Pro 배지 없음 (Free 유저도 접근 가능)
+
+### billing 페이지 재구성
+
+**`src/app/(dashboard)/billing/page.tsx`** (전면 재작성)
+- `createClient()` 로 현재 유저 plan 조회 (`profiles.id = user.id`)
+- 레이아웃 변경: Free vs Pro 비교 → 현재 플랜 상태 카드(상단) + 월간/연간 플랜 카드(하단)
+- 상단 현재 플랜 카드: Free/Pro 표시, Pro 유저 "활성" 배지
+- 월간 플랜 카드 (₩14,900/월): Free → 체크아웃 링크, Pro → "현재 Pro 플랜 이용 중" 비활성
+- 연간 플랜 카드 (₩142,800/년, 월 ₩11,900): "2개월 무료" 배지, Free → 체크아웃 링크, Pro → 비활성
+- `?success=true` 쿼리 시 Pro 전환 성공 배너 표시
+- 하단 면책 문구 3줄 유지
+- 기존 BillingCurrent / BillingPlanCard 컴포넌트 의존 제거 (인라인 구현)
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
 - seed-tickers / debug-env 등 나머지 FETCH_JOB 401 원인 조사
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
-- Polar.sh 환경변수 등록 후 결제 플로우 테스트
+- Polar.sh 결제 플로우 실제 테스트 (체크아웃 → 웹훅 수신 → plan 업데이트 확인)
 - Resend 도메인 인증 후 이메일 발송 테스트

@@ -1,12 +1,10 @@
-import CheckoutButton from "@/components/dashboard/checkout-button"
-
 interface BillingCurrentProps {
   plan: string
   email: string
-  productId: string
+  monthlyCheckoutUrl: string
 }
 
-export default function BillingCurrent({ plan, email, productId }: BillingCurrentProps) {
+export default function BillingCurrent({ plan, monthlyCheckoutUrl }: BillingCurrentProps) {
   const isPro = plan === "pro"
 
   return (
@@ -23,13 +21,14 @@ export default function BillingCurrent({ plan, email, productId }: BillingCurren
         </div>
         {!isPro && (
           <div className="shrink-0">
-            <CheckoutButton
-              productId={productId}
-              userEmail={email}
-              className="rounded-[6px] bg-white px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
+            <a
+              href={monthlyCheckoutUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-[6px] bg-white px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-white/90"
             >
               Pro로 업그레이드
-            </CheckoutButton>
+            </a>
           </div>
         )}
       </div>

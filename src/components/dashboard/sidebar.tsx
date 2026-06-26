@@ -14,6 +14,7 @@ import {
   IconFlame,
   IconChartBar,
   IconBell,
+  IconCreditCard,
   IconLogout,
 } from "@tabler/icons-react";
 import TickerSearch from "@/components/dashboard/ticker-search";
@@ -69,6 +70,7 @@ const navGroups: NavGroup[] = [
     label: "설정",
     items: [
       { href: "/alerts", label: "알림 설정", icon: IconBell, pro: true },
+      { href: "/billing", label: "구독 관리", icon: IconCreditCard },
       { href: "/mypage", label: "마이페이지", icon: IconUser },
     ],
   },
