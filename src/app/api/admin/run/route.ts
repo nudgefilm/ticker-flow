@@ -43,7 +43,6 @@ const FETCH_JOB_MAP: Record<FetchJob, string> = {
   "seed-tickers": "/api/seed/tickers",
   "translate":    "/api/translate",
   "digest":       "/api/email/digest",
-  "debug-env":    "/api/debug/env",
 };
 
 export async function GET(req: NextRequest) {

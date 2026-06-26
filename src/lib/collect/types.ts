@@ -32,7 +32,6 @@ export const FETCH_JOBS = [
   "seed-tickers",
   "translate",
   "digest",
-  "debug-env",
 ] as const;
 
 export type FetchJob = typeof FETCH_JOBS[number];

@@ -109,11 +109,6 @@ const TRIGGERS: Trigger[] = [
     label: "일보 다이제스트 발송 (Pro 유저)",
     desc: "Pro 플랜 유저에게 오늘의 주요 공시·뉴스를 이메일로 발송합니다.",
   },
-  {
-    id: "debug-env",
-    label: "[디버그] 환경변수 / 헤더 확인",
-    desc: "run/route.ts → after() 가 실제로 보내는 Authorization 헤더 값을 확인합니다.",
-  },
 ];
 
 function resultSummary(result: TriggerResult): string {
