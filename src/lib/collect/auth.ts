@@ -1,23 +1,17 @@
 import { NextRequest } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function requireCollectAuth(req: NextRequest | Request): Promise<Response | null> {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
 
-  // 디버그 로그
-  console.log("=== requireCollectAuth ===");
-  console.log("cronSecret length:", cronSecret?.length);
-  console.log("cronSecret first 10 chars:", cronSecret?.substring(0, 10));
-  console.log("authHeader:", authHeader?.substring(0, 20));
-  console.log("match:", cronSecret && authHeader === `Bearer ${cronSecret}`);
+  // 1. 서버 간 호출: Authorization: Bearer CRON_SECRET
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return null;
 
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
-    return null;
-  }
-
-  if (!cronSecret) {
-    return null;
-  }
+  // 2. 브라우저 호출: Supabase 세션 + ADMIN_EMAIL 확인
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user?.email && user.email === process.env.ADMIN_EMAIL) return null;
 
   return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
