@@ -96,6 +96,40 @@ function squarify(
   return rects;
 }
 
+// ─── 섹터 색상 ────────────────────────────────────────────────────────────────
+
+const SECTOR_COLORS: Record<string, string> = {
+  Technology: "#60a5fa",
+  Healthcare: "#34d399",
+  Financials: "#fbbf24",
+  "Consumer Discretionary": "#f87171",
+  "Consumer Staples": "#fb923c",
+  Energy: "#facc15",
+  Industrials: "#a78bfa",
+  Materials: "#4ade80",
+  "Real Estate": "#f472b6",
+  Utilities: "#38bdf8",
+  "Communication Services": "#c084fc",
+  기술: "#60a5fa",
+  헬스케어: "#34d399",
+  금융: "#fbbf24",
+  경기소비재: "#f87171",
+  필수소비재: "#fb923c",
+  에너지: "#facc15",
+  산업재: "#a78bfa",
+  소재: "#4ade80",
+  부동산: "#f472b6",
+  유틸리티: "#38bdf8",
+  커뮤니케이션: "#c084fc",
+};
+
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
@@ -126,14 +160,14 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
   // 3. activityScore 내림차순 정렬
   const sorted = [...floored].sort((a, b) => b.effective - a.effective);
 
-  // 4. 활동 점수 기준 색상
+  // 4. 섹터별 고유 색상 + 활동 점수 기준 명도
   const n = sorted.length;
   const topCut = Math.ceil(n / 3);
   const midCut = Math.ceil((2 * n) / 3);
-  const colors = sorted.map((_, i) => {
-    if (i < topCut) return "rgba(96,165,250,0.35)";
-    if (i < midCut) return "rgba(96,165,250,0.18)";
-    return "rgba(255,255,255,0.06)";
+  const colors = sorted.map((s, i) => {
+    const hex = SECTOR_COLORS[s.sector] ?? SECTOR_COLORS[s.sectorKr] ?? "#6b7280";
+    const opacity = i < topCut ? 0.4 : i < midCut ? 0.25 : 0.12;
+    return hexToRgba(hex, opacity);
   });
 
   // 5. 면적 정규화
