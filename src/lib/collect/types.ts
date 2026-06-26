@@ -26,3 +26,17 @@ export type CollectHandler = () => Promise<CollectResult>;
 export function isCollectJob(job: string): job is CollectJob {
   return (COLLECT_JOBS as readonly string[]).includes(job);
 }
+
+export const FETCH_JOBS = [
+  "watchlist-tickers",
+  "seed-tickers",
+  "translate",
+  "digest",
+  "debug-env",
+] as const;
+
+export type FetchJob = typeof FETCH_JOBS[number];
+
+export function isFetchJob(job: string): job is FetchJob {
+  return (FETCH_JOBS as readonly string[]).includes(job);
+}

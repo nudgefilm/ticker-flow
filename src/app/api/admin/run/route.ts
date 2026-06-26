@@ -5,7 +5,9 @@ import {
   type CollectResult,
   type CollectJob,
   type CollectHandler,
+  type FetchJob,
   isCollectJob,
+  isFetchJob,
   runFilingsCollect,
   runNewsCollect,
   runEarningsCollect,
@@ -33,8 +35,9 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "macro":           runMacroCollect,
 };
 
-// collect 외 job은 기존 fetch 방식 유지
-const FETCH_JOB_MAP: Record<string, string> = {
+// collect 외 job — fetch 방식 유지
+// Record<FetchJob, string>: 누락·오타는 컴파일 오류로 즉시 검출
+const FETCH_JOB_MAP: Record<FetchJob, string> = {
   "watchlist-tickers": "/api/collect/watchlist-tickers",
   "seed-tickers":      "/api/seed/tickers",
   "translate":         "/api/translate",
@@ -47,9 +50,8 @@ export async function GET(req: NextRequest) {
   if (authError) return authError;
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
-  const fetchEndpoint = FETCH_JOB_MAP[job];
 
-  if (!isCollectJob(job) && !fetchEndpoint) {
+  if (!isCollectJob(job) && !isFetchJob(job)) {
     return NextResponse.json({ error: `Unknown job: ${job}` }, { status: 400 });
   }
 
@@ -73,7 +75,7 @@ export async function GET(req: NextRequest) {
 
       if (isCollectJob(job)) {
         result = await COLLECT_MAP[job]();
-      } else {
+      } else if (isFetchJob(job)) {
         const host = req.headers.get("host") ?? "localhost:3000";
         const baseUrl =
           process.env.NEXT_PUBLIC_SITE_URL ??
@@ -81,7 +83,7 @@ export async function GET(req: NextRequest) {
         const cronSecret = process.env.CRON_SECRET ?? "";
         const cookieHeader = req.headers.get("cookie") ?? "";
 
-        const res = await fetch(`${baseUrl}${fetchEndpoint}`, {
+        const res = await fetch(`${baseUrl}${FETCH_JOB_MAP[job]}`, {
           headers: {
             Authorization: `Bearer ${cronSecret}`,
             ...(cookieHeader && { Cookie: cookieHeader }),
@@ -90,6 +92,8 @@ export async function GET(req: NextRequest) {
         result = res.ok
           ? await res.json().catch(() => ({ ok: false }))
           : { ok: false, error: `HTTP ${res.status}` };
+      } else {
+        result = { ok: false, error: `Unknown job: ${job}` };
       }
 
       await (adminClient as any)
