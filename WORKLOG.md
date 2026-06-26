@@ -1354,6 +1354,67 @@ CREATE TABLE stock_prices (
 
 ---
 
+---
+
+## 2026-06-27 · 세션 31
+
+### /analysis 공시 인사이트 페이지 전면 재작성
+
+**신규 파일 — 공유 타입**
+- `src/lib/insights/types.ts` — StockInsight, Filing, TimelineEvent, InsiderTrade, InsiderSummary, EarningsRow, NewsItem 인터페이스
+
+**신규 파일 — 공시 인사이트 컴포넌트 11개**
+- `src/components/dashboard/insights/ui.tsx` — InsightCard, ImportanceBadge, EmptyState, FormTypeBadge, relativeDate
+- `src/components/dashboard/insights/stock-combobox.tsx` — 와치리스트 기반 종목 선택 combobox (useRouter, click-outside)
+- `src/components/dashboard/insights/stock-header.tsx` — 종목 헤더 (exchange, sector, lastClose, updatedAt)
+- `src/components/dashboard/insights/change-summary.tsx` — 5개 요약 카드 (공시/주요이벤트/내부자거래/뉴스/실적)
+- `src/components/dashboard/insights/recent-filings.tsx` — 최근 공시 목록 (ImportanceBadge + FormTypeBadge)
+- `src/components/dashboard/insights/change-timeline.tsx` — 통합 타임라인 (filing/news/insider/earnings 통합, 최대 20건)
+- `src/components/dashboard/insights/insider-trading.tsx` — 내부자 거래 (3열 요약 + 거래 목록)
+- `src/components/dashboard/insights/earnings-flow.tsx` — 실적 테이블 (분기/EPS예상/EPS실제/결과)
+- `src/components/dashboard/insights/related-news.tsx` — 관련 뉴스 목록 (출처/날짜/헤드라인/한국어요약)
+- `src/components/dashboard/insights/data-sources.tsx` — 데이터 출처 (SEC EDGAR/Finnhub/Yahoo Finance)
+
+**수정 파일**
+- `src/app/(dashboard)/analysis/page.tsx` — 서버 컴포넌트, force-dynamic, 6개 Promise.all 병렬 쿼리, ProGate 래핑
+
+**데이터 쿼리**
+- tickers, stock_prices(30일), filings(30일), news(90일), insider_trades(180일), earnings(4건) 병렬
+- 타임라인: filings + news + insider_trades + earnings 통합, date DESC 정렬
+
+**규제 준수**
+- 투자 추천/호재/악재 표현 없음, 면책 문구 3줄 포함
+
+---
+
+## 2026-06-27 · 세션 32
+
+### /stocks/[symbol] 종목 스냅샷 페이지 컴포넌트 분리 재작성
+
+**타입 추가**
+- `src/lib/insights/types.ts` — Quote, NextEarnings 인터페이스 추가
+
+**신규 파일 — snapshot 컴포넌트 7개**
+- `src/components/dashboard/snapshot/snapshot-header.tsx` — 티커 배지, 회사명, 거래소/섹터/산업 (lucide-react 사용)
+- `src/components/dashboard/snapshot/price-card.tsx` — SVG 주가 차트, 최근 종가/변동/52주 고저 (PriceCardFull export)
+- `src/components/dashboard/snapshot/key-metrics.tsx` — 3열 카드: 최근종가/전일대비/다음실적
+- `src/components/dashboard/snapshot/snapshot-filings.tsx` — 최근 공시 목록 + "공시 인사이트 보기 →" /analysis?symbol 링크
+- `src/components/dashboard/snapshot/snapshot-news.tsx` — 최근 뉴스 목록
+- `src/components/dashboard/snapshot/company-info.tsx` — 기업 정보 카드 (거래소/섹터/산업)
+- `src/components/dashboard/snapshot/snapshot-insider.tsx` — 내부자 거래 목록
+
+**수정 파일**
+- `src/app/(dashboard)/stocks/[symbol]/page.tsx` — 7개 Promise.all 병렬 쿼리 (tickers/prices/filings/news/insider/earnings/nextEarnings), 컴포넌트 조합으로 레이아웃 재구성
+- DataSources 컴포넌트 재사용 (공시 인사이트와 공유)
+
+**데이터 변환**
+- stock_prices → Quote (history 배열, change, changePct, week52High/Low)
+- earnings (미래) → NextEarnings (daysUntil, timing BMO/AMC)
+- filings → Filing (event_type 한국어 라벨, importance 자동 산정)
+- news → NewsItem, insider_trades → InsiderTrade (buy/sell → 매수/매도)
+
+---
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
