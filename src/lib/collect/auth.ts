@@ -1,23 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest } from "next/server";
 
-/**
- * Vercel Cron(Authorization: Bearer CRON_SECRET) 또는
- * 어드민 세션 쿠키 중 하나면 통과.
- * null 반환 시 인가 OK, NextResponse 반환 시 401 응답.
- */
-export async function requireCollectAuth(
-  req: NextRequest
-): Promise<NextResponse | null> {
+export async function requireCollectAuth(req: NextRequest | Request): Promise<Response | null> {
   const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return null;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user?.email === process.env.ADMIN_EMAIL) return null;
+  // CRON_SECRET 설정됨 + 헤더 일치 → 통과
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    return null;
+  }
 
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // CRON_SECRET 미설정 → 개발 환경, 무조건 통과
+  if (!cronSecret) {
+    return null;
+  }
+
+  // CRON_SECRET 설정됐는데 헤더 불일치 → 401
+  return Response.json({ error: "Unauthorized" }, { status: 401 });
 }
