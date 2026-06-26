@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
-import SnapshotHeader from "@/components/dashboard/snapshot/snapshot-header";
-import { PriceCardFull } from "@/components/dashboard/snapshot/price-card";
-import KeyMetrics from "@/components/dashboard/snapshot/key-metrics";
-import SnapshotFilings from "@/components/dashboard/snapshot/snapshot-filings";
-import SnapshotNews from "@/components/dashboard/snapshot/snapshot-news";
-import CompanyInfo from "@/components/dashboard/snapshot/company-info";
-import SnapshotInsider from "@/components/dashboard/snapshot/snapshot-insider";
+import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
+import { PriceCard } from "@/components/dashboard/snapshot/price-card";
+import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
+import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filings";
+import { SnapshotNews } from "@/components/dashboard/snapshot/snapshot-news";
+import { CompanyInfo } from "@/components/dashboard/snapshot/company-info";
+import { SnapshotInsider } from "@/components/dashboard/snapshot/snapshot-insider";
+import EarningsFlow from "@/components/dashboard/insights/earnings-flow";
 import DataSources from "@/components/dashboard/insights/data-sources";
 import type {
   Quote,
@@ -14,6 +15,7 @@ import type {
   Filing,
   NewsItem,
   InsiderTrade,
+  EarningsRow,
 } from "@/lib/insights/types";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +33,14 @@ function daysUntil(isoStr: string): number {
   today.setHours(0, 0, 0, 0);
   const target = new Date(isoStr + "T00:00:00");
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+}
+
+function deriveQuarter(reportDate: string): string {
+  const parts = reportDate.slice(0, 10).split("-");
+  const year = parseInt(parts[0]);
+  const month = parseInt(parts[1]);
+  const q = Math.ceil(month / 3);
+  return `${String(year).slice(2)}.Q${q}`;
 }
 
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
@@ -95,25 +105,25 @@ export default async function StockPage({
         .maybeSingle(),
     ]);
 
-  const info        = tickerRes.data;
-  const priceRows   = pricesRes.data ?? [];
-  const filingRows  = filingsRes.data ?? [];
-  const newsRows    = newsRes.data ?? [];
-  const insiderRows = insiderRes.data ?? [];
+  const info            = tickerRes.data;
+  const priceRows       = pricesRes.data ?? [];
+  const filingRows      = filingsRes.data ?? [];
+  const newsRows        = newsRes.data ?? [];
+  const insiderRows     = insiderRes.data ?? [];
+  const earningsRows    = earningsRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
 
-  // ── Quote 변환 ────────────────────────────────────────────────────────────
+  // ── Quote ────────────────────────────────────────────────────────────────
   let quote: Quote | null = null;
   if (priceRows.length >= 2) {
     const history = priceRows.map((p) => p.close);
     const last = priceRows[priceRows.length - 1];
     const prev = priceRows[priceRows.length - 2];
     const change = last.close - prev.close;
-    const changePct = (change / prev.close) * 100;
     quote = {
       close: last.close,
       change,
-      changePct,
+      changePct: (change / prev.close) * 100,
       dataDate: last.date,
       history,
       week52High: Math.max(...history),
@@ -132,33 +142,28 @@ export default async function StockPage({
     };
   }
 
-  const priceDates = priceRows.map((p) => p.date);
-
-  // ── NextEarnings 변환 ─────────────────────────────────────────────────────
+  // ── NextEarnings ─────────────────────────────────────────────────────────
   let nextEarnings: NextEarnings | null = null;
   if (nextEarningsRow) {
     const raw = nextEarningsRow.time_of_day?.toUpperCase();
-    const timing: "BMO" | "AMC" = raw === "BMO" ? "BMO" : "AMC";
     nextEarnings = {
       date: nextEarningsRow.report_date,
       daysUntil: daysUntil(nextEarningsRow.report_date),
-      timing,
+      timing: raw === "BMO" ? "BMO" : "AMC",
       epsEstimate: nextEarningsRow.eps_estimate ?? 0,
     };
   }
 
-  // ── Filing 변환 ───────────────────────────────────────────────────────────
+  // ── Filings ───────────────────────────────────────────────────────────────
   const filings: Filing[] = filingRows.map((f) => {
     const eventLabel = f.event_type
       ? (EVENT_TYPE_LABELS[f.event_type] ?? f.event_type)
       : undefined;
     const ft = f.form_type;
     const importance =
-      f.event_type
-        ? "high"
-        : ft.startsWith("10-K") || ft.startsWith("10-Q")
-        ? "medium"
-        : "low";
+      f.event_type ? "high"
+      : ft.startsWith("10-K") || ft.startsWith("10-Q") ? "medium"
+      : "low";
     return {
       id: f.id,
       date: f.filed_at.slice(0, 10),
@@ -170,7 +175,7 @@ export default async function StockPage({
     };
   });
 
-  // ── NewsItem 변환 ─────────────────────────────────────────────────────────
+  // ── News ──────────────────────────────────────────────────────────────────
   const news: NewsItem[] = newsRows.map((n) => ({
     id: n.id,
     headline: n.headline,
@@ -180,7 +185,7 @@ export default async function StockPage({
     summaryKr: n.summary_kr,
   }));
 
-  // ── InsiderTrade 변환 ─────────────────────────────────────────────────────
+  // ── InsiderTrades ─────────────────────────────────────────────────────────
   const trades: InsiderTrade[] = insiderRows.map((t) => ({
     id: t.id,
     name: t.name ?? "—",
@@ -192,37 +197,46 @@ export default async function StockPage({
     date: t.transaction_date ?? "—",
   }));
 
+  // ── Earnings ──────────────────────────────────────────────────────────────
+  const earnings: EarningsRow[] = earningsRows.map((e) => ({
+    id: e.id,
+    quarter: deriveQuarter(e.report_date),
+    epsEstimate: e.eps_estimate,
+    epsActual: e.actual_eps,
+    reportDate: e.report_date,
+  }));
+
   const companyName = info?.name_kr ?? info?.name_en ?? ticker;
+  const updatedAt = quote?.dataDate
+    ? (() => {
+        const [, m, d] = quote.dataDate.split("-");
+        return `${parseInt(m)}월 ${parseInt(d)}일`;
+      })()
+    : null;
 
   return (
-    <div className="flex h-full flex-col gap-5">
+    <div className="flex flex-col gap-6">
       <DashboardHeader title="종목 스냅샷" />
 
-      {/* 종목 헤더 */}
       <SnapshotHeader
         ticker={ticker}
         name={companyName}
         exchange={info?.exchange ?? null}
         sector={info?.sector ?? null}
         industry={info?.industry ?? null}
+        updatedAt={updatedAt}
       />
 
-      {/* 주가 차트 */}
-      <PriceCardFull quote={quote} dates={priceDates} />
+      <PriceCard quote={quote} />
 
-      {/* 핵심 지표 3종 */}
       <KeyMetrics quote={quote} nextEarnings={nextEarnings} />
 
-      {/* 공시·뉴스 / 기업정보·내부자거래 그리드 */}
-      <div className="grid gap-5 lg:grid-cols-3">
-        {/* 좌측 2/3 */}
-        <div className="flex flex-col gap-5 lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="flex flex-col gap-6">
           <SnapshotFilings filings={filings} ticker={ticker} />
           <SnapshotNews news={news} />
         </div>
-
-        {/* 우측 1/3 */}
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           <CompanyInfo
             exchange={info?.exchange ?? null}
             sector={info?.sector ?? null}
@@ -232,14 +246,16 @@ export default async function StockPage({
         </div>
       </div>
 
-      {/* 데이터 출처 */}
-      <DataSources />
+      <EarningsFlow earnings={earnings} />
 
-      {/* 면책 문구 */}
-      <footer className="border-t border-white/[0.06] py-4 text-center text-xs text-[#a6a6a6]">
-        <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
-        <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
-        <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
+      <DataSources updatedAt={updatedAt} />
+
+      <footer className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+        <ul className="space-y-1.5 text-xs leading-relaxed text-[#a6a6a6]">
+          <li>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</li>
+          <li>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</li>
+          <li>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</li>
+        </ul>
       </footer>
     </div>
   );

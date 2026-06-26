@@ -64,6 +64,31 @@ export function FormTypeBadge({ formType }: { formType: string }) {
   );
 }
 
+export function SectionCard({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-semibold text-white">{title}</h2>
+          {description ? <p className="mt-1 text-xs text-[#a6a6a6]">{description}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function relativeDate(isoStr: string): string {
   const d = new Date(isoStr);
   const now = new Date();

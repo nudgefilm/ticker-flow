@@ -1,62 +1,49 @@
 import { ExternalLink } from "lucide-react";
 import type { NewsItem } from "@/lib/insights/types";
+import { SectionCard } from "@/components/dashboard/insights/ui";
 
-interface Props {
-  news: NewsItem[];
-}
-
-function relativeDate(iso: string): string {
-  const now = new Date();
-  const d = new Date(iso);
-  const diffDays = Math.floor((now.getTime() - d.getTime()) / 86_400_000);
-  if (diffDays === 0) {
-    const kst = new Date(d.getTime() + 9 * 3_600_000);
-    return `오늘 ${kst.getUTCHours().toString().padStart(2, "0")}:${kst.getUTCMinutes().toString().padStart(2, "0")} KST`;
-  }
-  if (diffDays === 1) return "어제";
-  return `${diffDays}일 전`;
-}
-
-export default function SnapshotNews({ news }: Props) {
+export function SnapshotNews({ news }: { news: NewsItem[] }) {
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 뉴스 (30일)</p>
-
+    <SectionCard title="최근 뉴스" description="최근 5건">
       {news.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 뉴스가 없습니다.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-white/[0.06]">
-          {news.map((n) => (
-            <div key={n.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
-              <div className="flex items-start justify-between gap-3">
-                <p className="line-clamp-2 text-sm font-medium leading-snug text-white">{n.headline}</p>
-                <span className="shrink-0 text-xs text-[#a6a6a6]">{relativeDate(n.publishedAt)}</span>
-              </div>
-              {n.summaryKr && (
-                <p className="line-clamp-2 text-xs leading-relaxed text-[#a6a6a6]">{n.summaryKr}</p>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                {n.source && (
-                  <span className="rounded-[4px] border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[11px] text-[#a6a6a6]">
-                    {n.source}
-                  </span>
-                )}
-                {n.url && (
+        <ul className="divide-y divide-white/[0.06]">
+          {news.slice(0, 5).map((item) => (
+            <li key={item.id} className="py-3 first:pt-0 last:pb-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-[#a6a6a6]">
+                      {item.publishedAt.slice(0, 10)}
+                    </span>
+                    {item.source && (
+                      <>
+                        <span className="text-xs text-[#a6a6a6]">·</span>
+                        <span className="text-xs text-[#a6a6a6]">{item.source}</span>
+                      </>
+                    )}
+                  </div>
+                  <h3 className="mt-1 text-sm font-medium text-white">{item.headline}</h3>
+                  {item.summaryKr && (
+                    <p className="mt-0.5 text-sm text-[#a6a6a6]">{item.summaryKr}</p>
+                  )}
+                </div>
+                {item.url && (
                   <a
-                    href={n.url}
+                    href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-auto flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
+                    className="flex shrink-0 items-center gap-1 text-xs text-[#a6a6a6] hover:text-[#60a5fa]"
                   >
-                    원문
-                    <ExternalLink size={11} />
+                    원문 <ExternalLink className="h-3 w-3" />
                   </a>
                 )}
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+    </SectionCard>
   );
 }

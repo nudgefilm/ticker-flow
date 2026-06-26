@@ -1,156 +1,99 @@
 import type { Quote } from "@/lib/insights/types";
 
-interface Props {
-  quote: Quote | null;
-}
-
-function PriceChart({ history, dates }: { history: number[]; dates: string[] }) {
+function PriceLineChart({ history, up }: { history: number[]; up: boolean }) {
   if (history.length < 2) {
     return (
-      <div className="flex h-[140px] items-center justify-center text-sm text-[#a6a6a6]">
+      <div className="flex h-40 items-center justify-center text-sm text-[#a6a6a6]">
         주가 데이터를 수집 중입니다
       </div>
     );
   }
 
-  const W = 600, CHART_H = 110, TOTAL_H = 140, PAD_X = 32;
-  const minC = Math.min(...history);
-  const maxC = Math.max(...history);
-  const pad = (maxC - minC || 1) * 0.1;
-  const yMin = minC - pad;
-  const yMax = maxC + pad;
-
-  const toX = (i: number) => PAD_X + (i / (history.length - 1)) * (W - 2 * PAD_X);
-  const toY = (c: number) => 5 + (1 - (c - yMin) / (yMax - yMin)) * (CHART_H - 10);
-
-  const pts = history.map((c, i) => `${toX(i).toFixed(1)},${toY(c).toFixed(1)}`).join(" ");
-  const fill = `${pts} ${toX(history.length - 1).toFixed(1)},${CHART_H} ${toX(0).toFixed(1)},${CHART_H}`;
-
+  const w = 800, h = 160, pad = 6;
+  const min = Math.min(...history);
+  const max = Math.max(...history);
+  const range = max - min || 1;
   const n = history.length;
-  const labelIndices: { i: number; anchor: "start" | "middle" | "end" }[] = [
-    { i: 0, anchor: "start" },
-    { i: Math.floor((n - 1) / 2), anchor: "middle" },
-    { i: n - 1, anchor: "end" },
-  ];
+  const color = up ? "#34d399" : "#f87171";
+  const gradientId = up ? "priceFillUp" : "priceFillDown";
 
-  function fmtMD(d: string) {
-    const p = d.split("-");
-    return `${parseInt(p[1])}/${parseInt(p[2])}`;
-  }
+  const x = (i: number) => pad + (i / (n - 1)) * (w - pad * 2);
+  const y = (v: number) => h - pad - ((v - min) / range) * (h - pad * 2);
+
+  const linePoints = history.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+  const areaPoints = `${pad},${h - pad} ${linePoints} ${w - pad},${h - pad}`;
 
   return (
-    <svg viewBox={`0 0 ${W} ${TOTAL_H}`} className="w-full" style={{ height: "140px" }}>
-      <polygon points={fill} fill="rgba(96,165,250,0.08)" />
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="#60a5fa"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      {labelIndices.map(({ i, anchor }) => (
-        <text
-          key={i}
-          x={toX(i).toFixed(1)}
-          y={CHART_H + 22}
-          textAnchor={anchor}
-          fontSize="11"
-          fill="#a6a6a6"
-        >
-          {dates[i] ? fmtMD(dates[i]) : ""}
-        </text>
-      ))}
+    <svg viewBox={`0 0 ${w} ${h}`} className="h-40 w-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <polygon points={areaPoints} fill={`url(#${gradientId})`} />
+      <polyline points={linePoints} fill="none" stroke={color} strokeWidth={2} />
     </svg>
   );
 }
 
-export default function PriceCard({ quote }: Props) {
+function RangeBar({ low, high, close }: { low: number; high: number; close: number }) {
+  const pct = Math.min(Math.max(((close - low) / (high - low)) * 100, 0), 100);
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-6">
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          {quote ? (
-            <>
-              <p className="text-2xl font-semibold tabular-nums text-white">
-                ${quote.close.toFixed(2)}
-              </p>
-              <p
-                className={`mt-0.5 text-sm font-medium ${
-                  quote.changePct >= 0 ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {quote.changePct >= 0 ? "+" : ""}
-                {quote.changePct.toFixed(2)}%
-                <span className="ml-1.5 text-xs font-normal text-[#a6a6a6]">
-                  {quote.change >= 0 ? "+" : ""}${quote.change.toFixed(2)}
-                </span>
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-[#a6a6a6]">주가 데이터 없음</p>
-          )}
-        </div>
-        <div className="text-right text-xs text-[#a6a6a6]">
-          {quote ? (
-            <>
-              <p>52주 고가 ${quote.week52High.toFixed(2)}</p>
-              <p>52주 저가 ${quote.week52Low.toFixed(2)}</p>
-              <p className="mt-1">{quote.dataDate} 기준</p>
-            </>
-          ) : null}
-        </div>
+    <div>
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <span className="text-[#a6a6a6]">52주 최저</span>
+        <span className="text-[#a6a6a6]">52주 최고</span>
       </div>
-      {/* Chart placeholder — history & dates 전달 필요 */}
-      <PriceChart history={quote?.history ?? []} dates={[]} />
+      <div className="relative h-1.5 w-full rounded-full bg-white/[0.06]">
+        <div
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#60a5fa] ring-4 ring-[#60a5fa]/20"
+          style={{ left: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-2 flex items-center justify-between text-sm font-medium text-white">
+        <span>${low.toFixed(2)}</span>
+        <span>${high.toFixed(2)}</span>
+      </div>
     </div>
   );
 }
 
-// 날짜 배열 포함 버전 (페이지에서 직접 사용)
-export function PriceCardFull({
-  quote,
-  dates,
-}: {
-  quote: Quote | null;
-  dates: string[];
-}) {
-  return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-6">
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          {quote ? (
-            <>
-              <p className="text-2xl font-semibold tabular-nums text-white">
-                ${quote.close.toFixed(2)}
-              </p>
-              <p
-                className={`mt-0.5 text-sm font-medium ${
-                  quote.changePct >= 0 ? "text-emerald-400" : "text-red-400"
-                }`}
-              >
-                {quote.changePct >= 0 ? "+" : ""}
-                {quote.changePct.toFixed(2)}%
-                <span className="ml-1.5 text-xs font-normal text-[#a6a6a6]">
-                  {quote.change >= 0 ? "+" : ""}${quote.change.toFixed(2)}
-                </span>
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-[#a6a6a6]">주가 데이터 없음</p>
-          )}
-        </div>
-        <div className="text-right text-xs text-[#a6a6a6]">
-          {quote && (
-            <>
-              <p>52주 고가 ${quote.week52High.toFixed(2)}</p>
-              <p>52주 저가 ${quote.week52Low.toFixed(2)}</p>
-              <p className="mt-1">{quote.dataDate} 기준</p>
-            </>
-          )}
-        </div>
+export function PriceCard({ quote }: { quote: Quote | null }) {
+  if (!quote) {
+    return (
+      <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+        <p className="text-xs text-[#a6a6a6]">최근 종가</p>
+        <p className="mt-2 text-sm text-[#a6a6a6]">주가 데이터를 수집 중입니다.</p>
       </div>
-      <PriceChart history={quote?.history ?? []} dates={dates} />
+    );
+  }
+
+  const { close, change, changePct, dataDate, history, week52High, week52Low } = quote;
+  const up = change >= 0;
+  const color = up ? "#34d399" : "#f87171";
+
+  return (
+    <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs text-[#a6a6a6]">최근 종가</p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-3">
+            <span className="text-4xl font-bold leading-none text-white">${close.toFixed(2)}</span>
+            <span className="text-sm font-medium" style={{ color }}>
+              {up ? "+" : ""}{change.toFixed(2)} ({up ? "+" : ""}{changePct.toFixed(2)}%)
+            </span>
+          </div>
+        </div>
+        <span className="text-xs text-[#a6a6a6]">기준일 {dataDate}</span>
+      </div>
+
+      <div className="my-5">
+        <PriceLineChart history={history} up={up} />
+        <p className="mt-1 text-right text-[11px] text-[#a6a6a6]">최근 30일 종가 추이</p>
+      </div>
+
+      <RangeBar low={week52Low} high={week52High} close={close} />
     </div>
   );
 }

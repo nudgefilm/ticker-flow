@@ -1,56 +1,57 @@
 import type { InsiderTrade } from "@/lib/insights/types";
+import { SectionCard } from "@/components/dashboard/insights/ui";
 
-interface Props {
-  trades: InsiderTrade[];
-}
-
-function fmtShares(n: number | null): string {
+function compactAmount(n: number | null): string {
   if (n == null) return "—";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M주`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}천주`;
-  return `${n}주`;
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return `$${n}`;
 }
 
-export default function SnapshotInsider({ trades }: Props) {
+export function SnapshotInsider({ trades }: { trades: InsiderTrade[] }) {
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">내부자 거래</p>
-      <p className="mb-3 text-xs text-[#a6a6a6]">
-        내부자(임원, 이사, 10% 이상 대주주)의 자사주 매수·매도 공시입니다.
-      </p>
-
+    <SectionCard title="내부자 거래" description="내부자(임원·이사·10% 이상 대주주) 최근 5건">
       {trades.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 내부자 거래 내역이 없습니다.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-white/[0.06]">
-          {trades.map((t) => (
-            <div key={t.id} className="flex flex-col gap-0.5 py-3 first:pt-0 last:pb-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#a6a6a6]">{t.date}</span>
-                <span
-                  className={`rounded-[4px] border px-1.5 py-0.5 text-[10px] font-medium ${
-                    t.type === "매수"
-                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                      : "border-red-500/20 bg-red-500/10 text-red-400"
-                  }`}
-                >
-                  {t.type}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-white">{t.name}</p>
-              {t.titleLabel && (
-                <p className="text-xs text-[#a6a6a6]">{t.titleLabel}</p>
-              )}
-              <p className="text-xs tabular-nums text-[#a6a6a6]">
-                {fmtShares(t.shares)}
-                {t.price != null ? ` · $${t.price.toFixed(2)}` : ""}
-              </p>
-            </div>
-          ))}
-        </div>
+        <ul className="divide-y divide-white/[0.06]">
+          {trades.slice(0, 5).map((t) => {
+            const buy = t.type === "매수";
+            return (
+              <li
+                key={t.id}
+                className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium text-white">{t.name}</span>
+                    <span
+                      className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      style={{
+                        color: buy ? "#34d399" : "#f87171",
+                        backgroundColor: buy ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)",
+                      }}
+                    >
+                      {t.type}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-[#a6a6a6]">
+                    {t.date}
+                    {t.titleLabel ? ` · ${t.titleLabel}` : ""}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-medium text-white">{compactAmount(t.value)}</p>
+                  <p className="mt-0.5 text-[11px] text-[#a6a6a6]">
+                    {t.shares != null ? t.shares.toLocaleString("en-US") + "주" : "—"}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
-
       <p className="mt-3 text-[10px] text-[#a6a6a6]">출처: SEC Form 4 공시</p>
-    </div>
+    </SectionCard>
   );
 }

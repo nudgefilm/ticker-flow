@@ -1,79 +1,59 @@
 import Link from "next/link";
-import { ExternalLink, ChevronRight } from "lucide-react";
+import { ExternalLink, ArrowRight } from "lucide-react";
 import type { Filing } from "@/lib/insights/types";
+import { SectionCard } from "@/components/dashboard/insights/ui";
 
 interface Props {
   filings: Filing[];
   ticker: string;
 }
 
-function filingBadgeClass(formType: string): string {
-  const ft = formType.toUpperCase();
-  if (ft.startsWith("8-K")) return "border-amber-500/20 bg-amber-500/10 text-amber-400";
-  if (ft.startsWith("10-K") || ft.startsWith("10-Q")) return "border-blue-500/20 bg-blue-500/10 text-blue-400";
-  if (ft === "4" || ft === "4/A") return "border-purple-500/20 bg-purple-500/10 text-purple-400";
-  return "border-white/[0.08] bg-white/[0.04] text-[#a6a6a6]";
-}
-
-function importanceDot(imp: Filing["importance"]) {
-  if (imp === "high") return "bg-red-400";
-  if (imp === "medium") return "bg-amber-400";
-  return "bg-[#a6a6a6]";
-}
-
-export default function SnapshotFilings({ filings, ticker }: Props) {
+export function SnapshotFilings({ filings, ticker }: Props) {
   return (
-    <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 공시 (30일)</p>
-        <Link
-          href={`/analysis?symbol=${ticker}`}
-          className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
-        >
-          공시 인사이트 보기
-          <ChevronRight size={12} />
-        </Link>
-      </div>
-
+    <SectionCard title="최근 공시" description="최근 5건">
       {filings.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 공시가 없습니다.</p>
       ) : (
-        <div className="flex flex-col divide-y divide-white/[0.06]">
-          {filings.map((f) => (
-            <div key={f.id} className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-medium ${filingBadgeClass(f.formType)}`}
-                >
-                  {f.formType}
-                </span>
-                {f.eventType && (
-                  <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] text-[#a6a6a6]">
-                    {f.eventType}
+        <ul className="divide-y divide-white/[0.06]">
+          {filings.slice(0, 5).map((filing, i) => (
+            <li key={i} className="flex items-start gap-4 py-3 first:pt-0">
+              <span className="w-20 shrink-0 text-xs text-[#a6a6a6]">{filing.date}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-white">
+                    {filing.formType}
                   </span>
-                )}
-                <span
-                  className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full ${importanceDot(f.importance)}`}
-                  title={f.importance === "high" ? "주요 이벤트" : f.importance === "medium" ? "정기 보고서" : "일반"}
-                />
-                <span className="shrink-0 text-xs text-[#a6a6a6]">{f.date}</span>
+                  {filing.eventType ? (
+                    <span className="rounded bg-[#60a5fa]/15 px-1.5 py-0.5 text-xs font-medium text-[#60a5fa]">
+                      {filing.eventType}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-1.5 text-sm text-white/90">{filing.summary}</p>
               </div>
-              <p className="text-sm leading-relaxed text-[#a6a6a6]">{f.summary}</p>
-              {f.url && f.url !== "#" && (
+              {filing.url && filing.url !== "#" && (
                 <a
-                  href={f.url}
+                  href={filing.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex w-fit items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-[#cccccc]"
+                  className="flex shrink-0 items-center gap-1 text-xs text-[#a6a6a6] hover:text-[#60a5fa]"
                 >
-                  SEC 원문
-                  <ExternalLink size={11} />
+                  원문 보기 <ExternalLink className="h-3 w-3" />
                 </a>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </div>
+
+      <div className="mt-4 border-t border-white/[0.06] pt-4">
+        <Link
+          href={`/analysis?symbol=${ticker}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#60a5fa] hover:text-[#93c5fd]"
+        >
+          공시 인사이트 보기 <ArrowRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </SectionCard>
   );
 }
