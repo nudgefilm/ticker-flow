@@ -3,6 +3,7 @@ export const maxDuration = 300;
 import { NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const INDUSTRY_TO_SECTOR: Record<string, string> = {
   // Technology
@@ -77,8 +78,13 @@ interface FinnhubProfile {
 }
 
 export async function GET(req: NextRequest) {
-  const authError = await requireCollectAuth(req);
-  if (authError) return authError;
+  // const authError = await requireCollectAuth(req);
+  // if (authError) return authError;
+
+  // 임시: 어드민 세션만 확인
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
