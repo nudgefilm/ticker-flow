@@ -1099,9 +1099,42 @@ CREATE TABLE stock_prices (
   - `collect_runs` insert/update 로직 변경 없음
 - **효과:** after() 컨텍스트에서 Authorization 헤더 릴레이 불필요, 리다이렉트 위험 제거
 
+## 2026-06-26 · 세션 23
+
+### 전체 collect API HTTP self-call 제거 및 CollectResult 타입 통일
+
+**목적**
+- 세션 22에서 profile만 직접 호출로 전환한 것을 나머지 9개 job에 모두 적용
+- 스케줄러 교체(Inngest, Trigger.dev 등) 시 수정 없이 이전 가능한 구조 확보
+
+**신규 파일**
+- `src/lib/collect/types.ts`: 공통 `CollectResult` 인터페이스 (`{ ok: boolean; error?: string; [key: string]: unknown }`)
+
+**리팩토링 대상 (10개)**
+- filings → `runFilingsCollect(dateParam?)`
+- news → `runNewsCollect()`
+- earnings → `runEarningsCollect(from?, to?)`
+- earnings-actual → `runEarningsActualCollect(tickerParam?)`
+- prices → `runPricesCollect(tickerParam?)`
+- insider → `runInsiderCollect(tickerParam?)`
+- analyst → `runAnalystCollect(tickerParam?)`
+- 13f → `run13fCollect(institutionParam?)`
+- macro → `runMacroCollect()`
+- profile → `runProfileCollect(limit?)` (기존, 타입만 통일)
+
+**모든 함수 공통 패턴**
+- 반환 타입: `Promise<CollectResult>`
+- GET 핸들러: auth 체크 → params 추출 → `runXxxCollect(params)` → 응답
+- 파라미터 미지정 시 기본값(와치리스트+공시 7일 대상, 기본 날짜 범위 등) 동작 유지
+
+**`src/app/api/admin/run/route.ts` 개선**
+- `COLLECT_MAP: Record<string, () => Promise<CollectResult>>`: 10개 job 직접 호출 맵
+- `FETCH_JOB_MAP`: collect 외 job (watchlist-tickers, translate, digest 등)만 fetch 유지
+- `after()` 블록: `COLLECT_MAP[job]?.()` 우선, 없으면 fetch fallback
+
 ## 다음 작업 예정
-- profile 버튼 실제 동작 확인 (Vercel 배포 후 테스트)
-- 나머지 collect job도 동일 패턴(함수 직접 호출)으로 순차 리팩토링 검토
+- 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
+- `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)
 - 공시 피드 탭 필터 재작업 (클릭 시 시각 반응 및 실제 필터링 동작)
 - .env.local에 SUPABASE_SERVICE_ROLE_KEY 추가 (회원 탈퇴 기능 활성화)
 - Polar.sh 환경변수 등록 후 결제 플로우 테스트
