@@ -58,7 +58,7 @@
     },
     {
       "path": "/api/collect/calls",
-      "schedule": "0 2 * * *"
+      "schedule": "22 2 * * *"
     }
   ]
 }

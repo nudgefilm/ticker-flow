@@ -328,7 +328,7 @@ export default function TriggerPage() {
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
             { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
             { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
-            { name: "어닝콜 요약 수집",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/calls"        },
+            { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"        },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
