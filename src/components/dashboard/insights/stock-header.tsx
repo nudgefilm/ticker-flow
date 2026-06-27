@@ -16,7 +16,7 @@ const SECTOR_KR: Record<string, string> = {
 
 function ChangeStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg bg-white/[0.03] px-3 py-2.5">
+    <div className="rounded-lg bg-blue-500/[0.15] px-3 py-2.5">
       <div className="flex items-baseline gap-1">
         <span className="text-lg font-bold leading-none text-white">{value}</span>
         <span className="text-xs text-[#60a5fa]">건</span>

@@ -157,7 +157,7 @@ export default function WatchlistClient({
               { label: "뉴스", count: `${totalNews}건` },
               { label: "실적 임박", count: `${earningsImminentCount}건` },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5 text-center">
+              <div key={stat.label} className="rounded-[4px] bg-blue-500/[0.15] px-3 py-2.5 text-center">
                 <p className="text-xl font-semibold tabular-nums text-white">{stat.count}</p>
                 <p className="mt-0.5 text-xs text-[#a6a6a6]">{stat.label}</p>
               </div>

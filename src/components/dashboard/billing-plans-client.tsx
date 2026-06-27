@@ -33,13 +33,13 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
 
       {/* Free 카드 */}
       <div
-        className={`flex flex-col rounded-[6px] bg-[#111111] p-5 ${
+        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#111111] ${
           !isPro
             ? "border-2 border-blue-400/60"
             : "border border-white/[0.08]"
         }`}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#242424] px-5 py-4">
           <p className="text-base font-semibold text-white">Free</p>
           {!isPro && (
             <span className="rounded-[4px] bg-blue-400/10 px-2 py-0.5 text-xs font-medium text-blue-400">
@@ -47,36 +47,38 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
             </span>
           )}
         </div>
-        <div className="mt-4 flex items-baseline gap-1">
-          <span className="text-3xl font-semibold text-white">무료</span>
-        </div>
-        <ul className="mt-5 flex flex-col gap-2">
-          {FREE_FEATURES.map((f) => (
-            <li key={f} className="flex items-center gap-2 text-sm text-[#cccccc]">
-              <IconCheck size={14} stroke={2} className="shrink-0 text-[#a6a6a6]" />
-              {f}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-auto pt-6">
-          <button
-            disabled
-            className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#a6a6a6]"
-          >
-            현재 플랜
-          </button>
+        <div className="flex flex-1 flex-col p-5">
+          <div className="flex items-baseline gap-1">
+            <span className="text-3xl font-semibold text-white">무료</span>
+          </div>
+          <ul className="mt-5 flex flex-col gap-2">
+            {FREE_FEATURES.map((f) => (
+              <li key={f} className="flex items-center gap-2 text-sm text-[#cccccc]">
+                <IconCheck size={14} stroke={2} className="shrink-0 text-[#a6a6a6]" />
+                {f}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-auto pt-6">
+            <button
+              disabled
+              className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] py-2.5 text-sm text-[#a6a6a6]"
+            >
+              현재 플랜
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Pro 카드 (탭) */}
       <div
-        className={`flex flex-col rounded-[6px] bg-[#111111] p-5 ${
+        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#111111] ${
           isPro
             ? "border-2 border-blue-400/60"
             : "border border-white/[0.08]"
         }`}
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#242424] px-5 py-4">
           <p className="text-base font-semibold text-white">Pro</p>
           {isPro && (
             <span className="rounded-[4px] bg-blue-400/10 px-2 py-0.5 text-xs font-medium text-blue-400">
@@ -84,9 +86,10 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
             </span>
           )}
         </div>
+        <div className="flex flex-1 flex-col p-5">
 
         {/* 탭 스위처 */}
-        <div className="mt-4 flex rounded-[6px] bg-[#1a1a1a] p-0.5">
+        <div className="flex rounded-[6px] bg-[#1a1a1a] p-0.5">
           <button
             onClick={() => setTab("monthly")}
             className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${
@@ -147,7 +150,7 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
           {isPro ? (
             <button
               disabled
-              className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] py-2.5 text-sm text-[#a6a6a6]"
+              className="w-full cursor-not-allowed rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] py-2.5 text-sm text-[#a6a6a6]"
             >
               현재 플랜
             </button>
@@ -161,6 +164,7 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
               {tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작"}
             </a>
           )}
+        </div>
         </div>
       </div>
 

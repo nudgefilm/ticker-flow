@@ -44,22 +44,26 @@ export default async function BillingPage({
       )}
 
       {/* 현재 플랜 상태 */}
-      <div className="mt-6 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">현재 플랜</p>
-            <p className="mt-1.5 text-2xl font-semibold text-white">{isPro ? "Pro" : "Free"}</p>
-            <p className="mt-1 text-sm text-[#a6a6a6]">
-              {isPro
-                ? "모든 Pro 기능을 이용 중입니다."
-                : "기본 기능을 무료로 이용 중입니다."}
-            </p>
+      <div className="mt-6 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+        <div className="border-b border-white/[0.06] bg-[#242424] px-6 py-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">현재 플랜</p>
+        </div>
+        <div className="px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-semibold text-white">{isPro ? "Pro" : "Free"}</p>
+              <p className="mt-1 text-sm text-[#a6a6a6]">
+                {isPro
+                  ? "모든 Pro 기능을 이용 중입니다."
+                  : "기본 기능을 무료로 이용 중입니다."}
+              </p>
+            </div>
+            {isPro && (
+              <span className="rounded-[6px] bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-400">
+                활성
+              </span>
+            )}
           </div>
-          {isPro && (
-            <span className="rounded-[6px] bg-blue-500/10 px-3 py-1.5 text-sm font-medium text-blue-400">
-              활성
-            </span>
-          )}
         </div>
       </div>
 

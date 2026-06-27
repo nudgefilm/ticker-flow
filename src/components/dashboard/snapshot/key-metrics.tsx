@@ -12,7 +12,7 @@ function MetricCard({
   valueColor?: string;
 }) {
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-4">
+    <div className="rounded-lg border border-white/[0.08] bg-blue-500/[0.15] p-4">
       <p className="text-[11px] text-[#a6a6a6]">{label}</p>
       <p
         className="mt-1.5 text-lg font-bold leading-none"
