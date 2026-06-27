@@ -42,9 +42,22 @@ function Badge({ className, children }: { className: string; children: React.Rea
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({
+  children,
+  hint,
+}: {
+  children: React.ReactNode;
+  hint?: string;
+}) {
   return (
-    <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">{children}</p>
+    <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+      {children}
+      {hint && (
+        <span className="ml-1.5 font-normal normal-case tracking-normal text-[#6f6f6f]">
+          ({hint})
+        </span>
+      )}
+    </p>
   );
 }
 
@@ -52,18 +65,22 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function MetricItem({
   label,
+  hint,
   value,
   estimate,
   accent,
 }: {
   label: string;
+  hint: string;
   value: string;
   estimate?: string;
   accent?: string;
 }) {
   return (
   <div className="flex flex-col items-center gap-0.5 rounded-[6px] border border-[#3b82f6]/20 bg-[#3b82f6]/[0.15] px-4 py-3 text-center">
-  <span className="text-xs text-[#a6a6a6]">{label}</span>
+  <span className="text-xs text-[#a6a6a6]">
+    {label} <span className="text-[#6f6f6f]">({hint})</span>
+  </span>
   <span className={`text-base font-semibold ${accent ?? "text-white"}`}>{value}</span>
   {estimate && <span className="text-xs text-[#7a7a7a]">예상 {estimate}</span>}
   </div>
@@ -134,10 +151,11 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
       <div className="mt-5">
         <SectionLabel>실적 요약</SectionLabel>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <MetricItem label="Revenue" value={call.revenue_actual} estimate={call.revenue_estimate} />
-          <MetricItem label="EPS" value={call.eps_actual} estimate={call.eps_estimate} />
+          <MetricItem label="Revenue" hint="매출" value={call.revenue_actual} estimate={call.revenue_estimate} />
+          <MetricItem label="EPS" hint="주당순이익" value={call.eps_actual} estimate={call.eps_estimate} />
           <MetricItem
             label="Surprise"
+            hint="예상 대비 차이"
             value={`${call.surprise_percent >= 0 ? "+" : ""}${call.surprise_percent.toFixed(1)}%`}
             accent={surpriseAccent}
           />
@@ -146,7 +164,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
 
       {/* 3-4 가이던스 */}
       <div className="mt-5">
-        <SectionLabel>가이던스</SectionLabel>
+        <SectionLabel hint="회사가 제시한 향후 실적 전망">가이던스</SectionLabel>
         <div className="mt-2 flex flex-col gap-2">
           <Badge className={guidance.className}>{GUIDANCE_SHORT[call.guidance_direction]}</Badge>
           <p className="text-sm leading-relaxed text-[#cccccc]">{call.guidance_summary}</p>
@@ -180,7 +198,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
 
       {/* 3-7 Q&A 핵심 문답 */}
       <div className="mt-5">
-        <SectionLabel>Q&amp;A 핵심 문답</SectionLabel>
+        <SectionLabel hint="컨퍼런스콜 질의응답">Q&amp;A 핵심 문답</SectionLabel>
         <div className="mt-2 flex flex-col gap-3">
           {visibleQa.map((qa, i) => (
             <div key={i} className="rounded-[6px] border border-white/[0.06] bg-[#161616] px-4 py-3">
