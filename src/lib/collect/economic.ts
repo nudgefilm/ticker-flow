@@ -13,10 +13,13 @@ interface FredResponse {
 const FRED_SERIES = [
   { id: "GDP",      name: "GDP",             source: "BEA" },
   { id: "CPIAUCSL", name: "CPI",             source: "BLS" },
+  { id: "PCEPI",    name: "PCE",             source: "BEA" },
   { id: "UNRATE",   name: "실업률",           source: "BLS" },
+  { id: "JTSJOL",   name: "구인건수",         source: "BLS" },
   { id: "FEDFUNDS", name: "기준금리",         source: "Fed" },
   { id: "DGS10",    name: "10년물 국채금리",  source: "Fed" },
   { id: "RSXFS",    name: "소매판매",         source: "Census" },
+  { id: "DTWEXBGS", name: "달러 인덱스",      source: "Fed" },
 ] as const;
 
 export async function runMacroCollect(): Promise<CollectResult> {
