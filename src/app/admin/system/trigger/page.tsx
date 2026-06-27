@@ -81,8 +81,8 @@ const TRIGGERS: Trigger[] = [
   },
   {
     id: "insider",
-    label: "내부자 거래 수집 (Finnhub)",
-    desc: "DB에 등록된 모든 티커의 내부자 거래 내역을 수집합니다. 시간이 걸릴 수 있습니다.",
+    label: "내부자 거래 수집 (FMP)",
+    desc: "tickers 테이블 전체 종목(알파벳 순, 최대 50개)의 내부자 거래를 FMP에서 수집합니다. P-Purchase/S-Sale 실거래만 저장합니다.",
   },
   {
     id: "prices",

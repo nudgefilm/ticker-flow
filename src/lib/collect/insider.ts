@@ -1,79 +1,103 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
 
-interface FinnhubInsiderTransaction {
-  name: string;
-  share: number;
-  transactionCode: string;
-  transactionDate: string;
-  transactionPrice: number;
-  change: number;
-  isDerivative: boolean;
-  filingDate: string;
+// ─── FMP 응답 타입 ─────────────────────────────────────────────────────────────
+
+interface FmpInsiderTransaction {
   symbol: string;
-  title?: string;
+  filingDate: string | null;
+  transactionDate: string | null;
+  reportingName: string | null;
+  transactionType: string; // "P-Purchase" | "S-Sale" | etc.
+  securitiesTransacted: number | null;
+  price: number | null;
+  typeOfOwner: string | null;
+  formType: string | null;
+  link: string | null;
 }
 
-interface FinnhubInsiderResponse {
-  data: FinnhubInsiderTransaction[];
-  symbol: string;
-}
+// ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
-function mapTransactionType(code: string): "buy" | "sell" | null {
-  if (code === "P") return "buy";
-  if (code === "S") return "sell";
+const ALLOWED_TYPES = new Set(["P-Purchase", "S-Sale"]);
+
+function mapTransactionType(fmpType: string): "buy" | "sell" | null {
+  if (fmpType === "P-Purchase") return "buy";
+  if (fmpType === "S-Sale") return "sell";
   return null;
 }
+
+// ─── 종목별 수집 ────────────────────────────────────────────────────────────────
 
 async function collectForTicker(
   ticker: string,
   apiKey: string,
   adminClient: ReturnType<typeof createAdminClient>
-): Promise<{ inserted: number; skipped: number }> {
-  const res = await fetch(
-    `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${ticker}&token=${apiKey}`
-  );
-  if (!res.ok) return { inserted: 0, skipped: 1 };
+): Promise<{ inserted: number; skipped: number; error?: string }> {
+  try {
+    const url = `https://financialmodelingprep.com/stable/insider-trading?symbol=${ticker}&limit=20&apikey=${apiKey}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return { inserted: 0, skipped: 1, error: `HTTP ${res.status}` };
 
-  const data: FinnhubInsiderResponse = await res.json();
-  const transactions = data.data ?? [];
+    const data: FmpInsiderTransaction[] = await res.json();
+    if (!Array.isArray(data)) return { inserted: 0, skipped: 1 };
 
-  let inserted = 0;
-  let skipped = 0;
+    // P-Purchase / S-Sale만, price > 0 건만 수집
+    const transactions = data.filter(
+      (tx) => ALLOWED_TYPES.has(tx.transactionType) && tx.price != null && tx.price > 0
+    );
 
-  for (const tx of transactions) {
-    const transactionType = mapTransactionType(tx.transactionCode);
-    if (!transactionType || tx.isDerivative) continue;
+    let inserted = 0;
+    let skipped = 0;
 
-    const value =
-      tx.share && tx.transactionPrice ? tx.share * tx.transactionPrice : null;
+    for (const tx of transactions) {
+      const transactionType = mapTransactionType(tx.transactionType);
+      if (!transactionType) continue;
 
-    const { error } = await adminClient.from("insider_trades").insert({
-      ticker,
-      name: tx.name || null,
-      title: tx.title || null,
-      transaction_type: transactionType,
-      shares: tx.share || null,
-      price: tx.transactionPrice || null,
-      value,
-      transaction_date: tx.transactionDate || null,
-      filed_at: tx.filingDate ? `${tx.filingDate}T00:00:00Z` : null,
-    });
+      const shares = tx.securitiesTransacted;
+      const price = tx.price;
+      const value = shares != null && price != null ? shares * price : null;
 
-    if (error && error.code !== "23505") {
-      console.error(`[collect/insider] ${ticker}:`, error.message);
-      skipped++;
-    } else if (!error) {
-      inserted++;
+      const { error } = await (adminClient as any)
+        .from("insider_trades")
+        .insert({
+          ticker,
+          name: tx.reportingName ?? null,
+          title: tx.typeOfOwner ?? null,
+          transaction_type: transactionType,
+          shares: shares ?? null,
+          price: price ?? null,
+          value,
+          transaction_date: tx.transactionDate ?? null,
+          filed_at: tx.filingDate ? `${tx.filingDate}T00:00:00Z` : null,
+        });
+
+      if (error) {
+        if (error.code !== "23505") {
+          console.error(`[collect/insider] ${ticker}:`, error.message);
+        }
+        skipped++;
+      } else {
+        inserted++;
+      }
     }
-  }
 
-  return { inserted, skipped };
+    return { inserted, skipped };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    console.error(`[collect/insider] ${ticker}:`, msg);
+    return { inserted: 0, skipped: 1, error: msg };
+  }
 }
 
-export async function runInsiderCollect(tickerParam?: string | null): Promise<CollectResult> {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
+// ─── 메인 수집 함수 ────────────────────────────────────────────────────────────
+
+export async function runInsiderCollect(
+  tickerParam?: string | null
+): Promise<CollectResult> {
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) {
+    return { ok: false, error: "FMP_API_KEY not set", retryable: false };
+  }
 
   const adminClient = createAdminClient();
   let tickers: string[];
@@ -81,30 +105,48 @@ export async function runInsiderCollect(tickerParam?: string | null): Promise<Co
   if (tickerParam) {
     tickers = [tickerParam.toUpperCase()];
   } else {
-    const { data: watchlistRows } = await adminClient.from("watchlist").select("ticker");
-
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: filingRows } = await adminClient
-      .from("filings")
+    // 전체 종목, 알파벳 순, 최대 50개
+    const { data: tickerRows } = await adminClient
+      .from("tickers")
       .select("ticker")
-      .gte("filed_at", sevenDaysAgo);
+      .order("ticker", { ascending: true })
+      .limit(50);
 
-    const tickerSet = new Set<string>();
-    watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
-    filingRows?.forEach((r) => tickerSet.add(r.ticker));
+    tickers = (tickerRows ?? []).map((r) => r.ticker);
+  }
 
-    tickers = [...tickerSet].slice(0, 10);
+  if (tickers.length === 0) {
+    return { ok: true, total: 0, inserted: 0, skipped: 0, errors: 0 };
   }
 
   let totalInserted = 0;
   let totalSkipped = 0;
+  let totalErrors = 0;
+  let firstError: string | undefined;
 
   for (const ticker of tickers) {
-    const { inserted, skipped } = await collectForTicker(ticker, apiKey, adminClient);
+    const { inserted, skipped, error } = await collectForTicker(
+      ticker,
+      apiKey,
+      adminClient
+    );
     totalInserted += inserted;
     totalSkipped += skipped;
-    if (tickers.length > 1) await new Promise((r) => setTimeout(r, 200));
+    if (error) {
+      totalErrors++;
+      if (!firstError) firstError = `${ticker}: ${error}`;
+    }
+    if (tickers.length > 1) {
+      await new Promise((r) => setTimeout(r, 200));
+    }
   }
 
-  return { ok: true, tickers: tickers.length, inserted: totalInserted, skipped: totalSkipped };
+  return {
+    ok: true,
+    total: tickers.length,
+    inserted: totalInserted,
+    skipped: totalSkipped,
+    errors: totalErrors,
+    ...(firstError && { firstError }),
+  };
 }

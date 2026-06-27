@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-06-27 · 세션 39
+
+### 내부자 거래 페이지 전면 재구현 + 수집 파이프라인 FMP 전환
+
+- `src/lib/collect/insider.ts` 전면 재작성
+  - Finnhub → FMP `/stable/insider-trading?symbol={ticker}&limit=20`
+  - 수집 대상: watchlist + 최근 7일 공시 종목 → tickers 테이블 전체 (알파벳 순, 최대 50개)
+  - 필터: P-Purchase / S-Sale 만 수집, price > 0 건만 (파생상품·옵션 제외)
+  - 중복: 기존 UNIQUE 제약 23505 에러 skip 방식 유지
+  - 200ms 딜레이
+- `src/components/dashboard/insider-board.tsx` 신규
+  - "use client", useMemo, useState
+  - 필터: 거래 유형(전체/매수/매도), 기간(7/30/90일), 내 종목만 토글, 금액($100K+/$1M+)
+  - 정렬: 최신순(기본) / 금액순
+  - PAGE_SIZE = 20, 클라이언트 사이드 페이지네이션
+  - 카드: 티커(amber 배지), 거래 유형(emerald/red 배지), 임원명/직책, 거래 수치 3열, SEC EDGAR 링크
+  - sticky 필터 바, 건수 표시, 빈 상태, 데이터 소스 카드
+- `src/app/(dashboard)/insider/page.tsx` 전면 재작성
+  - async 서버 컴포넌트, force-dynamic
+  - isPro 서버사이드 체크 → Pro일 때만 데이터 조회 (최근 90일, 최대 500건)
+  - insider_trades + tickers join (name_kr) + watchlist join (in_watchlist)
+  - ProGate 유지 (children = InsiderBoard)
+  - transaction_value: value 컬럼 사용 (= shares * price)
+- `src/app/admin/system/trigger/page.tsx` 레이블 "Finnhub" → "FMP"
+- 빌드: ✓ Compiled successfully
+
+---
+
 ## 2026-06-27 · 세션 38
 
 ### 어닝콜 수집 파이프라인 FMP 전환
