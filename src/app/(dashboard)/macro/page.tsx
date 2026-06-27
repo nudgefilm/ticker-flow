@@ -1,200 +1,107 @@
-import { Suspense } from "react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
+import MacroBoard from "@/components/macro/macro-board";
 import { createClient } from "@/lib/supabase/server";
+import {
+  SERIES_META,
+  GROUP_ORDER,
+  type MacroIndicator,
+  type MacroGroup,
+} from "@/lib/macro";
 
 export const dynamic = "force-dynamic";
 
-function MacroSkeleton() {
-  return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-28 animate-pulse rounded-[6px] border border-white/[0.08] bg-[#111111]"
-        />
-      ))}
-    </div>
-  );
-}
-
-interface IndicatorMeta {
-  unit: string;
-  desc: string;
-  valueType?: "pct_change" | "million_to_eok" | "billion_to_jo_eok";
-}
-
-const INDICATOR_META: Record<string, IndicatorMeta> = {
-  "10년물 국채금리": {
-    unit: "%",
-    desc: "미국 장기 채권 금리. 금리가 오르면 주식시장에 부담이 될 수 있습니다.",
-  },
-  CPI: {
-    unit: "%",
-    desc: "소비자물가지수. 인플레이션(물가 상승) 수준을 나타냅니다.",
-    valueType: "pct_change",
-  },
-  실업률: {
-    unit: "%",
-    desc: "미국 실업률. 낮을수록 고용 시장이 건강한 상태입니다.",
-  },
-  기준금리: {
-    unit: "%",
-    desc: "미국 연준(Fed)의 기준금리. 모든 금리의 기준이 됩니다.",
-  },
-  소매판매: {
-    unit: "",
-    desc: "미국 소비자 지출 규모. 경기 흐름을 파악하는 데 활용됩니다.",
-    valueType: "million_to_eok",
-  },
-  GDP: {
-    unit: "",
-    desc: "미국 국내총생산. 경제 전체 규모를 나타냅니다.",
-    valueType: "billion_to_jo_eok",
-  },
-};
-
-// 백만 달러 → 억 달러 (÷100, 반올림)
-function fmtMillionToEok(v: number): string {
-  const eok = Math.round(v / 100);
-  return `${eok.toLocaleString("ko-KR")}억 달러`;
-}
-
-// 십억 달러 → X조 Y,ZZZ억 달러
-function fmtBillionToJoEok(v: number): string {
-  const jo = Math.floor(v / 1000);
-  const eok = Math.round((v % 1000) * 10);
-  if (jo === 0) return `${eok.toLocaleString("ko-KR")}억 달러`;
-  return `${jo}조 ${eok.toLocaleString("ko-KR")}억 달러`;
-}
-
-function formatMainValue(
-  name: string,
-  value: number | null,
-  prevValue: number | null
-): string {
-  const meta = INDICATOR_META[name];
-  if (value == null) return "—";
-
-  if (meta?.valueType === "pct_change") {
-    if (prevValue == null) return "—";
-    const change = ((value - prevValue) / prevValue) * 100;
-    const sign = change >= 0 ? "+" : "";
-    return `${sign}${change.toFixed(2)}%`;
-  }
-  if (meta?.valueType === "million_to_eok") return fmtMillionToEok(value);
-  if (meta?.valueType === "billion_to_jo_eok") return fmtBillionToJoEok(value);
-
-  const formatted = value.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  if (meta?.unit === "%") return `${formatted}%`;
-  if (meta?.unit) return `${formatted} ${meta.unit}`;
-  return formatted;
-}
-
-function formatPrevValue(name: string, prevValue: number | null): string {
-  if (prevValue == null) return "—";
-  const meta = INDICATOR_META[name];
-  if (meta?.valueType === "pct_change") {
-    return prevValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  }
-  if (meta?.valueType === "million_to_eok") return fmtMillionToEok(prevValue);
-  if (meta?.valueType === "billion_to_jo_eok") return fmtBillionToJoEok(prevValue);
-  const formatted = prevValue.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  if (meta?.unit === "%") return `${formatted}%`;
-  if (meta?.unit) return `${formatted} ${meta.unit}`;
-  return formatted;
-}
-
-async function MacroIndicatorList() {
+export default async function MacroPage() {
   const supabase = await createClient();
+
+  // 전체 히스토리 조회 — 동일 indicator_name에 복수 행이 있으면 스파크라인에 사용
   const { data, error } = await supabase
     .from("macro_indicators")
     .select("indicator_name, value, previous_value, released_at, source")
     .order("released_at", { ascending: false })
-    .limit(50);
+    .limit(200);
 
-  if (error) {
-    return <p className="text-sm text-red-400">데이터를 불러오지 못했습니다.</p>;
+  const rows = data ?? [];
+
+  // indicator_name 기준으로 그룹핑 (DESC 순)
+  const byName: Record<string, typeof rows> = {};
+  for (const row of rows) {
+    if (!byName[row.indicator_name]) byName[row.indicator_name] = [];
+    byName[row.indicator_name].push(row);
   }
 
-  // indicator_name 기준 최신 1건만 유지
-  const seen = new Set<string>();
-  const indicators = (data ?? []).filter((row) => {
-    if (seen.has(row.indicator_name)) return false;
-    seen.add(row.indicator_name);
-    return true;
-  });
+  // MacroIndicator 배열 생성
+  const indicators: MacroIndicator[] = [];
+  for (const [name, records] of Object.entries(byName)) {
+    const meta = SERIES_META[name];
+    if (!meta) continue;
 
-  if (indicators.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 py-16 text-center">
-        <p className="text-sm text-[#a6a6a6]">수집된 경제지표 데이터가 없습니다.</p>
-        <p className="text-xs text-[#555555]">어드민에서 경제지표 갱신을 실행해 주세요.</p>
-      </div>
-    );
+    const latest = records[0];
+
+    // 최근 13개 → 오름차순으로 뒤집어 스파크라인 데이터로 사용
+    const history = records
+      .slice(0, 13)
+      .reverse()
+      .filter((r) => r.value != null)
+      .map((r) => ({ date: r.released_at.slice(0, 10), value: r.value! }));
+
+    indicators.push({
+      seriesId: meta.seriesId,
+      name: meta.name,
+      nameEn: meta.nameEn,
+      desc: meta.desc,
+      value: latest.value,
+      previousValue: latest.previous_value,
+      unit: meta.unit,
+      valueType: meta.valueType,
+      releasedAt: latest.released_at,
+      source: latest.source ?? meta.seriesId,
+      history,
+      group: meta.group,
+    });
   }
 
+  // 그룹별 분류
+  const groupMap: Record<string, MacroIndicator[]> = {};
+  for (const ind of indicators) {
+    if (!groupMap[ind.group]) groupMap[ind.group] = [];
+    groupMap[ind.group].push(ind);
+  }
+
+  const groups: MacroGroup[] = GROUP_ORDER.filter(
+    (g) => (groupMap[g]?.length ?? 0) > 0
+  ).map((g) => ({
+    key: g,
+    label: g,
+    indicators: groupMap[g],
+  }));
+
+  // 기준일: 전체 중 가장 최근 released_at
+  const latestAt = rows[0]?.released_at ?? "";
+  const referenceDate = latestAt
+    ? new Date(latestAt).toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "—";
+
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {indicators.map((item) => {
-        const meta = INDICATOR_META[item.indicator_name];
-        const releasedDate = new Date(item.released_at).toLocaleDateString("ko-KR", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
-
-        return (
-          <div
-            key={item.indicator_name}
-            className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4"
-          >
-            {/* 지표명 + 출처 배지 */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-white">{item.indicator_name}</p>
-                {meta?.desc && (
-                  <p className="mt-0.5 text-xs leading-relaxed text-[#a6a6a6]">{meta.desc}</p>
-                )}
-              </div>
-              {item.source && (
-                <span className="mt-0.5 shrink-0 rounded-[4px] bg-white/[0.06] px-2 py-0.5 text-[11px] text-[#a6a6a6]">
-                  {item.source}
-                </span>
-              )}
-            </div>
-
-            {/* 현재값 */}
-            <p className="text-2xl font-semibold tabular-nums text-white">
-              {formatMainValue(item.indicator_name, item.value, item.previous_value)}
-            </p>
-
-            {/* 이전값 + 발표일 */}
-            <div className="flex items-center justify-between text-xs text-[#a6a6a6]">
-              <span>이전 {formatPrevValue(item.indicator_name, item.previous_value)}</span>
-              <span>{releasedDate}</span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-export default function MacroPage() {
-  return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col gap-6">
       <DashboardHeader title="경제지표" />
 
-      <div className="mt-6">
-        <Suspense fallback={<MacroSkeleton />}>
-          <MacroIndicatorList />
-        </Suspense>
-      </div>
+      {error && (
+        <p className="text-sm text-red-400">
+          데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+        </p>
+      )}
 
-      <p className="mt-6 text-xs text-[#a6a6a6]">
-        출처: FRED (미국 연방준비제도). 데이터는 매일 09:13 KST 기준으로 갱신됩니다.
+      <p className="text-sm text-[#a6a6a6]">
+        미국 주요 경제지표를 한눈에 확인합니다.
+        출처: FRED(미국 연방준비제도). 데이터는 매일 오전 갱신됩니다.
       </p>
+
+      <MacroBoard groups={groups} referenceDate={referenceDate} />
 
       <DashboardDisclaimer />
     </div>
