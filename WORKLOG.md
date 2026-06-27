@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-06-28 · 세션 47
+
+### Google OAuth 로그인 버그 수정
+
+**원인**
+Supabase 대시보드에서 설정된 웰컴 이메일 트리거(`supabase_functions.http_request()`)가 신규 유저 가입 시 HTTP 요청에 실패 → 트리거 실패 → `auth.users` INSERT 전체 롤백 → "Database error saving new user" 에러 발생.
+
+**해결**
+Supabase SQL Editor에서 트리거 삭제:
+```sql
+DROP FUNCTION IF EXISTS supabase_functions.http_request() CASCADE;
+```
+
+**진단 과정**
+- `no_code` 에러: OAuth callback URL에 `?code=` 파라미터 없음
+- Google Console / Supabase Client ID·Secret / redirectTo URL 모두 정상 확인
+- auth/callback route에 전체 쿼리 파라미터 로그 추가 후 `server_error:Database error saving new user` 에러 포착
+- 트리거 문제로 원인 확정 → 삭제로 해결
+
+**코드 변경**
+- `src/app/auth/callback/route.ts`: 임시 디버그 로그 제거, 에러 시 `?error=` / `?error_description=` 파라미터 포착 유지
+- `src/app/login/page.tsx`: 디버그 메시지 표시 제거
+
+**남은 작업**
+- 웰컴 이메일 기능 필요 시 Resend 연동 후 트리거 재설정
+
+---
+
 ## 2026-06-27 · 세션 46
 
 ### 경제지표 페이지 전면 개편 (MacroBoard)
