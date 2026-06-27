@@ -24,10 +24,10 @@ export default function CallsPage() {
           </div>
 
           {/* 면책 문구 */}
-          <footer className="mt-8 border-t border-white/[0.06] py-4 text-center text-xs leading-relaxed text-[#a6a6a6]">
-            <p>본 페이지는 공개된 실적 발표 자료를 기반으로 제공합니다.</p>
-            <p>한국어 요약은 원문의 이해를 돕기 위한 참고 자료입니다.</p>
-            <p>투자 권유가 아니며 투자 판단의 책임은 이용자 본인에게 있습니다.</p>
+          <footer className="mt-8 border-t border-white/[0.06] py-4 text-left text-xs leading-relaxed text-[#a6a6a6]">
+            <p>· 본 페이지는 공개된 실적 발표 자료를 기반으로 제공합니다.</p>
+            <p>· 한국어 요약은 원문의 이해를 돕기 위한 참고 자료입니다.</p>
+            <p>· 투자 권유가 아니며 투자 판단의 책임은 이용자 본인에게 있습니다.</p>
           </footer>
         </div>
       </main>
