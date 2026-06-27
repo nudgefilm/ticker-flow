@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
+import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
@@ -247,13 +248,7 @@ export default async function StockPage({
 
       <DataSources updatedAt={updatedAt} />
 
-      <footer className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
-        <ul className="space-y-1.5 text-xs leading-relaxed text-[#a6a6a6]">
-          <li>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</li>
-          <li>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</li>
-          <li>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</li>
-        </ul>
-      </footer>
+      <DashboardDisclaimer />
     </div>
   );
 }
