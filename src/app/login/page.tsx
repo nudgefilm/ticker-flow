@@ -13,10 +13,13 @@ export default function LoginPage() {
   const [legalType, setLegalType] = useState<LegalType | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  const [debugMsg, setDebugMsg] = useState<string | null>(null);
+
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
     setHasError(params.get("error") === "auth");
+    setDebugMsg(params.get("debug"));
   }, []);
 
   async function handleGoogleLogin() {
@@ -55,9 +58,12 @@ export default function LoginPage() {
 
           {/* 오류 메시지 */}
           {hasError && (
-            <p className="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-center text-xs text-red-400">
-              로그인 중 오류가 발생했습니다. 다시 시도해 주세요.
-            </p>
+            <div className="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-center">
+              <p className="text-xs text-red-400">로그인 중 오류가 발생했습니다. 다시 시도해 주세요.</p>
+              {debugMsg && (
+                <p className="mt-1 font-mono text-[10px] text-red-300/70">{debugMsg}</p>
+              )}
+            </div>
           )}
 
           {/* 구글 버튼 */}
