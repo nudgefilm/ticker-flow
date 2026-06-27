@@ -15,13 +15,13 @@ export default function Hero() {
           </span>
 
           <h1 className="mt-6 text-balance text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-            나스닥 모니터링
+            미국 기업의 변화,
             <br />
             <span
               className="text-blue-400"
               style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.6))" }}
             >
-              TickerFlow
+              놓치지 마세요.
             </span>
           </h1>
 
