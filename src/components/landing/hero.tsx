@@ -11,7 +11,7 @@ export default function Hero() {
         {/* 좌측: 텍스트 */}
         <div className="animate-fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-            나스닥 모니터링 · TickerFlow
+            나스닥 모니터링 · <span className="ml-1 font-semibold text-blue-400">TickerFlow</span>
           </span>
 
           <h1 className="mt-6 text-balance text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
