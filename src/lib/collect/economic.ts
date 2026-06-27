@@ -31,7 +31,7 @@ export async function runMacroCollect(): Promise<CollectResult> {
     try {
       const url =
         `https://api.stlouisfed.org/fred/series/observations` +
-        `?series_id=${series.id}&api_key=${apiKey}&sort_order=desc&limit=2&file_type=json`;
+        `?series_id=${series.id}&api_key=${apiKey}&sort_order=desc&limit=13&file_type=json`;
 
       const res = await fetch(url);
       if (!res.ok) {
@@ -41,32 +41,32 @@ export async function runMacroCollect(): Promise<CollectResult> {
       }
 
       const data: FredResponse = await res.json();
-      const obs = data.observations ?? [];
-      const latest = obs[0];
-      const prev = obs[1];
+      const obs = (data.observations ?? []).filter((o) => o.value !== ".");
 
-      if (!latest || latest.value === ".") { skipped++; continue; }
+      if (obs.length === 0) { skipped++; continue; }
 
-      const value = parseFloat(latest.value);
-      const previousValue = prev && prev.value !== "." ? parseFloat(prev.value) : null;
-      const releasedAt = new Date(latest.date).toISOString();
+      // 각 관측값을 개별 행으로 upsert (히스토리 누적)
+      for (let i = 0; i < obs.length; i++) {
+        const o = obs[i];
+        const prevObs = obs[i + 1];
 
-      const { error } = await adminClient.from("macro_indicators").upsert(
-        {
-          indicator_name: series.name,
-          value,
-          previous_value: previousValue,
-          released_at: releasedAt,
-          source: series.source,
-        },
-        { onConflict: "indicator_name,released_at" }
-      );
+        const { error } = await adminClient.from("macro_indicators").upsert(
+          {
+            indicator_name: series.name,
+            value: parseFloat(o.value),
+            previous_value: prevObs ? parseFloat(prevObs.value) : null,
+            released_at: new Date(o.date).toISOString(),
+            source: series.source,
+          },
+          { onConflict: "indicator_name,released_at" }
+        );
 
-      if (error) {
-        console.error(`[collect/macro] upsert ${series.id}:`, error.message);
-        skipped++;
-      } else {
-        inserted++;
+        if (error) {
+          console.error(`[collect/macro] upsert ${series.id}:`, error.message);
+          skipped++;
+        } else {
+          inserted++;
+        }
       }
     } catch (err) {
       console.error(`[collect/macro] ${series.id}:`, err instanceof Error ? err.message : "Unknown");

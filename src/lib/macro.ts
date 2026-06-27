@@ -86,6 +86,13 @@ export const SERIES_META: Record<
 
 export const GROUP_ORDER = ["금리", "물가", "고용", "경기"];
 
+export const GROUP_COLORS: Record<string, string> = {
+  금리: "#60a5fa",
+  물가: "#fb923c",
+  고용: "#a78bfa",
+  경기: "#34d399",
+};
+
 // 백만 달러 → 억 달러 (1백만 달러 = 0.01억 달러, 100백만 달러 = 1억 달러)
 export function fmtMillionToEok(v: number): string {
   const eok = Math.round(v / 100);
