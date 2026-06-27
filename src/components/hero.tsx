@@ -170,32 +170,30 @@ export default async function Hero() {
           </div>
         </div>
 
-        {/* 우측: 시각화 카드 목업 */}
-        <div className="hidden lg:flex lg:flex-col lg:gap-3">
-          {/* 블루 글로우 */}
-          <div className="absolute -inset-8 bg-blue-500/10 blur-3xl rounded-3xl -z-10 pointer-events-none" />
-
+        {/* 우측: 시각화 카드 목업 (공시피드 레이아웃 그대로) */}
+        <div className="hidden lg:block">
           {/* 목업 컨테이너 */}
-          <div className="rounded-2xl border border-white/[0.08] bg-[#0f0f0f] shadow-2xl overflow-hidden">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0f0f0f] shadow-2xl">
 
             {/* 브라우저 탭 바 */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
-              <div className="w-3 h-3 rounded-full bg-white/10" />
-              <div className="w-3 h-3 rounded-full bg-white/10" />
-              <div className="w-3 h-3 rounded-full bg-white/10" />
-              <span className="ml-2 text-xs text-white/30 font-mono">tickerflow.net</span>
+            <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
+              <div className="h-3 w-3 rounded-full bg-white/10" />
+              <div className="h-3 w-3 rounded-full bg-white/10" />
+              <div className="h-3 w-3 rounded-full bg-white/10" />
+              <span className="ml-2 font-mono text-xs text-white/30">tickerflow.net</span>
             </div>
 
-            <div className="flex flex-col gap-3 p-4">
+            {/* 2열: 공시피드 실제 레이아웃 */}
+            <div className="grid grid-cols-2 items-stretch gap-3 p-4">
 
-              {/* 카드 1 — 공시 유형 분포 (실제 컴포넌트 스타일 그대로) */}
-              <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-                <p className="mb-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+              {/* 카드 1 — 공시 유형 분포 (좌측, 전체 높이) */}
+              <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+                <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
                   공시 유형 분포
                 </p>
-                <div className="flex items-center gap-8">
+                <div className="flex flex-1 flex-col items-center justify-between gap-4">
                   {/* 도넛 */}
-                  <div className="relative h-32 w-32 shrink-0">
+                  <div className="relative h-28 w-28 shrink-0">
                     <div
                       className="h-full w-full rounded-full"
                       style={{
@@ -203,39 +201,39 @@ export default async function Hero() {
                           "conic-gradient(#fbbf24 0% 42%, #60a5fa 42% 65%, #93c5fd 65% 82%, #c084fc 82% 95%, #6b7280 95% 100%)",
                       }}
                     />
-                    <div className="absolute inset-[32px] flex items-center justify-center rounded-full bg-[#111111]">
-                      <span className="text-2xl font-semibold tabular-nums text-white">142</span>
+                    <div className="absolute inset-[28px] flex items-center justify-center rounded-full bg-[#111111]">
+                      <span className="text-xl font-semibold tabular-nums text-white">142</span>
                     </div>
                   </div>
                   {/* 범례 */}
-                  <ul className="flex min-w-0 flex-1 flex-col gap-3">
+                  <ul className="flex w-full flex-col gap-3">
                     {[
-                      { label: "8-K",    pct: 42, count: 60,  color: "#fbbf24" },
-                      { label: "10-K",   pct: 23, count: 33,  color: "#60a5fa" },
-                      { label: "10-Q",   pct: 17, count: 24,  color: "#93c5fd" },
-                      { label: "Form 4", pct: 13, count: 18,  color: "#c084fc" },
-                      { label: "기타",    pct: 5,  count: 7,   color: "#6b7280" },
+                      { label: "8-K",    pct: 42, count: 60, color: "#fbbf24" },
+                      { label: "10-K",   pct: 23, count: 33, color: "#60a5fa" },
+                      { label: "10-Q",   pct: 17, count: 24, color: "#93c5fd" },
+                      { label: "Form 4", pct: 13, count: 18, color: "#c084fc" },
+                      { label: "기타",    pct: 5,  count: 7,  color: "#6b7280" },
                     ].map((item) => (
-                      <li key={item.label} className="flex items-center gap-2.5">
-                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: item.color }} />
-                        <span className="min-w-0 truncate text-sm text-[#a6a6a6]">{item.label}</span>
-                        <span className="ml-auto text-sm font-medium tabular-nums text-white">{item.pct}%</span>
-                        <span className="text-xs tabular-nums text-[#a6a6a6]">({item.count})</span>
+                      <li key={item.label} className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
+                        <span className="min-w-0 truncate text-[11px] text-[#a6a6a6]">{item.label}</span>
+                        <span className="ml-auto text-[11px] font-medium tabular-nums text-white">{item.pct}%</span>
+                        <span className="text-[10px] tabular-nums text-[#a6a6a6]">({item.count})</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
 
-              {/* 하단: 카드 2·3 — 5:5 분할 */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* 우측: 카드 2·3 위아래 스택 */}
+              <div className="flex flex-col gap-3">
 
                 {/* 카드 2 — 최근 7일 트렌드 */}
-                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-3">
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[#a6a6a6]">
+                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
                     최근 7일 트렌드
                   </p>
-                  <div className="flex items-end gap-0.5" style={{ height: "56px" }}>
+                  <div className="flex items-end gap-1" style={{ height: "52px" }}>
                     {[
                       { day: "6/21", count: 18 },
                       { day: "6/22", count: 24 },
@@ -258,22 +256,25 @@ export default async function Hero() {
                   </div>
                 </div>
 
-                {/* 카드 3 — 섹터별 공시 활동 */}
-                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-3">
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[#a6a6a6]">
+                {/* 카드 3 — 섹터별 공시 활동 (5개 항목 전부) */}
+                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+                  <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
                     섹터별 공시 활동
                   </p>
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-col gap-2.5">
                     {[
-                      { label: "기술",       pct: 100 },
-                      { label: "커뮤니케이션", pct: 71 },
-                      { label: "금융",       pct: 62 },
-                      { label: "헬스케어",    pct: 47 },
-                      { label: "경기소비재",  pct: 33 },
+                      { label: "기술",       count: 45, pct: 100 },
+                      { label: "커뮤니케이션", count: 32, pct: 71 },
+                      { label: "금융",       count: 28, pct: 62 },
+                      { label: "헬스케어",    count: 21, pct: 47 },
+                      { label: "경기소비재",  count: 15, pct: 33 },
                     ].map((row) => (
                       <div key={row.label}>
-                        <span className="text-[9px] text-[#a6a6a6]">{row.label}</span>
-                        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className="mb-1 flex items-center justify-between">
+                          <span className="text-[11px] text-[#a6a6a6]">{row.label}</span>
+                          <span className="text-[11px] font-medium tabular-nums text-white">{row.count}</span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
                           <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${row.pct}%` }} />
                         </div>
                       </div>
@@ -282,7 +283,6 @@ export default async function Hero() {
                 </div>
 
               </div>
-
             </div>
           </div>
         </div>
