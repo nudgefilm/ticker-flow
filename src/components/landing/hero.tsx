@@ -26,9 +26,9 @@ export default function Hero() {
           </h1>
 
           <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
-            미국 기업의 변화를
+            공시, 어닝콜, 내부자 거래, 뉴스를 한국어로.
             <br className="hidden sm:block" />
-            가장 빠르게 확인해 보세요.
+            여러 사이트를 오갈 필요 없이 하나의 화면에서 확인하세요.
           </p>
 
         </div>
