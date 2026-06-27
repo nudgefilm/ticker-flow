@@ -220,7 +220,7 @@ export default async function HomePage() {
                   지금 일어나고 있는 변화
                 </h2>
               </div>
-              {feedItems.length > 0 ? (
+              {feedItems.length > 0 && (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {feedItems.map((item, i) => (
                     <div
@@ -233,20 +233,6 @@ export default async function HomePage() {
                         </span>
                         <span className="text-[10px] text-muted-foreground">{item.category}</span>
                       </div>
-                      <p className="mt-3 text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {[
-                    { ticker: "NVDA", label: "8-K 주요이벤트", time: "12분 전" },
-                    { ticker: "AAPL", label: "내부자 매도 공시", time: "35분 전" },
-                    { ticker: "MSFT", label: "어닝콜 공개", time: "1시간 전" },
-                  ].map((item) => (
-                    <div key={item.ticker} className="rounded-[12px] border border-border bg-card p-5">
-                      <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">{item.ticker}</span>
                       <p className="mt-3 text-sm font-medium text-foreground">{item.label}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
                     </div>
