@@ -170,13 +170,13 @@ export default async function Hero() {
           </div>
         </div>
 
-        {/* 우측: 시각화 카드 목업 (카드 1·2·3) */}
-        <div className="hidden lg:block relative">
+        {/* 우측: 시각화 카드 목업 */}
+        <div className="hidden lg:flex lg:flex-col lg:gap-3">
           {/* 블루 글로우 */}
-          <div className="absolute -inset-8 bg-blue-500/10 blur-3xl rounded-3xl -z-10" />
+          <div className="absolute -inset-8 bg-blue-500/10 blur-3xl rounded-3xl -z-10 pointer-events-none" />
 
           {/* 목업 컨테이너 */}
-          <div className="relative rounded-2xl border border-white/[0.08] bg-[#0f0f0f] overflow-hidden shadow-2xl">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0f0f0f] shadow-2xl overflow-hidden">
 
             {/* 브라우저 탭 바 */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
@@ -188,14 +188,14 @@ export default async function Hero() {
 
             <div className="flex flex-col gap-3 p-4">
 
-              {/* 카드 1 — 공시 유형 분포 */}
-              <div className="rounded-[6px] border border-white/[0.06] bg-[#111111] p-4">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/40">
+              {/* 카드 1 — 공시 유형 분포 (실제 컴포넌트 스타일 그대로) */}
+              <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+                <p className="mb-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
                   공시 유형 분포
                 </p>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-8">
                   {/* 도넛 */}
-                  <div className="relative h-16 w-16 shrink-0">
+                  <div className="relative h-32 w-32 shrink-0">
                     <div
                       className="h-full w-full rounded-full"
                       style={{
@@ -203,90 +203,88 @@ export default async function Hero() {
                           "conic-gradient(#fbbf24 0% 42%, #60a5fa 42% 65%, #93c5fd 65% 82%, #c084fc 82% 95%, #6b7280 95% 100%)",
                       }}
                     />
-                    <div className="absolute inset-[14px] flex items-center justify-center rounded-full bg-[#111111]">
-                      <span className="text-[11px] font-semibold tabular-nums text-white">142</span>
+                    <div className="absolute inset-[32px] flex items-center justify-center rounded-full bg-[#111111]">
+                      <span className="text-2xl font-semibold tabular-nums text-white">142</span>
                     </div>
                   </div>
                   {/* 범례 */}
-                  <ul className="flex flex-1 flex-col gap-1.5">
+                  <ul className="flex min-w-0 flex-1 flex-col gap-3">
                     {[
-                      { label: "8-K",    pct: "42%", color: "#fbbf24" },
-                      { label: "10-K",   pct: "23%", color: "#60a5fa" },
-                      { label: "10-Q",   pct: "17%", color: "#93c5fd" },
-                      { label: "Form 4", pct: "13%", color: "#c084fc" },
-                      { label: "기타",    pct: "5%",  color: "#6b7280" },
+                      { label: "8-K",    pct: 42, count: 60,  color: "#fbbf24" },
+                      { label: "10-K",   pct: 23, count: 33,  color: "#60a5fa" },
+                      { label: "10-Q",   pct: 17, count: 24,  color: "#93c5fd" },
+                      { label: "Form 4", pct: 13, count: 18,  color: "#c084fc" },
+                      { label: "기타",    pct: 5,  count: 7,   color: "#6b7280" },
                     ].map((item) => (
-                      <li key={item.label} className="flex items-center gap-1.5">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-                        <span className="text-[10px] text-white/50">{item.label}</span>
-                        <span className="ml-auto text-[10px] font-medium tabular-nums text-white">{item.pct}</span>
+                      <li key={item.label} className="flex items-center gap-2.5">
+                        <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: item.color }} />
+                        <span className="min-w-0 truncate text-sm text-[#a6a6a6]">{item.label}</span>
+                        <span className="ml-auto text-sm font-medium tabular-nums text-white">{item.pct}%</span>
+                        <span className="text-xs tabular-nums text-[#a6a6a6]">({item.count})</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               </div>
 
-              {/* 카드 2 — 최근 7일 트렌드 */}
-              <div className="rounded-[6px] border border-white/[0.06] bg-[#111111] p-4">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/40">
-                  최근 7일 트렌드
-                </p>
-                <div className="flex items-end gap-1" style={{ height: "64px" }}>
-                  {[
-                    { day: "6/21", count: 18 },
-                    { day: "6/22", count: 24 },
-                    { day: "6/23", count: 32 },
-                    { day: "6/24", count: 15 },
-                    { day: "6/25", count: 27 },
-                    { day: "6/26", count: 20 },
-                    { day: "6/27", count: 11 },
-                  ].map((bar) => {
-                    const h = Math.max(2, Math.round((bar.count / 32) * 44));
-                    return (
-                      <div key={bar.day} className="flex flex-1 flex-col items-center">
-                        <span className="mb-0.5 text-[9px] tabular-nums text-white/40">{bar.count}</span>
-                        <div className="flex w-full flex-col justify-end" style={{ height: "44px" }}>
-                          <div className="w-full rounded-sm bg-[#60a5fa]" style={{ height: `${h}px` }} />
-                        </div>
-                        <span className="mt-1 text-[9px] tabular-nums text-white/40">{bar.day}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* 하단: 카드 2·3 — 5:5 분할 */}
+              <div className="grid grid-cols-2 gap-3">
 
-              {/* 카드 3 — 섹터별 공시 활동 */}
-              <div className="rounded-[6px] border border-white/[0.06] bg-[#111111] p-4">
-                <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/40">
-                  섹터별 공시 활동
-                </p>
-                <div className="flex flex-col gap-2.5">
-                  {[
-                    { label: "기술",       count: 45, pct: 100 },
-                    { label: "커뮤니케이션", count: 32, pct: 71 },
-                    { label: "금융",       count: 28, pct: 62 },
-                    { label: "헬스케어",    count: 21, pct: 47 },
-                    { label: "경기소비재",  count: 15, pct: 33 },
-                  ].map((row) => (
-                    <div key={row.label}>
-                      <div className="mb-1 flex items-center justify-between">
-                        <span className="text-[10px] text-white/60">{row.label}</span>
-                        <span className="text-[10px] font-medium tabular-nums text-white">{row.count}</span>
-                      </div>
-                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                        <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${row.pct}%` }} />
-                      </div>
-                    </div>
-                  ))}
+                {/* 카드 2 — 최근 7일 트렌드 */}
+                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-3">
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[#a6a6a6]">
+                    최근 7일 트렌드
+                  </p>
+                  <div className="flex items-end gap-0.5" style={{ height: "56px" }}>
+                    {[
+                      { day: "6/21", count: 18 },
+                      { day: "6/22", count: 24 },
+                      { day: "6/23", count: 32 },
+                      { day: "6/24", count: 15 },
+                      { day: "6/25", count: 27 },
+                      { day: "6/26", count: 20 },
+                      { day: "6/27", count: 11 },
+                    ].map((bar) => {
+                      const h = Math.max(2, Math.round((bar.count / 32) * 36));
+                      return (
+                        <div key={bar.day} className="flex flex-1 flex-col items-center">
+                          <div className="flex w-full flex-col justify-end" style={{ height: "36px" }}>
+                            <div className="w-full rounded-sm bg-[#60a5fa]" style={{ height: `${h}px` }} />
+                          </div>
+                          <span className="mt-1 text-[8px] tabular-nums text-[#a6a6a6]">{bar.day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {/* 카드 3 — 섹터별 공시 활동 */}
+                <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-3">
+                  <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[#a6a6a6]">
+                    섹터별 공시 활동
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { label: "기술",       pct: 100 },
+                      { label: "커뮤니케이션", pct: 71 },
+                      { label: "금융",       pct: 62 },
+                      { label: "헬스케어",    pct: 47 },
+                      { label: "경기소비재",  pct: 33 },
+                    ].map((row) => (
+                      <div key={row.label}>
+                        <span className="text-[9px] text-[#a6a6a6]">{row.label}</span>
+                        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                          <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${row.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
             </div>
-
           </div>
-
-          {/* 좌측 페이드 */}
-          <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
         </div>
 
       </div>
