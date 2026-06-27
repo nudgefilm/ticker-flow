@@ -1,9 +1,52 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
 import { IconChevronDown } from "@tabler/icons-react";
 
-const FAQS = [
+const PLAN_ROWS = [
+  {
+    plan: "Free",
+    href: "/login",
+    badgeClass: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+    features: ["공시 피드", "뉴스 피드", "경제지표", "섹터 히트맵", "종목 스냅샷"],
+  },
+  {
+    plan: "Pro",
+    href: "/login",
+    badgeClass: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    features: ["어닝콜", "공시 인사이트", "내부자 거래", "와치리스트", "멤버 모니터링"],
+  },
+];
+
+function PlanBreakdown() {
+  return (
+    <div className="mb-4 overflow-hidden rounded-lg border border-border">
+      {PLAN_ROWS.map((row) => (
+        <div
+          key={row.plan}
+          className="flex flex-col gap-2 border-b border-border px-4 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-4"
+        >
+          <Link
+            href={row.href}
+            className={`inline-flex w-fit shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold underline-offset-2 hover:underline ${row.badgeClass}`}
+          >
+            {row.plan}
+          </Link>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            {row.features.map((f) => (
+              <span key={f}>{f}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const FAQS: { q: string; a: string; extra?: ReactNode }[] = [
   {
     q: "무료로 사용할 수 있나요?",
     a: "네. 주요 기능은 무료로 이용하실 수 있습니다. 더 많은 종목 모니터링, 어닝콜 요약, 공시 분석 등 고급 기능은 Pro 플랜에서 제공합니다.",
+    extra: <PlanBreakdown />,
   },
   {
     q: "어떤 기업을 지원하나요?",
@@ -44,7 +87,10 @@ export default function Faq() {
                 className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
               />
             </summary>
-            <p className="pb-4 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+            <div className="pb-4">
+              <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+              {faq.extra}
+            </div>
           </details>
         ))}
       </div>

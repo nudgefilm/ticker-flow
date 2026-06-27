@@ -7,7 +7,6 @@ import FeatureCards from "@/components/landing/feature-cards";
 import ProductTabs from "@/components/landing/product-tabs";
 import WhyTickerFlow from "@/components/landing/why-tickerflow";
 import TrustStats from "@/components/landing/trust-stats";
-import Pricing from "@/components/landing/pricing";
 import Faq from "@/components/landing/faq";
 import FinalCta from "@/components/landing/final-cta";
 import Footer from "@/components/footer";
@@ -25,7 +24,6 @@ export default function Home() {
           <ProductTabs />
           <WhyTickerFlow />
           <TrustStats />
-          <Pricing />
           <Faq />
           <FinalCta />
         </main>
