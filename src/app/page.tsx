@@ -117,16 +117,15 @@ export default async function HomePage() {
 
                 {/* 좌측 */}
                 <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                    <span className="text-xs text-muted-foreground">나스닥 모니터링 · TickerFlow</span>
+                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5">
+                    <span className="text-xs font-medium text-amber-400">미국 기업의 변화, 놓치지 마세요.</span>
                   </div>
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-                    미국 기업의 변화,
+                    나스닥 모니터링
                     <br />
                     <span className="text-blue-400" style={{ filter: "drop-shadow(0 0 12px rgba(96,165,250,0.5))" }}>
-                      놓치지 마세요.
+                      TickerFlow
                     </span>
                   </h1>
 
@@ -452,71 +451,6 @@ export default async function HomePage() {
                       <p className="mt-2 text-sm text-muted-foreground">{label}</p>
                     </div>
                   ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ══════════════════════════════════════════════
-              9. 가격 (Free / Pro 미니멀)
-          ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
-            <div className="mx-auto max-w-7xl px-6">
-              <div className="mb-10 text-center">
-                <SectionLabel text="PRICING" />
-                <h2 className="mt-3 text-2xl font-semibold text-foreground md:text-3xl">
-                  합리적인 가격으로 시작하세요
-                </h2>
-              </div>
-              <div className="mx-auto grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-                {/* Free */}
-                <div className="flex flex-col rounded-[14px] border border-border bg-card p-7">
-                  <p className="text-sm font-semibold text-muted-foreground">Free</p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">무료</p>
-                  <div className="mt-6 flex flex-col gap-2.5">
-                    {["공시 피드", "뉴스 피드", "경제지표", "섹터 히트맵", "종목 스냅샷"].map((f) => (
-                      <div key={f} className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <IconCheck size={14} stroke={2} className="shrink-0 text-muted-foreground" />
-                        {f}
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    href="/dashboard"
-                    className="mt-8 rounded-[10px] border border-border py-2.5 text-center text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
-                  >
-                    시작하기
-                  </Link>
-                </div>
-
-                {/* Pro */}
-                <div className="relative flex flex-col rounded-[14px] border border-blue-400/40 bg-blue-500/5 p-7">
-                  <p className="text-sm font-semibold text-blue-400">Pro</p>
-                  <p className="mt-2 text-3xl font-bold text-foreground">
-                    14,900<span className="text-base font-medium text-muted-foreground">원/월</span>
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">연간 결제 시 2개월 무료</p>
-                  <div className="mt-6 flex flex-col gap-2.5">
-                    {[
-                      "Free의 모든 기능",
-                      "어닝콜 한국어 요약",
-                      "공시 인사이트",
-                      "내부자 거래",
-                      "와치리스트",
-                      "개인 모니터링",
-                    ].map((f) => (
-                      <div key={f} className="flex items-center gap-2 text-sm text-foreground">
-                        <IconCheck size={14} stroke={2} className="shrink-0 text-blue-400" />
-                        {f}
-                      </div>
-                    ))}
-                  </div>
-                  <Link
-                    href="/billing"
-                    className="mt-8 rounded-[10px] bg-blue-500 py-2.5 text-center text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  >
-                    Pro 시작하기
-                  </Link>
                 </div>
               </div>
             </div>

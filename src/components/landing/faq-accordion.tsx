@@ -1,12 +1,49 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown, IconCheck } from "@tabler/icons-react";
 
-const FAQS = [
+function PlanBreakdown() {
+  return (
+    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Free */}
+      <div className="rounded-[10px] border border-border bg-muted/30 p-4">
+        <Link href="/login" className="mb-3 inline-flex items-center rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs font-semibold text-foreground hover:bg-muted/80">
+          Free
+        </Link>
+        <ul className="flex flex-col gap-2">
+          {["공시 피드", "뉴스 피드", "경제지표", "섹터 히트맵", "종목 스냅샷"].map((f) => (
+            <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <IconCheck size={12} stroke={2} className="shrink-0" />
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+      {/* Pro */}
+      <div className="rounded-[10px] border border-amber-500/30 bg-amber-500/5 p-4">
+        <Link href="/login" className="mb-3 inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400 hover:bg-amber-500/20">
+          Pro
+        </Link>
+        <ul className="flex flex-col gap-2">
+          {["Free의 모든 기능", "어닝콜 한국어 요약", "공시 인사이트", "내부자 거래", "와치리스트"].map((f) => (
+            <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+              <IconCheck size={12} stroke={2} className="shrink-0 text-amber-400" />
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+const FAQS: { q: string; a: string; extra?: React.ReactNode }[] = [
   {
     q: "무료로 사용할 수 있나요?",
     a: "네. 공시 피드, 뉴스 피드, 경제지표, 섹터 히트맵, 종목 스냅샷은 무료로 이용하실 수 있습니다. 어닝콜 한국어 요약, 공시 인사이트, 내부자 거래, 와치리스트 등 고급 기능은 Pro 플랜에서 제공합니다.",
+    extra: <PlanBreakdown />,
   },
   {
     q: "어떤 기업을 지원하나요?",
@@ -53,6 +90,7 @@ export default function FaqAccordion() {
           {open === i && (
             <div className="border-t border-border px-6 pb-5 pt-4">
               <p className="text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
+              {faq.extra}
             </div>
           )}
         </div>
