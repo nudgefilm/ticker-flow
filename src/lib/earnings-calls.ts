@@ -21,7 +21,6 @@ export interface EarningsCall {
   company_name: string;
   quarter: string;
   call_date: string;
-  relative_time: string;
   headline_summary: string;
   revenue_actual: string;
   revenue_estimate: string;

@@ -52,6 +52,10 @@ function GuidanceMini({ dir }: { dir: GuidanceDirection }) {
   )
 }
 
+function formatCallDate(d: string): string {
+  return d ? d.replace(/-/g, ".") : "";
+}
+
 export default function EarningsCallCard({ call }: { call: EarningsCall }) {
   const [qaExpanded, setQaExpanded] = useState(false)
 
@@ -75,7 +79,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
             <span className="text-sm font-medium text-[#e5e5e5]">{call.company_name}</span>
           </div>
           <p className="mt-1 text-xs text-[#7a7a7a]">
-            {call.quarter} · {call.relative_time}
+            {call.quarter} · {formatCallDate(call.call_date)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -264,20 +268,18 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
       {/* 9. 하단 링크 + 수집 시각 */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] px-5 py-3">
         <div className="flex gap-4">
-          {call.source_url && (
+          <a
+            href={`https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${call.ticker}&type=10-Q&dateb=&owner=include&count=10`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-white"
+          >
+            <IconExternalLink size={12} stroke={1.5} />
+            SEC 원문
+          </a>
+          {(call.transcript_url || call.source_url) && (
             <a
-              href={call.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              <IconExternalLink size={12} stroke={1.5} />
-              SEC 원문
-            </a>
-          )}
-          {call.transcript_url && (
-            <a
-              href={call.transcript_url}
+              href={call.transcript_url || call.source_url}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1 text-xs text-[#a6a6a6] transition-colors hover:text-white"
