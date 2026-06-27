@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-06-27 · 세션 45
+
+### 섹터 히트맵 페이지 전면 개편
+
+**신규 생성**
+- `src/lib/sectors.ts`: `SectorStat`·`SectorPeriod` 타입, `SECTOR_COLORS`·`SECTOR_KR`·`SECTOR_KEYWORDS`·`PERIOD_LABELS` 상수, `hexToRgba()` 헬퍼
+- `src/app/api/sectors/route.ts`: 기간(7d/30d/90d) 파라미터 받아 tickers·filings·news 집계 후 `SectorStat[]` 반환 API
+- `src/components/sectors/sector-treemap.tsx`: SVG squarified 트리맵 (lib/sectors에서 색상·타입 import)
+- `src/components/sectors/sectors-board.tsx`: 전체 보드 레이아웃 (client component)
+  - 기간 세그먼트(7/30/90일) + 색상 범례
+  - Top 3 섹터 카드 (activityScore 비례 배경 바)
+  - 트리맵 패널 (SectorTreemap)
+  - 요약 테이블 (인라인 게이지 바 + IconInfoCircle hover 툴팁)
+  - 섹터별 키워드 카드 그리드 (sm:2 / lg:3)
+  - 마지막 업데이트 KST 타임스탬프
+
+**교체**
+- `src/app/(dashboard)/sectors/page.tsx`: SectorsBoard + DashboardDisclaimer만 렌더링
+  - `export const dynamic = "force-dynamic"` 포함
+  - ProGate 제거 (실 데이터 페이지로 전환)
+- `src/components/dashboard/sector-treemap.tsx`: `sectors/sector-treemap.tsx`로 re-export
+
+**구조 결정**
+- 기간 변경 시 `/api/sectors?period=7d|30d|90d` 클라이언트 재조회
+- SECTOR_KR 매핑: 기존 값 유지 ("경기소비재", "커뮤니케이션")
+
+---
+
 ## 2026-06-27 · 세션 44
 
 ### 어닝콜 카드 UI 개선 (날짜·회사명·링크)
