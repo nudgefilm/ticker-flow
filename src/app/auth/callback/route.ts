@@ -16,10 +16,18 @@ export async function GET(request: Request) {
   console.log("[auth/callback] 2. x-forwarded-host:", forwardedHost);
   console.log("[auth/callback] 3. x-forwarded-proto:", forwardedProto);
   console.log("[auth/callback] 4. baseUrl:", baseUrl);
+  const allParams: Record<string, string> = {};
+  searchParams.forEach((v, k) => { allParams[k] = v; });
+  console.log("[auth/callback] 전체 쿼리 파라미터:", JSON.stringify(allParams));
   console.log("[auth/callback] code 존재 여부:", !!code);
 
   if (!code) {
-    const errorUrl = `${baseUrl}/login?error=auth&debug=no_code`;
+    const errorParam = searchParams.get("error");
+    const errorDesc = searchParams.get("error_description");
+    const debugStr = errorParam
+      ? encodeURIComponent(`${errorParam}${errorDesc ? `:${errorDesc}` : ""}`)
+      : "no_code";
+    const errorUrl = `${baseUrl}/login?error=auth&debug=${debugStr}`;
     console.log("[auth/callback] 7. 최종 redirect (no code):", errorUrl);
     return NextResponse.redirect(errorUrl);
   }
