@@ -2,6 +2,16 @@
 
 ---
 
+## 2026-06-27 · 세션 43
+
+### 어닝콜 수집 Cron 스케줄 변경
+
+- `vercel.json`: `/api/collect/calls` 스케줄 `0 2 * * *` → `22 2 * * *` (02:22 UTC, 11:22 KST)
+  - 이유: Vercel Cron 정각(00분) 혼잡 회피
+- `src/app/admin/system/trigger/page.tsx`: 표시 텍스트 "매일 02:00 UTC" → "매일 02:22 UTC (11:22 KST)"
+
+---
+
 ## 2026-06-27 · 세션 42
 
 ### 어닝콜 수집 로그 전면 강화 + 에러 집계 버그 수정
