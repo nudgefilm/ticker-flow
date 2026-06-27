@@ -62,11 +62,11 @@ function MetricItem({
   accent?: string;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-xs text-[#a6a6a6]">{label}</span>
-      <span className={`text-base font-semibold ${accent ?? "text-white"}`}>{value}</span>
-      {estimate && <span className="text-xs text-[#7a7a7a]">예상 {estimate}</span>}
-    </div>
+  <div className="flex flex-col items-center gap-0.5 rounded-[6px] border border-[#3b82f6]/20 bg-[#3b82f6]/[0.15] px-4 py-3 text-center">
+  <span className="text-xs text-[#a6a6a6]">{label}</span>
+  <span className={`text-base font-semibold ${accent ?? "text-white"}`}>{value}</span>
+  {estimate && <span className="text-xs text-[#7a7a7a]">예상 {estimate}</span>}
+  </div>
   );
 }
 
@@ -133,7 +133,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
       {/* 3-3 실적 요약 */}
       <div className="mt-5">
         <SectionLabel>실적 요약</SectionLabel>
-        <div className="mt-2 grid grid-cols-2 gap-4 rounded-[6px] border border-[#3b82f6]/20 bg-[#3b82f6]/[0.15] px-4 py-3 sm:grid-cols-3">
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <MetricItem label="Revenue" value={call.revenue_actual} estimate={call.revenue_estimate} />
           <MetricItem label="EPS" value={call.eps_actual} estimate={call.eps_estimate} />
           <MetricItem
