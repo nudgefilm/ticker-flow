@@ -11,18 +11,18 @@ export default function Hero() {
         {/* 좌측: 텍스트 */}
         <div className="animate-fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
           <span className="inline-flex items-center rounded-full border border-border bg-secondary/50 px-3 py-1 text-xs font-medium text-muted-foreground">
-            <span className="mr-1 font-semibold text-blue-400">TickerFlow</span> · 나스닥 모니터링
+            미국 기업의 변화, 놓치지 마세요.
           </span>
 
           <h1 className="mt-6 text-balance text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-            미국 기업의 변화,
-            <br />
             <span
               className="text-blue-400"
               style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.6))" }}
             >
-              놓치지 마세요.
+              TickerFlow
             </span>
+            <br />
+            나스닥 모니터링
           </h1>
 
           <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg">
