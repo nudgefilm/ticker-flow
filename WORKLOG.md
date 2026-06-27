@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-06-27 · 세션 46
+
+### 경제지표 페이지 전면 개편 (MacroBoard)
+
+**신규 생성**
+- `src/lib/macro.ts`: `MacroIndicator`·`MacroGroup` 타입, `SERIES_META` 정적 매핑(6개 지표), `GROUP_ORDER`, `formatMainValue()`·`formatPrevValue()` 포맷 헬퍼
+- `src/components/macro/mini-line-chart.tsx`: SVG 스파크라인 (gradient fill, preserveAspectRatio="none")
+- `src/components/macro/indicator-card.tsx`: 서버 컴포넌트 — nameEn + name 병기, 변화방향 ▲▼ 중립 회색, 이전값 + 발표일 하단 표시
+- `src/components/macro/macro-board.tsx`: 클라이언트 컴포넌트 — 그룹 탭(전체/금리/물가/고용/경기) 클라이언트 필터링
+
+**교체**
+- `src/app/(dashboard)/macro/page.tsx`: 서버 컴포넌트로 전면 재작성
+  - `macro_indicators` 전체 200행 조회 → `indicator_name` 기준 그룹핑
+  - 복수 행 → 오름차순 정렬 후 히스토리 배열 구성 (스파크라인용)
+  - 최신 `released_at` → 기준일 표시
+  - `export const dynamic = "force-dynamic"` 유지
+
+**구조 결정**
+- `SERIES_META`는 DB의 `indicator_name` 값("기준금리", "CPI" 등)을 키로 사용
+- history는 최대 13행(최신 → 반전하여 오름차순) 구성
+- 변화 방향 색상 사용 금지 — 중립 회색(`#666666`)만 표시
+
+---
+
 ## 2026-06-27 · 세션 45
 
 ### 섹터 히트맵 페이지 전면 개편

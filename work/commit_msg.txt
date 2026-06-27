@@ -1,0 +1,7 @@
+fix: remove mailto cancel link and payment placeholder from mypage
+
+- Remove payment info placeholder (Polar.sh 연동 후 제공 예정) from Pro user section
+- Remove plan cancel mailto link from Pro user section
+- Pro users now see only the current plan badge; cancellation is handled via /billing
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
