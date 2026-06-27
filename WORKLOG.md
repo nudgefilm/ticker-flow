@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-06-27 · 경제지표 페이지(/macro) 독립 페이지 전면 구현
+
+### 목적
+- 미국 주요 거시지표의 "최근 발표 현황"을 한곳에서 모니터링하는 사이드바 없는 독립 페이지
+- 경기 전망/투자 의견이 아닌 데이터 중심·중립 표현, 초보자도 이해 가능한 UI
+- 기존 Supabase 기반 `(dashboard)/macro` 를 mock 기반 독립 라우트 `/macro` 로 교체
+
+### 신규 파일
+- `src/lib/mock/macro.ts`
+  - 타입: `MacroIndicator`, `MacroGroup`, `ScheduleItem`, `UpdateItem`, `ChangeDirection`
+  - 4개 그룹(금리/물가/고용/성장) × 3지표 = 12지표, 각 지표 12개월 history·발표일·FRED 링크 포함
+  - `MACRO_SCHEDULE`(발표 예정 9건), `MACRO_RECENT_UPDATES`(최근 업데이트 7건), 기준일/마지막 업데이트 상수
+- `src/components/dashboard/macro/mini-line-chart.tsx`
+  - 모든 지표 동일 스타일의 단색 SVG 라인차트(높이 56px, hover 없음, 의미 색 부여 안 함)
+- `src/components/dashboard/macro/indicator-card.tsx`
+  - 지표명 + `CODE (한글 설명)` / 현재값+단위 / 전월 대비 변화(중립 ▲▼·"변동 없음", 색상 의미 부여 안 함) / 12개월 추이 / 최근·다음 발표(없으면 "미정") / FRED 원문 링크
+- `src/components/dashboard/macro/macro-board.tsx`
+  - `SectionCard` 로 4개 지표 그룹 + 발표 예정 일정(테이블) + 최근 업데이트(목록) + 데이터 출처(FRED) 구성
+- `src/app/macro/page.tsx`
+  - 헤더(타이틀/서브 + 우측 "기준일") + 보드 + 면책 푸터. (dashboard) 그룹 밖이라 사이드바 미적용
+
+### 변경/삭제
+- `src/app/(dashboard)/macro/page.tsx` 삭제 (Supabase 의존·사이드바 버전 제거)
+
+### 콘텐츠 원칙 준수
+- 강세/약세/호재/악재/전망 등 해석 표현 배제, "전월 대비 N%p", "변동 없음" 등 사실 표기만
+- 모든 지표에 약어 + 한글 설명 병기
+
+### 검증
+- `tsc --noEmit` 통과, 브라우저 렌더 확인(사이드바 없음)
+
+---
+
 ## 2026-06-24 · 세션 1
 
 ### 프로젝트 초기 셋업
@@ -323,7 +356,7 @@
 ### 버그 수정: Next.js 15 동적 라우트 params
 
 - **증상:** `DELETE /api/watchlist/[ticker]` TypeScript 빌드 에러
-- **원인:** Next.js 15에서 동적 라우트 핸들러의 `params`가 `Promise<{ ticker: string }>` ���입으로 변경
+- **원인:** Next.js 15에서 동적 라우트 핸들러의 `params`가 `Promise<{ ticker: string }>` �����입으로 변경
 - **해결:** context 타입을 `{ params: Promise<{ ticker: string }> }`로 수정, `await params`로 추출
 
 ### 와치리스트 Pro 플랜 배너 조건부 표시
@@ -639,7 +672,7 @@ CREATE TABLE stock_prices (
 - `export const dynamic = "force-dynamic"` 추가
 - 전체 count, 오늘 count, 최근 7일 raw rows (published_at + source) 병렬 조회
 - JS에서 날짜별·소스별 집계 (null → "기타")
-- 기존 더미 로그 → 실 DB 기반 소스별 분류표 + 7일 날짜별 건수표
+- 기존 더미 로그 → 실 DB 기반 소스별 분류표 + 7일 날짜�� 건수표
 
 **`src/app/admin/data/translation/page.tsx`**
 - `export const dynamic = "force-dynamic"` 추가
@@ -931,14 +964,14 @@ CREATE TABLE stock_prices (
 **`src/app/admin/ops/reports/page.tsx`**
 - 더미 reports 배열 + statusColor 맵 + 테이블 전체 제거
 - reports / contacts 테이블 없음 확인 (supabase.ts)
-- 빈 상태 UI (IconMessage + "문의·신고 기능은 준비 중입니다.") 로 대체
+- 빈 ���태 UI (IconMessage + "문의·신고 기능은 준비 중입니다.") 로 대체
 
 ### 종목 프로필 수집 401 에러 근본 수정
 
 **`src/app/api/admin/run/route.ts`**
 - **원인:** `after()` 콜백은 새 fetch 컨텍스트이므로 브라우저 세션 쿠키가 자동 전달되지 않음
 - **이전 접근:** CRON_SECRET 환경변수에 의존 → 미설정 시 모든 트리거 401
-- **수정:** 원본 요청의 `cookie` 헤더를 캡처해 `after()` fetch에 수동 전달
+- **수정:** 원본 요청의 `cookie` 헤더를 캡처해 `after()` fetch에 수동 전���
   ```typescript
   const cookieHeader = req.headers.get("cookie") ?? "";
   headers: {
