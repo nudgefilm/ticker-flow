@@ -76,15 +76,15 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <section className="overflow-hidden rounded-lg border border-white/[0.08] bg-[#111111]">
+      <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] bg-[#1a1a1a] px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-white">{title}</h2>
           {description ? <p className="mt-1 text-xs text-[#a6a6a6]">{description}</p> : null}
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {children}
+      <div className="p-5">{children}</div>
     </section>
   );
 }
