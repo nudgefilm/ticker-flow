@@ -23,11 +23,11 @@ import { createClient } from "@/lib/supabase/client";
 
 function SectionCard({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111]">
-      <p className="px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      <p className="border-b border-white/[0.06] bg-[#242424] px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         {label}
       </p>
-      <div className="border-t border-white/[0.06]">{children}</div>
+      <div>{children}</div>
     </div>
   );
 }
@@ -204,7 +204,7 @@ export default function MyPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <a
               href="mailto:support@tickerflow.net"
-              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 transition-colors hover:bg-[#1a1a1a]"
+              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 transition-colors hover:bg-blue-500/[0.22]"
             >
               <IconMail size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
               <div>
@@ -217,7 +217,7 @@ export default function MyPage() {
             </a>
             <a
               href="mailto:support@tickerflow.net?subject=피드백 — 기능 제안/버그 신고"
-              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 transition-colors hover:bg-[#1a1a1a]"
+              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 transition-colors hover:bg-blue-500/[0.22]"
             >
               <IconMessageCircle size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
               <div>

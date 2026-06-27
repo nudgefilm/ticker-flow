@@ -170,7 +170,7 @@ export default async function Hero() {
           </div>
         </div>
 
-        {/* 우측: 대시보드 목업 */}
+        {/* 우측: 시각화 카드 목업 (카드 3 × 2) */}
         <div className="hidden lg:block relative">
           {/* 블루 글로우 */}
           <div className="absolute -inset-8 bg-blue-500/10 blur-3xl rounded-3xl -z-10" />
@@ -178,7 +178,7 @@ export default async function Hero() {
           {/* 목업 컨테이너 */}
           <div className="relative rounded-2xl border border-white/[0.08] bg-[#0f0f0f] overflow-hidden shadow-2xl">
 
-            {/* 목업 상단 바 */}
+            {/* 브라우저 탭 바 */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
               <div className="w-3 h-3 rounded-full bg-white/10" />
               <div className="w-3 h-3 rounded-full bg-white/10" />
@@ -186,59 +186,65 @@ export default async function Hero() {
               <span className="ml-2 text-xs text-white/30 font-mono">tickerflow.net</span>
             </div>
 
-            {/* 목업 내부 — 2열 */}
-            <div className="flex">
+            {/* 카드 목록 */}
+            <div className="flex flex-col gap-3 p-4">
 
-              {/* 미니 사이드바 */}
-              <div className="w-36 border-r border-white/[0.06] p-3 flex flex-col gap-1 shrink-0">
-                <p className="text-[10px] text-white/30 uppercase tracking-wider px-2 mb-1">모니터링</p>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white/[0.08]">
-                  <div className="w-3 h-3 rounded bg-blue-400/60" />
-                  <span className="text-[11px] text-white">공시 피드</span>
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
-                  <div className="w-3 h-3 rounded bg-white/20" />
-                  <span className="text-[11px] text-white/40">뉴스 피드</span>
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
-                  <div className="w-3 h-3 rounded bg-white/20" />
-                  <span className="text-[11px] text-white/40">실적 캘린더</span>
-                </div>
-                <p className="text-[10px] text-white/30 uppercase tracking-wider px-2 mb-1 mt-3">인사이트</p>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
-                  <div className="w-3 h-3 rounded bg-white/20" />
-                  <span className="text-[11px] text-white/40">종목 스냅샷</span>
-                </div>
-                <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg">
-                  <div className="w-3 h-3 rounded bg-white/20" />
-                  <span className="text-[11px] text-white/40">섹터 히트맵</span>
+              {/* 카드 3 — 위 */}
+              <div className="rounded-[6px] border border-white/[0.06] bg-[#111111] p-4">
+                <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/40">
+                  섹터별 공시 활동
+                </p>
+                <div className="flex flex-col gap-2.5">
+                  {[
+                    { label: "기술",       count: 45, pct: 100 },
+                    { label: "커뮤니케이션", count: 32, pct: 71 },
+                    { label: "금융",       count: 28, pct: 62 },
+                    { label: "헬스케어",    count: 21, pct: 47 },
+                    { label: "경기소비재",  count: 15, pct: 33 },
+                  ].map((row) => (
+                    <div key={row.label}>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[10px] text-white/60">{row.label}</span>
+                        <span className="text-[10px] font-medium tabular-nums text-white">{row.count}</span>
+                      </div>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${row.pct}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* 메인 콘텐츠 */}
-              <div className="flex-1 p-4 space-y-2 min-w-0">
-                {mockupFilings.map((filing) => (
-                  <div key={filing.id} className="rounded-xl border border-white/[0.06] bg-[#111111] p-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${getMockupBadgeClass(filing.form_type)}`}>
-                        {filing.form_type}
-                      </span>
-                      <span className="text-[11px] font-mono text-white/60">{filing.ticker}</span>
-                      <span className="text-[10px] text-white/30 ml-auto">
-                        {relativeTime(filing.filed_at)}
-                      </span>
+              {/* 카드 3 — 아래 */}
+              <div className="rounded-[6px] border border-white/[0.06] bg-[#111111] p-4">
+                <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-white/40">
+                  섹터별 공시 활동
+                </p>
+                <div className="flex flex-col gap-2.5">
+                  {[
+                    { label: "산업재",    count: 38, pct: 100 },
+                    { label: "필수소비재", count: 26, pct: 68 },
+                    { label: "에너지",    count: 20, pct: 53 },
+                    { label: "부동산",    count: 15, pct: 39 },
+                    { label: "소재",      count: 9,  pct: 24 },
+                  ].map((row) => (
+                    <div key={row.label}>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-[10px] text-white/60">{row.label}</span>
+                        <span className="text-[10px] font-medium tabular-nums text-white">{row.count}</span>
+                      </div>
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                        <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${row.pct}%` }} />
+                      </div>
                     </div>
-                    <p className="text-[11px] text-white/70 leading-relaxed line-clamp-2">
-                      {filing.summary_kr ?? "요약 준비 중"}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
             </div>
 
             {/* 하단 페이드 */}
-            <div className="absolute bottom-0 inset-x-0 h-20 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 inset-x-0 h-16 bg-gradient-to-t from-[#0f0f0f] to-transparent pointer-events-none" />
           </div>
 
           {/* 좌측 페이드 */}
