@@ -191,9 +191,9 @@ export default async function Hero() {
                 <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
                   공시 유형 분포
                 </p>
-                <div className="flex flex-1 flex-col items-center justify-between gap-4">
+                <div className="flex flex-1 flex-col items-center gap-4">
                   {/* 도넛 */}
-                  <div className="relative h-28 w-28 shrink-0">
+                  <div className="relative h-40 w-40 shrink-0">
                     <div
                       className="h-full w-full rounded-full"
                       style={{
@@ -201,12 +201,12 @@ export default async function Hero() {
                           "conic-gradient(#fbbf24 0% 42%, #60a5fa 42% 65%, #93c5fd 65% 82%, #c084fc 82% 95%, #6b7280 95% 100%)",
                       }}
                     />
-                    <div className="absolute inset-[28px] flex items-center justify-center rounded-full bg-[#111111]">
+                    <div className="absolute inset-[40px] flex items-center justify-center rounded-full bg-[#111111]">
                       <span className="text-xl font-semibold tabular-nums text-white">142</span>
                     </div>
                   </div>
                   {/* 범례 */}
-                  <ul className="flex w-full flex-col gap-3">
+                  <ul className="flex w-full flex-1 flex-col justify-between">
                     {[
                       { label: "8-K",    pct: 42, count: 60, color: "#fbbf24" },
                       { label: "10-K",   pct: 23, count: 33, color: "#60a5fa" },

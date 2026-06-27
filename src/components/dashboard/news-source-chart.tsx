@@ -27,7 +27,7 @@ export default function NewsSourceChart({ sources, total }: Props) {
           데이터 없음
         </p>
       ) : (
-        <div className="flex flex-1 items-center gap-8">
+        <div className="flex flex-1 flex-col items-center gap-5">
           {/* 도넛 */}
           <div className="relative h-48 w-48 shrink-0">
             <div
@@ -42,7 +42,7 @@ export default function NewsSourceChart({ sources, total }: Props) {
           </div>
 
           {/* 범례 */}
-          <ul className="flex min-w-0 flex-1 flex-col gap-3">
+          <ul className="flex w-full flex-1 flex-col justify-between">
             {sources.map((s) => (
               <li key={s.name} className="flex items-center gap-2.5">
                 <span

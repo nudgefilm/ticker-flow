@@ -9,7 +9,7 @@ export default function NewsTrendChart({ trend }: Props) {
   const BAR_HEIGHT = 52
 
   return (
-    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+    <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
       <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         최근 7일 추이
       </p>
@@ -17,7 +17,7 @@ export default function NewsTrendChart({ trend }: Props) {
       {trend.length === 0 ? (
         <p className="py-6 text-center text-xs text-[#a6a6a6]">데이터 없음</p>
       ) : (
-        <div className="flex items-end gap-1" style={{ height: `${BAR_HEIGHT + 32}px` }}>
+        <div className="flex items-end gap-1" style={{ height: `${BAR_HEIGHT + 40}px` }}>
           {trend.map((d) => {
             const barH = d.count > 0
               ? Math.max(2, Math.round((d.count / maxCount) * BAR_HEIGHT))

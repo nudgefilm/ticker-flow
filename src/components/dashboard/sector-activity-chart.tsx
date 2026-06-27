@@ -8,7 +8,7 @@ export default function SectorActivityChart({ data }: Props) {
   const maxCount = Math.max(...data.map((d) => d.count), 1)
 
   return (
-    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+    <div className="flex flex-1 flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
       <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         섹터별 공시 활동
       </p>
@@ -16,7 +16,7 @@ export default function SectorActivityChart({ data }: Props) {
       {data.length === 0 ? (
         <p className="py-6 text-center text-xs text-[#a6a6a6]">데이터 없음</p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-1 flex-col justify-between">
           {data.map((d) => (
             <div key={d.sector}>
               <div className="mb-1 flex items-center justify-between">
