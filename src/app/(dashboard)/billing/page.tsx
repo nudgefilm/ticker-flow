@@ -78,6 +78,11 @@ export default async function BillingPage({
       {/* 구독 해지 — Pro 유저 전용, 페이지 최하단 */}
       {isPro && (
         <div className="mt-8 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+          <div className="mb-4 flex items-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.ico" alt="" width={18} height={18} className="rounded-sm" />
+            <span className="text-base font-semibold tracking-tight text-white">TickerFlow</span>
+          </div>
           <a
             href="https://polar.sh/tickerflow/portal"
             target="_blank"
