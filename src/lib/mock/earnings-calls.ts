@@ -51,7 +51,7 @@ export interface EarningsCall {
   // 핵심 키워드 (TOP 8)
   keywords: string[];
 
-  // 경영진 핵심 발언 (3개)
+  // 경영진 핵심 발언 (CEO / CFO 2개)
   key_statements: KeyStatement[];
 
   // Q&A 핵심 문답 (TOP 2 노출 + 더보기 시 전체 노출)
@@ -96,7 +96,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "Blackwell 플랫폼 수요가 공급을 초과하고 있다고 밝혔습니다.", role: "CEO" },
       { text: "데이터센터 매출 비중이 지속적으로 증가하고 있다고 설명했습니다.", role: "CFO" },
-      { text: "AI 인프라 투자 확대가 계속되고 있다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
@@ -158,7 +157,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "사이버트럭 생산 차질이 일시적이며 다음 분기 정상화를 예상한다고 밝혔습니다.", role: "CEO" },
       { text: "에너지 저장 사업 매출이 전분기 대비 증가했다고 설명했습니다.", role: "CFO" },
-      { text: "FSD 구독 모델 전환을 검토하고 있다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
@@ -220,7 +218,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "Azure 매출 성장률이 전분기 수준을 유지했다고 밝혔습니다.", role: "CEO" },
       { text: "AI 인프라 확충을 위한 자본 지출이 증가할 것이라고 설명했습니다.", role: "CFO" },
-      { text: "Copilot 상용 도입 고객 수가 확대되고 있다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
@@ -282,7 +279,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "서비스 부문 매출이 사상 최고치를 기록했다고 밝혔습니다.", role: "CEO" },
       { text: "환율 변동이 매출에 일부 영향을 미쳤다고 설명했습니다.", role: "CFO" },
-      { text: "신제품 출시를 다음 분기로 계획하고 있다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
@@ -344,7 +340,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "AWS 매출 성장률이 다시 가속되고 있다고 밝혔습니다.", role: "CEO" },
       { text: "광고 사업 매출이 전년 대비 큰 폭으로 증가했다고 설명했습니다.", role: "CFO" },
-      { text: "물류 네트워크 효율화로 배송 비용이 감소했다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
@@ -406,7 +401,6 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     key_statements: [
       { text: "검색 광고 매출이 안정적으로 회복되고 있다고 밝혔습니다.", role: "CEO" },
       { text: "클라우드 부문이 흑자 기조를 유지했다고 설명했습니다.", role: "CFO" },
-      { text: "Gemini 모델을 주요 제품에 통합하고 있다고 언급했습니다.", role: "CEO" },
     ],
     qa_pairs: [
       {
