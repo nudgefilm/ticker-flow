@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -119,6 +119,39 @@ export type Database = {
           },
         ]
       }
+      collect_runs: {
+        Row: {
+          error_msg: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          result: Json | null
+          source: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          error_msg?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type: string
+          result?: Json | null
+          source?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          error_msg?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          result?: Json | null
+          source?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       earnings: {
         Row: {
           actual_eps: number | null
@@ -162,37 +195,97 @@ export type Database = {
       }
       earnings_calls: {
         Row: {
+          call_date: string | null
+          eps_actual: string | null
+          eps_estimate: string | null
           fiscal_quarter: number
           fiscal_year: number
+          guidance_direction: string | null
+          guidance_previous: string | null
+          guidance_summary: string | null
+          has_earnings_release: boolean | null
+          headline_summary: string | null
           id: string
           key_points: Json | null
+          key_statements: Json | null
+          keyword_changes: Json | null
+          keywords: string[] | null
           processed_at: string | null
+          qa_pairs: Json | null
+          quarter: string | null
+          revenue_actual: string | null
+          revenue_estimate: string | null
           source_url: string | null
+          summary_generated_at: string | null
           summary_kr: string | null
+          surprise_percent: number | null
           ticker: string
           tone_change: string | null
+          tone_current: string | null
+          tone_previous: string | null
+          transcript_url: string | null
         }
         Insert: {
+          call_date?: string | null
+          eps_actual?: string | null
+          eps_estimate?: string | null
           fiscal_quarter: number
           fiscal_year: number
+          guidance_direction?: string | null
+          guidance_previous?: string | null
+          guidance_summary?: string | null
+          has_earnings_release?: boolean | null
+          headline_summary?: string | null
           id?: string
           key_points?: Json | null
+          key_statements?: Json | null
+          keyword_changes?: Json | null
+          keywords?: string[] | null
           processed_at?: string | null
+          qa_pairs?: Json | null
+          quarter?: string | null
+          revenue_actual?: string | null
+          revenue_estimate?: string | null
           source_url?: string | null
+          summary_generated_at?: string | null
           summary_kr?: string | null
+          surprise_percent?: number | null
           ticker: string
           tone_change?: string | null
+          tone_current?: string | null
+          tone_previous?: string | null
+          transcript_url?: string | null
         }
         Update: {
+          call_date?: string | null
+          eps_actual?: string | null
+          eps_estimate?: string | null
           fiscal_quarter?: number
           fiscal_year?: number
+          guidance_direction?: string | null
+          guidance_previous?: string | null
+          guidance_summary?: string | null
+          has_earnings_release?: boolean | null
+          headline_summary?: string | null
           id?: string
           key_points?: Json | null
+          key_statements?: Json | null
+          keyword_changes?: Json | null
+          keywords?: string[] | null
           processed_at?: string | null
+          qa_pairs?: Json | null
+          quarter?: string | null
+          revenue_actual?: string | null
+          revenue_estimate?: string | null
           source_url?: string | null
+          summary_generated_at?: string | null
           summary_kr?: string | null
+          surprise_percent?: number | null
           ticker?: string
           tone_change?: string | null
+          tone_current?: string | null
+          tone_previous?: string | null
+          transcript_url?: string | null
         }
         Relationships: [
           {
