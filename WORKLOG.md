@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-06-27 · 세션 40
+
+### 내부자 거래 수집 404 에러 수정
+
+- `src/lib/collect/insider.ts` URL에서 `&limit=20` 제거
+  - **원인:** FMP stable API는 `limit` 쿼리 파라미터 미지원 → HTTP 404 반환
+  - **증상:** 저장 0건, 스킵 50건, 에러 50건 (HTTP 404)
+  - **수정:** `insider-trading?symbol={ticker}&limit=20&apikey=` → `insider-trading?symbol={ticker}&apikey=`
+- `src/lib/collect/calls.ts` URL 확인 → spec과 일치, 수정 불필요
+- 빌드: ✓ Compiled successfully
+
+---
+
 ## 2026-06-27 · 세션 39
 
 ### 내부자 거래 페이지 전면 재구현 + 수집 파이프라인 FMP 전환

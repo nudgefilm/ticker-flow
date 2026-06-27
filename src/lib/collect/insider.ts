@@ -34,7 +34,7 @@ async function collectForTicker(
   adminClient: ReturnType<typeof createAdminClient>
 ): Promise<{ inserted: number; skipped: number; error?: string }> {
   try {
-    const url = `https://financialmodelingprep.com/stable/insider-trading?symbol=${ticker}&limit=20&apikey=${apiKey}`;
+    const url = `https://financialmodelingprep.com/stable/insider-trading?symbol=${ticker}&apikey=${apiKey}`;
     const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!res.ok) return { inserted: 0, skipped: 1, error: `HTTP ${res.status}` };
 
