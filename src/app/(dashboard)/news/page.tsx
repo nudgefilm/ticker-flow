@@ -85,7 +85,10 @@ async function NewsFeedList({ page }: { page: number }) {
           <NewsFeedCard
             key={item.id}
             news={item}
-            className={items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : undefined}
+            className={[
+              i % 2 === 0 ? "bg-[#111820]" : "",
+              items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : "",
+            ].filter(Boolean).join(" ") || undefined}
           />
         ))}
       </div>

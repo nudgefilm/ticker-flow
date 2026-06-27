@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   IconChevronLeft,
@@ -173,12 +173,18 @@ export default function InsiderBoard({
   trades: InsiderTrade[];
   isPro: boolean;
 }) {
+  const boardTopRef = useRef<HTMLDivElement>(null);
   const [filterType, setFilterType] = useState<FilterType>("all");
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>("30");
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [filterAmount, setFilterAmount] = useState<FilterAmount>("all");
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [page, setPage] = useState(1);
+
+  function handlePageChange(newPage: number) {
+    setPage(newPage);
+    boardTopRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+  }
 
   const filtered = useMemo(
     () => applyFilters(trades, filterType, filterPeriod, watchlistOnly, filterAmount),
@@ -201,6 +207,8 @@ export default function InsiderBoard({
 
   return (
     <div className="space-y-4">
+      {/* 스크롤 앵커 */}
+      <div ref={boardTopRef} />
       {/* 필터 바 */}
       <div className="sticky top-0 z-10 bg-[#0a0a0a]/90 backdrop-blur-sm py-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -370,7 +378,7 @@ export default function InsiderBoard({
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(Math.max(1, page - 1))}
             disabled={page === 1}
             className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white disabled:opacity-30"
           >
@@ -382,7 +390,7 @@ export default function InsiderBoard({
           </span>
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-3 py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white disabled:opacity-30"
           >

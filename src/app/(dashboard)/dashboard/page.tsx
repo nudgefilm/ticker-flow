@@ -111,7 +111,10 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
           <FilingFeedCard
             key={filing.id}
             filing={filing}
-            className={filings.length % 2 !== 0 && i === filings.length - 1 ? "col-span-2" : undefined}
+            className={[
+              i % 2 === 0 ? "bg-[#111820]" : "",
+              filings.length % 2 !== 0 && i === filings.length - 1 ? "col-span-2" : "",
+            ].filter(Boolean).join(" ") || undefined}
           />
         ))}
       </div>
