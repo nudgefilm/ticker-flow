@@ -6,6 +6,12 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
+  // Vercel 프록시 환경에서 실제 도메인은 x-forwarded-host 헤더에 있음
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const baseUrl = forwardedHost
+    ? `https://${forwardedHost}`
+    : (process.env.NEXT_PUBLIC_SITE_URL ?? origin);
+
   if (code) {
     const cookieStore = await cookies();
 
@@ -29,9 +35,9 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}/dashboard`);
+      return NextResponse.redirect(`${baseUrl}/dashboard`);
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${baseUrl}/login?error=auth`);
 }
