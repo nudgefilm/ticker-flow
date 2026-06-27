@@ -7,19 +7,9 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
 
   const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
   const baseUrl = forwardedHost
     ? `https://${forwardedHost}`
     : (process.env.NEXT_PUBLIC_SITE_URL ?? origin);
-
-  console.log("[auth/callback] 1. request.url:", request.url);
-  console.log("[auth/callback] 2. x-forwarded-host:", forwardedHost);
-  console.log("[auth/callback] 3. x-forwarded-proto:", forwardedProto);
-  console.log("[auth/callback] 4. baseUrl:", baseUrl);
-  const allParams: Record<string, string> = {};
-  searchParams.forEach((v, k) => { allParams[k] = v; });
-  console.log("[auth/callback] 전체 쿼리 파라미터:", JSON.stringify(allParams));
-  console.log("[auth/callback] code 존재 여부:", !!code);
 
   if (!code) {
     const errorParam = searchParams.get("error");
@@ -27,16 +17,11 @@ export async function GET(request: Request) {
     const debugStr = errorParam
       ? encodeURIComponent(`${errorParam}${errorDesc ? `:${errorDesc}` : ""}`)
       : "no_code";
-    const errorUrl = `${baseUrl}/login?error=auth&debug=${debugStr}`;
-    console.log("[auth/callback] 7. 최종 redirect (no code):", errorUrl);
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(`${baseUrl}/login?error=auth&debug=${debugStr}`);
   }
 
   try {
     const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
-    console.log("[auth/callback] 쿠키 목록:", allCookies.map((c) => c.name));
-
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -54,26 +39,17 @@ export async function GET(request: Request) {
       }
     );
 
-    const result = await supabase.auth.exchangeCodeForSession(code);
-    console.log("[auth/callback] 5. exchangeCodeForSession 결과:", JSON.stringify(result, null, 2));
-    console.log("[auth/callback] 6. error 전체:", result.error);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!result.error) {
-      const successUrl = `${baseUrl}/dashboard`;
-      console.log("[auth/callback] 7. 최종 redirect (성공):", successUrl);
-      return NextResponse.redirect(successUrl);
+    if (!error) {
+      return NextResponse.redirect(`${baseUrl}/dashboard`);
     }
 
-    const debugCode = result.error.code ?? result.error.message ?? "exchange_failed";
-    const errorUrl = `${baseUrl}/login?error=auth&debug=${encodeURIComponent(debugCode)}`;
-    console.log("[auth/callback] 7. 최종 redirect (실패):", errorUrl);
-    return NextResponse.redirect(errorUrl);
+    const debugCode = error.code ?? error.message ?? "exchange_failed";
+    return NextResponse.redirect(`${baseUrl}/login?error=auth&debug=${encodeURIComponent(debugCode)}`);
 
   } catch (err: unknown) {
-    console.log("[auth/callback] catch 에러 전체:", err);
     const msg = err instanceof Error ? err.message : String(err);
-    const errorUrl = `${baseUrl}/login?error=auth&debug=${encodeURIComponent(msg)}`;
-    console.log("[auth/callback] 7. 최종 redirect (catch):", errorUrl);
-    return NextResponse.redirect(errorUrl);
+    return NextResponse.redirect(`${baseUrl}/login?error=auth&debug=${encodeURIComponent(msg)}`);
   }
 }
