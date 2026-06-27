@@ -43,7 +43,7 @@ export default function ProductTabs() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-16 md:py-20">
       <div className="mb-10 text-center">
-        <h2 className="text-2xl font-semibold text-foreground md:text-3xl">실제 화면 미리보기</h2>
+        <h2 className="text-2xl font-semibold text-foreground md:text-3xl">화면 미리보기</h2>
       </div>
 
       {/* 탭 */}
