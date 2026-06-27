@@ -53,9 +53,11 @@ export default function Comparison() {
         </div>
       </div>
 
-      <p className="mt-8 text-center text-sm text-muted-foreground">
-        같은 공시, 다른 경험
-      </p>
+      <div className="mt-8 flex justify-center">
+        <span className="rounded-lg border border-blue-500/30 bg-blue-500/[0.15] px-5 py-2.5 text-sm font-medium text-foreground">
+          같은 공시, 다른 경험
+        </span>
+      </div>
     </section>
   );
 }
