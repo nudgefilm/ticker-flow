@@ -258,7 +258,7 @@ export default function CallsBoard() {
       {visible.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-8">
           {visible.map((c) => (
             <EarningsCallCard key={`${c.ticker}-${c.quarter}`} call={c} />
           ))}
