@@ -54,7 +54,7 @@ export interface EarningsCall {
   // 경영진 핵심 발언 (3개)
   key_statements: KeyStatement[];
 
-  // Q&A 핵심 문답 (2건)
+  // Q&A 핵심 문답 (TOP 2 노출 + 더보기 시 전체 노출)
   qa_pairs: QaPair[];
 
   // 전분기 대비 변화
@@ -107,6 +107,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
         question: "Blackwell 공급 일정은?",
         answer: "하반기 본격 양산을 예정하고 있으며 수요 대비 공급이 타이트하다고 답했습니다.",
       },
+      {
+        question: "데이터센터 매출 비중 전망은?",
+        answer: "전체 매출에서 데이터센터 비중이 지속 확대될 것으로 본다고 답했습니다.",
+      },
+      {
+        question: "네트워킹 사업 성장 기여도는?",
+        answer: "InfiniBand와 이더넷 솔루션 수요가 함께 증가하고 있다고 설명했습니다.",
+      },
+      {
+        question: "마진 추이에 대한 입장은?",
+        answer: "신제품 믹스 변화로 단기 변동이 있으나 중장기 안정적 수준을 유지한다고 답했습니다.",
+      },
+      {
+        question: "소프트웨어 매출 기여는?",
+        answer: "AI 엔터프라이즈 구독 매출이 점진적으로 반영되고 있다고 설명했습니다.",
+      },
     ],
     keyword_changes: [
       { keyword: "Gaming", direction: "down" },
@@ -153,6 +169,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
         question: "FSD 수익화 일정은?",
         answer: "구독 모델 전환을 검토 중이며 규제 승인 일정에 따라 유동적이라고 설명했습니다.",
       },
+      {
+        question: "차량 평균 판매가격 추이는?",
+        answer: "가격 조정 영향으로 전분기 대비 하락했다고 답했습니다.",
+      },
+      {
+        question: "에너지 저장 사업 마진은?",
+        answer: "규모 확대에 따라 마진이 개선되고 있다고 설명했습니다.",
+      },
+      {
+        question: "로보택시 공개 일정은?",
+        answer: "공개 행사를 계획 중이며 구체 일정은 추후 안내한다고 답했습니다.",
+      },
+      {
+        question: "중국 시장 경쟁 상황은?",
+        answer: "현지 업체와의 가격 경쟁이 지속되고 있다고 설명했습니다.",
+      },
     ],
     keyword_changes: [
       { keyword: "Production", direction: "down" },
@@ -183,7 +215,7 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
     guidance_direction: "maintain",
     guidance_previous: "up",
     guidance_summary:
-      "다음 분기 매출 가이던스를 기존 범위로 유지했습니다. 클라우드 부문 성장률은 전분기와 유사한 수준을 제시했습니다.",
+      "다음 분기 매출 가이던스를 기존 범위로 유지했습니다. 클라우드 부문 ��장률은 전분기와 유사한 수준을 제시했습니다.",
     keywords: ["Azure", "Copilot", "AI", "Cloud", "CapEx", "Office", "Gaming", "Margin"],
     key_statements: [
       { text: "Azure 매출 성장률이 전분기 수준을 유지했다고 밝혔습니다.", role: "CEO" },
@@ -198,6 +230,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
       {
         question: "Copilot 수익 기여도는?",
         answer: "현재 초기 단계이며 도입 고객 확대에 따라 점진적으로 반영된다고 설명했습니다.",
+      },
+      {
+        question: "Azure 성장률 둔화 우려는?",
+        answer: "AI 서비스 수요가 성장을 뒷받침하고 있다고 답했습니다.",
+      },
+      {
+        question: "데이터센터 용량 제약은?",
+        answer: "일부 지역에서 용량이 타이트하며 증설을 진행 중이라고 설명했습니다.",
+      },
+      {
+        question: "게임 부문 실적은?",
+        answer: "콘텐츠 출시 일정에 따라 분기별 변동이 있다고 답했습니다.",
+      },
+      {
+        question: "기업용 구독 갱신율은?",
+        answer: "주요 제품군의 갱신율이 안정적으로 유지되고 있다고 설명했습니다.",
       },
     ],
     keyword_changes: [
@@ -245,6 +293,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
         question: "서비스 성장 지속 가능성은?",
         answer: "구독 기반 매출 확대에 따라 두 자릿수 성장이 이어질 것이라고 설명했습니다.",
       },
+      {
+        question: "환율 영향 규모는?",
+        answer: "달러 강세로 매출에 일부 부정적 영향이 있었다고 답했습니다.",
+      },
+      {
+        question: "Vision 제품 판매 동향은?",
+        answer: "초기 시장 반응을 보며 라인업을 확대할 계획이라고 설명했습니다.",
+      },
+      {
+        question: "웨어러블 부문 실적은?",
+        answer: "신제품 출시 전 분기로 전년 대비 보합 수준이라고 답했습니다.",
+      },
+      {
+        question: "신제품 출시 일정은?",
+        answer: "다음 분기 출시를 계획하고 있다고 설명했습니다.",
+      },
     ],
     keyword_changes: [
       { keyword: "Services", direction: "up" },
@@ -291,6 +355,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
         question: "광고 사업 전망은?",
         answer: "프라임 비디오 광고 도입 효과가 본격 반영될 것이라고 설명했습니다.",
       },
+      {
+        question: "물류 비용 절감 지속성은?",
+        answer: "네트워크 효율화 효과가 향후에도 이어질 것이라고 답했습니다.",
+      },
+      {
+        question: "자본 지출 계획은?",
+        answer: "AWS 인프라 투자를 중심으로 증가할 것이라고 설명했습니다.",
+      },
+      {
+        question: "리테일 마진 추이는?",
+        answer: "운영 효율화로 마진이 개선되고 있다고 답했습니다.",
+      },
+      {
+        question: "프라임 회원 동향은?",
+        answer: "회원 수와 참여도가 안정적으로 유지되고 있다고 설명했습니다.",
+      },
     ],
     keyword_changes: [
       { keyword: "AWS", direction: "up" },
@@ -336,6 +416,22 @@ export const MOCK_EARNINGS_CALLS: EarningsCall[] = [
       {
         question: "클라우드 수익성 개선 요인은?",
         answer: "대형 고객 계약 증가와 인프라 효율화가 기여했다고 설명했습니다.",
+      },
+      {
+        question: "YouTube 광고 매출 동향은?",
+        answer: "쇼츠와 커넥티드 TV 부문이 성장을 이끌고 있다고 답했습니다.",
+      },
+      {
+        question: "Gemini 제품 통합 범위는?",
+        answer: "검색, 워크스페이스 등 주요 제품에 단계적으로 적용 중이라고 설명했습니다.",
+      },
+      {
+        question: "자본 지출 방향은?",
+        answer: "AI 인프라 확충을 위해 투자를 확대할 계획이라고 답했습니다.",
+      },
+      {
+        question: "규제 이슈 대응은?",
+        answer: "관련 절차에 성실히 대응하고 있다고 설명했습니다.",
       },
     ],
     keyword_changes: [
