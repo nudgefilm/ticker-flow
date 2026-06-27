@@ -125,7 +125,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
       </header>
 
       {/* 3-2 이번 어닝콜 핵심 요약 */}
-      <div className="mt-4 rounded-[6px] border border-white/[0.06] bg-white/[0.02] p-4">
+      <div className="mt-4 rounded-[6px] border border-[#f97316]/20 bg-[#f97316]/[0.15] p-4">
         <SectionLabel>이번 어닝콜 핵심 요약</SectionLabel>
         <p className="mt-2 text-sm leading-relaxed text-[#e5e5e5]">{call.headline_summary}</p>
       </div>
