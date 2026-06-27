@@ -30,7 +30,7 @@ export default function NewsSectorChart({ sectors }: Props) {
       {sectors.length === 0 ? (
         <p className="py-6 text-center text-xs text-[#a6a6a6]">데이터 없음</p>
       ) : (
-        <div className="flex flex-1 flex-col justify-between">
+        <div className="flex flex-col gap-3">
           {sectors.map((d) => (
             <div key={d.sector}>
               <div className="mb-1 flex items-center justify-between">
