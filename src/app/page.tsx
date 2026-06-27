@@ -481,7 +481,6 @@ export default async function HomePage() {
                   className="mt-8 inline-flex items-center gap-2 rounded-xl bg-foreground px-8 py-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
                 >
                   무료로 시작하기
-                  <IconArrowRight size={16} stroke={2} />
                 </Link>
               </div>
             </div>
