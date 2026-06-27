@@ -1,5 +1,3 @@
-import StartButton from "@/components/landing/start-button";
-
 const MOCKUP_ROWS = [
   { badge: "8-K", badgeClass: "bg-blue-500/20 text-blue-400", ticker: "NVDA", time: "12분 전", text: "데이터센터 부문 신규 공급 계약 관련 주요 사항을 보고했습니다." },
   { badge: "Form 4", badgeClass: "bg-amber-500/20 text-amber-400", ticker: "TSLA", time: "38분 전", text: "등기임원의 보통주 거래 내역이 접수되었습니다." },
@@ -33,9 +31,6 @@ export default function Hero() {
             여러 사이트를 오갈 필요 없이 하나의 화면에서 확인하세요.
           </p>
 
-          <div className="mt-8">
-            <StartButton />
-          </div>
         </div>
 
         {/* 우측: 대시보드 목업 */}
