@@ -48,12 +48,23 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
   const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user?.email) {
-        setUserInitial(data.user.email[0].toUpperCase());
-      }
-    });
+    // Supabase 환경변수가 없는 미리보기 환경에서는 클라이언트 생성을 건너뛴다.
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      return;
+    }
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data }) => {
+        if (data.user?.email) {
+          setUserInitial(data.user.email[0].toUpperCase());
+        }
+      });
+    } catch {
+      // 미리보기 환경 등 자격증명 없을 때 무시
+    }
   }, []);
 
   function handleProfileEnter() {

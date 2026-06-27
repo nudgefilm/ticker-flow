@@ -1,21 +1,33 @@
 import LandingShell from "@/components/landing-shell";
-import Hero from "@/components/hero";
-import RecentChanges from "@/components/recent-changes";
-import Comparison from "@/components/comparison";
-import Features from "@/components/features";
-import Stats from "@/components/stats";
+import Hero from "@/components/landing/hero";
+import LiveFeed from "@/components/landing/live-feed";
+import Problem from "@/components/landing/problem";
+import SolutionFlow from "@/components/landing/solution-flow";
+import FeatureCards from "@/components/landing/feature-cards";
+import ProductTabs from "@/components/landing/product-tabs";
+import WhyTickerFlow from "@/components/landing/why-tickerflow";
+import TrustStats from "@/components/landing/trust-stats";
+import Pricing from "@/components/landing/pricing";
+import Faq from "@/components/landing/faq";
+import FinalCta from "@/components/landing/final-cta";
 import Footer from "@/components/footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
+    <div id="site-content" className="min-h-screen bg-background">
       <LandingShell>
         <main>
           <Hero />
-          <RecentChanges />
-          <Comparison />
-          <Features />
-          <Stats />
+          <LiveFeed />
+          <Problem />
+          <SolutionFlow />
+          <FeatureCards />
+          <ProductTabs />
+          <WhyTickerFlow />
+          <TrustStats />
+          <Pricing />
+          <Faq />
+          <FinalCta />
         </main>
         <Footer />
       </LandingShell>
