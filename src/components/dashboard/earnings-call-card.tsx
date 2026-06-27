@@ -62,7 +62,8 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
   const { cls: gdCls, label: gdLabel } = guidanceMeta(call.guidance_direction)
   const surprisePositive = call.surprise_percent >= 0
   const visibleQa = qaExpanded ? call.qa_pairs : call.qa_pairs.slice(0, 2)
-  const hasMetrics = call.revenue_actual || call.eps_actual || call.surprise_percent !== 0 || !!call.call_date
+  const metricCount = [!!call.call_date, !!call.revenue_actual, !!call.eps_actual, call.surprise_percent !== 0].filter(Boolean).length
+  const hasMetrics = metricCount > 0
   const hasChanges =
     call.keyword_changes.length > 0 ||
     (call.tone_previous && call.tone_current)
@@ -107,7 +108,12 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
         {hasMetrics && (
           <div className="rounded-[6px] border border-[#3b82f6]/20 bg-[#3b82f6]/[0.15] p-4">
             <SectionLabel label="실적 요약" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className={`grid gap-3 ${
+              metricCount === 1 ? "grid-cols-1" :
+              metricCount === 2 ? "grid-cols-2" :
+              metricCount === 3 ? "grid-cols-3" :
+              "grid-cols-2 sm:grid-cols-4"
+            }`}>
               {call.call_date && (
                 <MetricItem
                   label="발표일"
