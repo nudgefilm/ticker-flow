@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-06-27 · 세션 41
+
+### 내부자 거래 수집 Finnhub 복원 + 어닝콜 수집 필드명 버그 수정
+
+**내부자 거래 Finnhub 복원**
+- FMP insider-trading 엔드포인트 테스트 결과: FMP Ultimate 플랜에도 미포함 (403 Forbidden)
+- 라이선스 제약으로 FMP 사용 불가 → Finnhub으로 복원 (추가 비용 없음)
+- 데이터 공급원 역할 분리 확정:
+  - SEC → 공시 원문
+  - Finnhub → 뉴스, 실적 캘린더, 내부자 거래
+  - FMP Ultimate → 어닝콜 Transcript
+  - Claude Sonnet → 구조화 요약
+- `src/lib/collect/insider.ts`: Finnhub `insider-transactions` 엔드포인트 복원
+  - 수집 대상: 와치리스트 + 최근 7일 공시 종목 (최대 10개)
+  - 필터: P(매수)/S(매도), isDerivative=false
+- 트리거 페이지 레이블 복원: "(FMP)" → "(Finnhub)"
+
+**어닝콜 수집 FMP 응답 필드명 버그 수정**
+- `src/lib/collect/calls.ts`
+  - `FmpTranscriptDate.year` → `FmpTranscriptDate.fiscalYear` (실제 API 응답 필드명)
+  - `FmpTranscript.quarter: number` → `FmpTranscript.period: string` (실제 API 필드명)
+  - `latest.year` → `latest.fiscalYear`
+  - **원인:** API가 `fiscalYear` 반환하는데 코드가 `year`로 읽어 `undefined` → transcript URL `&year=undefined` 전달
+  - **검증:** AAPL Q2 FY2026, 51,251자 transcript 정상 수신 확인
+
+---
+
 ## 2026-06-27 · 세션 40
 
 ### 내부자 거래 수집 404 에러 수정

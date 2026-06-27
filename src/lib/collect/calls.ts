@@ -6,15 +6,14 @@ const SONNET_MODEL = "claude-sonnet-4-6";
 // ─── FMP 응답 타입 ─────────────────────────────────────────────────────────────
 
 interface FmpTranscriptDate {
-  symbol: string;
   date: string;
   quarter: number;
-  year: number;
+  fiscalYear: number; // API 실제 필드명 (year 아님)
 }
 
 interface FmpTranscript {
   symbol: string;
-  quarter: number;
+  period: string; // API 실제 필드명 (예: "Q2"), quarter(number) 아님
   year: number;
   date: string;
   content: string;
@@ -209,7 +208,7 @@ async function collectForTicker(
   // 가장 최근 1건
   const latest = dates[0];
   const fiscalQ = latest.quarter;
-  const fiscalY = latest.year;
+  const fiscalY = latest.fiscalYear;
   const quarter = `Q${fiscalQ} FY${fiscalY}`;
 
   // ② 이미 수집된 경우 skip
