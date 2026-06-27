@@ -99,7 +99,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
   const visibleQa = showAllQa ? call.qa_pairs : call.qa_pairs.slice(0, 2);
 
   return (
-    <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 sm:p-6">
+    <article className="rounded-[8px] border border-white/[0.08] bg-[#1c1c1c] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.4)] sm:p-6">
       {/* 3-1 카드 헤더 */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-1.5">
