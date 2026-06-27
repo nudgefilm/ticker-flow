@@ -8,12 +8,12 @@ const SONNET_MODEL = "claude-sonnet-4-6";
 interface FmpTranscriptDate {
   date: string;
   quarter: number;
-  fiscalYear: number; // API 실제 필드명 (year 아님)
+  fiscalYear: number; // API 실제 필드명
 }
 
 interface FmpTranscript {
   symbol: string;
-  period: string; // API 실제 필드명 (예: "Q2"), quarter(number) 아님
+  period: string; // API 실제 필드명 (예: "Q2")
   year: number;
   date: string;
   content: string;
@@ -45,6 +45,15 @@ interface CallAnalysis {
   tone_current: string;
 }
 
+// ─── 종목별 수집 결과 ──────────────────────────────────────────────────────────
+
+interface TickerResult {
+  inserted: number;
+  skipped: number;
+  error?: string;
+  detail: string; // 단계별 상세 상태 (trigger 페이지 debug 블록에 표시)
+}
+
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
 function formatCurrency(val: number | null | undefined): string {
@@ -55,42 +64,8 @@ function formatCurrency(val: number | null | undefined): string {
   return `$${val.toFixed(2)}`;
 }
 
-// ─── FMP API 호출 ─────────────────────────────────────────────────────────────
-
-async function fetchTranscriptDates(
-  ticker: string,
-  apiKey: string
-): Promise<FmpTranscriptDate[]> {
-  try {
-    const url = `https://financialmodelingprep.com/stable/earning-call-transcript-dates?symbol=${ticker}&apikey=${apiKey}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data)) return [];
-    return data as FmpTranscriptDate[];
-  } catch {
-    return [];
-  }
-}
-
-async function fetchTranscript(
-  ticker: string,
-  year: number,
-  quarter: number,
-  apiKey: string
-): Promise<FmpTranscript | null> {
-  try {
-    const url = `https://financialmodelingprep.com/stable/earning-call-transcript?symbol=${ticker}&year=${year}&quarter=${quarter}&apikey=${apiKey}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!Array.isArray(data) || data.length === 0) return null;
-    const t = data[0] as FmpTranscript;
-    if (!t.content || t.content.trim().length === 0) return null;
-    return t;
-  } catch {
-    return null;
-  }
+function maskKey(url: string, key: string): string {
+  return url.replace(key, "***");
 }
 
 // ─── Finnhub API 호출 (EPS·매출 보완용) ──────────────────────────────────────
@@ -105,7 +80,7 @@ async function fetchEarnings(
     if (!res.ok) return null;
     const data: FinnhubEarningsEntry[] = await res.json();
     if (!Array.isArray(data) || data.length === 0) return null;
-    return data[0]; // 가장 최근 분기
+    return data[0];
   } catch {
     return null;
   }
@@ -116,9 +91,9 @@ async function fetchEarnings(
 async function analyzeWithSonnet(
   transcript: string,
   ticker: string
-): Promise<CallAnalysis | null> {
+): Promise<{ analysis: CallAnalysis | null; detail: string }> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return { analysis: null, detail: "ANTHROPIC_API_KEY 없음" };
 
   const prompt = `다음은 ${ticker}의 어닝콜(실적 발표 컨퍼런스콜) 전문입니다. 아래 JSON 형식으로만 응답하세요.
 
@@ -157,6 +132,8 @@ async function analyzeWithSonnet(
 ${transcript.slice(0, 80_000)}`;
 
   try {
+    console.log(`[calls] Sonnet 호출 시작 (transcript ${transcript.length}자)`);
+
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -172,21 +149,35 @@ ${transcript.slice(0, 80_000)}`;
       signal: AbortSignal.timeout(120_000),
     });
 
+    const body = await res.text();
+    console.log(`[calls] Sonnet 응답 status=${res.status} body(200)=${body.slice(0, 200)}`);
+
     if (!res.ok) {
-      console.error(`[collect/calls] Sonnet error: ${res.status}`);
-      return null;
+      return { analysis: null, detail: `Sonnet HTTP ${res.status}: ${body.slice(0, 120)}` };
     }
 
-    const data = await res.json();
-    const text: string = data?.content?.[0]?.text ?? "";
+    let data: { content?: { text: string }[] };
+    try {
+      data = JSON.parse(body);
+    } catch {
+      return { analysis: null, detail: `Sonnet JSON parse 실패: ${body.slice(0, 120)}` };
+    }
 
+    const text = data?.content?.[0]?.text ?? "";
     const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
+    if (!match) {
+      return { analysis: null, detail: `Sonnet JSON 블록 없음. 응답(200): ${text.slice(0, 200)}` };
+    }
 
-    return JSON.parse(match[0]) as CallAnalysis;
+    try {
+      const analysis = JSON.parse(match[0]) as CallAnalysis;
+      return { analysis, detail: "Sonnet 분석 완료" };
+    } catch {
+      return { analysis: null, detail: `Sonnet JSON 파싱 실패: ${match[0].slice(0, 120)}` };
+    }
   } catch (err) {
-    console.error("[collect/calls] Sonnet failed:", err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    return { analysis: null, detail: `Sonnet 예외: ${msg}` };
   }
 }
 
@@ -197,19 +188,45 @@ async function collectForTicker(
   fmpKey: string,
   finnhubKey: string | undefined,
   adminClient: ReturnType<typeof createAdminClient>
-): Promise<{ inserted: number; skipped: number; error?: string }> {
-  // ① Transcript 날짜 목록 조회
-  const dates = await fetchTranscriptDates(ticker, fmpKey);
-  if (dates.length === 0) {
-    console.log(`[collect/calls] ${ticker}: transcript 날짜 없음, skip`);
-    return { inserted: 0, skipped: 1 };
+): Promise<TickerResult> {
+  // ① transcript 날짜 목록 조회
+  const datesUrl = `https://financialmodelingprep.com/stable/earning-call-transcript-dates?symbol=${ticker}&apikey=${fmpKey}`;
+  console.log(`[calls] ${ticker} ① dates → ${maskKey(datesUrl, fmpKey)}`);
+
+  let datesStatus = 0;
+  let datesBody = "";
+  try {
+    const datesRes = await fetch(datesUrl, { signal: AbortSignal.timeout(15_000) });
+    datesStatus = datesRes.status;
+    datesBody = await datesRes.text();
+    console.log(`[calls] ${ticker} ① dates status=${datesStatus} body(200)=${datesBody.slice(0, 200)}`);
+
+    if (!datesRes.ok) {
+      return { inserted: 0, skipped: 1, detail: `dates HTTP ${datesStatus}: ${datesBody.slice(0, 100)}` };
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[calls] ${ticker} ① dates 예외: ${msg}`);
+    return { inserted: 0, skipped: 1, detail: `dates 예외: ${msg}` };
   }
 
-  // 가장 최근 1건
+  let dates: FmpTranscriptDate[];
+  try {
+    const parsed = JSON.parse(datesBody);
+    dates = Array.isArray(parsed) ? (parsed as FmpTranscriptDate[]) : [];
+  } catch {
+    return { inserted: 0, skipped: 1, detail: `dates JSON parse 실패: ${datesBody.slice(0, 80)}` };
+  }
+
+  if (dates.length === 0) {
+    return { inserted: 0, skipped: 1, detail: "transcript 날짜 없음 (빈 배열)" };
+  }
+
   const latest = dates[0];
   const fiscalQ = latest.quarter;
   const fiscalY = latest.fiscalYear;
   const quarter = `Q${fiscalQ} FY${fiscalY}`;
+  console.log(`[calls] ${ticker} ① 최신 분기: ${quarter} (date: ${latest.date})`);
 
   // ② 이미 수집된 경우 skip
   const { data: existing } = await (adminClient as any)
@@ -220,22 +237,56 @@ async function collectForTicker(
     .maybeSingle();
 
   if (existing) {
-    console.log(`[collect/calls] ${ticker} ${quarter}: 이미 존재, skip`);
-    return { inserted: 0, skipped: 1 };
+    console.log(`[calls] ${ticker} ② 이미 존재: ${quarter}`);
+    return { inserted: 0, skipped: 1, detail: `이미 존재 (${quarter})` };
   }
 
-  // ③ Transcript 전문 조회
-  const transcript = await fetchTranscript(ticker, fiscalY, fiscalQ, fmpKey);
-  if (!transcript) {
-    console.log(`[collect/calls] ${ticker}: transcript 내용 없음, skip`);
-    return { inserted: 0, skipped: 1 };
+  // ③ transcript 전문 조회
+  const txUrl = `https://financialmodelingprep.com/stable/earning-call-transcript?symbol=${ticker}&year=${fiscalY}&quarter=${fiscalQ}&apikey=${fmpKey}`;
+  console.log(`[calls] ${ticker} ③ transcript → ${maskKey(txUrl, fmpKey)}`);
+
+  let txStatus = 0;
+  let txBody = "";
+  try {
+    const txRes = await fetch(txUrl, { signal: AbortSignal.timeout(15_000) });
+    txStatus = txRes.status;
+    txBody = await txRes.text();
+    console.log(`[calls] ${ticker} ③ transcript status=${txStatus} body(200)=${txBody.slice(0, 200)}`);
+
+    if (!txRes.ok) {
+      return { inserted: 0, skipped: 1, detail: `transcript HTTP ${txStatus}: ${txBody.slice(0, 100)}` };
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[calls] ${ticker} ③ transcript 예외: ${msg}`);
+    return { inserted: 0, skipped: 1, detail: `transcript 예외: ${msg}` };
   }
+
+  let txData: FmpTranscript[];
+  try {
+    const parsed = JSON.parse(txBody);
+    txData = Array.isArray(parsed) ? (parsed as FmpTranscript[]) : [];
+  } catch {
+    return { inserted: 0, skipped: 1, detail: `transcript JSON parse 실패: ${txBody.slice(0, 80)}` };
+  }
+
+  if (txData.length === 0) {
+    return { inserted: 0, skipped: 1, detail: `transcript 없음 (빈 배열, ${quarter})` };
+  }
+
+  const transcript = txData[0];
+  if (!transcript.content || transcript.content.trim().length === 0) {
+    return { inserted: 0, skipped: 1, detail: `transcript content 비어있음 (${quarter})` };
+  }
+
+  console.log(`[calls] ${ticker} ③ transcript 수신 완료 (${transcript.content.length}자)`);
 
   // ④ Claude Sonnet 구조화 분석
-  const analysis = await analyzeWithSonnet(transcript.content, ticker);
+  const { analysis, detail: sonnetDetail } = await analyzeWithSonnet(transcript.content, ticker);
   if (!analysis) {
-    return { inserted: 0, skipped: 1, error: "Sonnet 분석 실패" };
+    return { inserted: 0, skipped: 0, error: sonnetDetail, detail: sonnetDetail };
   }
+  console.log(`[calls] ${ticker} ④ Sonnet 완료`);
 
   // ⑤ Finnhub EPS·매출 보완 (optional)
   let epsActual = "";
@@ -264,10 +315,8 @@ async function collectForTicker(
     }
   }
 
-  // call_date: FMP가 제공하는 실제 날짜 사용
   const callDate = transcript.date ?? `${fiscalY}-12-31`;
 
-  // key_points: 기존 page.tsx 호환용
   const keyPoints = {
     revenue_actual: revenueActual,
     revenue_estimate: revenueEstimate,
@@ -287,50 +336,55 @@ async function collectForTicker(
   };
 
   // ⑥ Upsert
-  const { error } = await (adminClient as any)
-    .from("earnings_calls")
-    .upsert(
-      {
-        ticker,
-        fiscal_quarter: fiscalQ,
-        fiscal_year: fiscalY,
-        quarter,
-        call_date: callDate,
-        headline_summary: analysis.headline_summary,
-        guidance_direction: analysis.guidance_direction,
-        guidance_previous: "maintain",
-        guidance_summary: analysis.guidance_summary,
-        revenue_actual: revenueActual,
-        revenue_estimate: revenueEstimate,
-        eps_actual: epsActual,
-        eps_estimate: epsEstimate,
-        surprise_percent: surprisePercent,
-        keywords: analysis.keywords,
-        key_statements: analysis.key_statements,
-        qa_pairs: analysis.qa_pairs,
-        keyword_changes: analysis.keyword_changes,
-        tone_previous: analysis.tone_previous,
-        tone_current: analysis.tone_current,
-        has_earnings_release: true,
-        source_url: `https://financialmodelingprep.com/financial-statements/${ticker}`,
-        transcript_url: `https://financialmodelingprep.com/financial-statements/${ticker}`,
-        summary_generated_at: new Date().toISOString(),
-        // 기존 컬럼 호환
-        summary_kr: analysis.headline_summary,
-        tone_change: analysis.tone_current,
-        key_points: keyPoints,
-        processed_at: new Date().toISOString(),
-      },
-      { onConflict: "ticker,quarter" }
-    );
+  const payload = {
+    ticker,
+    fiscal_quarter: fiscalQ,
+    fiscal_year: fiscalY,
+    quarter,
+    call_date: callDate,
+    headline_summary: analysis.headline_summary,
+    guidance_direction: analysis.guidance_direction,
+    guidance_previous: "maintain",
+    guidance_summary: analysis.guidance_summary,
+    revenue_actual: revenueActual,
+    revenue_estimate: revenueEstimate,
+    eps_actual: epsActual,
+    eps_estimate: epsEstimate,
+    surprise_percent: surprisePercent,
+    keywords: analysis.keywords,
+    key_statements: analysis.key_statements,
+    qa_pairs: analysis.qa_pairs,
+    keyword_changes: analysis.keyword_changes,
+    tone_previous: analysis.tone_previous,
+    tone_current: analysis.tone_current,
+    has_earnings_release: true,
+    source_url: `https://financialmodelingprep.com/financial-statements/${ticker}`,
+    transcript_url: `https://financialmodelingprep.com/financial-statements/${ticker}`,
+    summary_generated_at: new Date().toISOString(),
+    summary_kr: analysis.headline_summary,
+    tone_change: analysis.tone_current,
+    key_points: keyPoints,
+    processed_at: new Date().toISOString(),
+  };
 
-  if (error) {
-    console.error(`[collect/calls] ${ticker} upsert 실패:`, error.message);
-    return { inserted: 0, skipped: 1, error: error.message };
+  console.log(`[calls] ${ticker} ⑥ upsert 시작 (onConflict: ticker,quarter = ${ticker},${quarter})`);
+
+  const { error: upsertError } = await (adminClient as any)
+    .from("earnings_calls")
+    .upsert(payload, { onConflict: "ticker,quarter" });
+
+  if (upsertError) {
+    console.error(`[calls] ${ticker} ⑥ upsert 실패: ${upsertError.message} (code: ${upsertError.code})`);
+    return {
+      inserted: 0,
+      skipped: 0,
+      error: `upsert 실패: ${upsertError.message}`,
+      detail: `upsert 실패 (code: ${upsertError.code}): ${upsertError.message}`,
+    };
   }
 
-  console.log(`[collect/calls] ${ticker} ${quarter} 저장 완료`);
-  return { inserted: 1, skipped: 0 };
+  console.log(`[calls] ${ticker} ⑥ 저장 완료 (${quarter})`);
+  return { inserted: 1, skipped: 0, detail: `저장 완료 (${quarter})` };
 }
 
 // ─── 메인 수집 함수 ────────────────────────────────────────────────────────────
@@ -345,14 +399,13 @@ export async function runCallsCollect(): Promise<CollectResult> {
     return { ok: false, error: "ANTHROPIC_API_KEY not set", retryable: false };
   }
 
-  const finnhubKey = process.env.FINNHUB_API_KEY; // EPS·매출 보완용 (optional)
+  const finnhubKey = process.env.FINNHUB_API_KEY;
 
   const adminClient = createAdminClient();
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000)
     .toISOString()
     .slice(0, 10);
 
-  // 수집 대상: watchlist 종목 + 최근 90일 내 실적 발표 종목
   const [watchlistRes, earningsRes] = await Promise.all([
     adminClient.from("watchlist").select("ticker"),
     adminClient
@@ -366,6 +419,7 @@ export async function runCallsCollect(): Promise<CollectResult> {
   for (const r of earningsRes.data ?? []) tickerSet.add(r.ticker);
 
   const tickers = [...tickerSet].slice(0, 10);
+  console.log(`[calls] 수집 대상 (${tickers.length}개): ${tickers.join(", ")}`);
 
   if (tickers.length === 0) {
     return { ok: true, total: 0, inserted: 0, skipped: 0, errors: 0 };
@@ -373,18 +427,21 @@ export async function runCallsCollect(): Promise<CollectResult> {
 
   let totalInserted = 0;
   let totalSkipped = 0;
+  let totalErrors = 0;
   let firstError: string | undefined;
+  const tickerResults: Record<string, string> = {};
 
   for (const ticker of tickers) {
-    const { inserted, skipped, error } = await collectForTicker(
-      ticker,
-      fmpKey,
-      finnhubKey,
-      adminClient
-    );
-    totalInserted += inserted;
-    totalSkipped += skipped;
-    if (error && !firstError) firstError = `${ticker}: ${error}`;
+    const result = await collectForTicker(ticker, fmpKey, finnhubKey, adminClient);
+    totalInserted += result.inserted;
+    totalSkipped += result.skipped;
+    if (result.error) {
+      totalErrors++;
+      if (!firstError) firstError = `${ticker}: ${result.error}`;
+    }
+    tickerResults[ticker] = result.detail;
+    console.log(`[calls] ${ticker} 결과: ${result.detail}`);
+
     if (tickers.length > 1) {
       await new Promise((r) => setTimeout(r, 500));
     }
@@ -395,7 +452,8 @@ export async function runCallsCollect(): Promise<CollectResult> {
     total: tickers.length,
     inserted: totalInserted,
     skipped: totalSkipped,
-    errors: totalSkipped,
+    errors: totalErrors,
     ...(firstError && { firstError }),
+    debug: tickerResults,
   };
 }

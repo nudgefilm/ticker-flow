@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-06-27 · 세션 42
+
+### 어닝콜 수집 로그 전면 강화 + 에러 집계 버그 수정
+
+- `src/lib/collect/calls.ts` 개선
+  - **버그 수정:** `errors: totalSkipped` → `errors: totalErrors` (스킵 != 에러)
+  - 각 단계별 `console.log` 추가 (Vercel 함수 로그에서 원인 확인 가능)
+    - ① dates URL·HTTP status·body(200자) 출력
+    - ② DB 중복 체크 결과 출력
+    - ③ transcript URL·HTTP status·body(200자)·content 길이 출력
+    - ④ Sonnet HTTP status·body·JSON parse 성공 여부 출력
+    - ⑥ upsert payload·error.message·error.code 출력
+  - 종목별 `detail` 문자열 수집 → `debug: tickerResults` 로 반환
+    - 트리거 페이지에서 JSON 블록으로 종목별 실패 원인 확인 가능
+    - 예: `{ "AAPL": "transcript 날짜 없음 (빈 배열)", "NVDA": "이미 존재 (Q2 FY2026)" }`
+  - `analyzeWithSonnet` → `{ analysis, detail }` 반환으로 에러 메시지 전파
+  - `fetchTranscriptDates` / `fetchTranscript` → 내부에서 직접 fetch+text() 처리 (에러 삼킴 제거)
+
+---
+
 ## 2026-06-27 · 세션 41
 
 ### 내부자 거래 수집 Finnhub 복원 + 어닝콜 수집 필드명 버그 수정
