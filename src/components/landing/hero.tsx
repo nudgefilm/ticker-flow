@@ -10,7 +10,7 @@ export default function Hero() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-6 lg:grid-cols-2">
         {/* 좌측: 텍스트 */}
         <div className="animate-fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
-          <span className="inline-flex items-center rounded-full border border-border bg-secondary/50 px-3 py-1 text-xs font-medium text-muted-foreground">
+          <span className="inline-flex items-center rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-400">
             미국 기업의 변화, 놓치지 마세요.
           </span>
 
