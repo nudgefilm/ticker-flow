@@ -135,15 +135,6 @@ export default async function HomePage() {
                     여러 사이트를 오갈 필요 없이 하나의 화면에서 확인하세요.
                   </p>
 
-                  <div className="mt-8 flex flex-wrap items-center gap-3">
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center gap-2 rounded-xl bg-foreground px-6 py-3 text-sm font-medium text-background transition-opacity hover:opacity-90"
-                    >
-                      무료로 시작하기
-                      <IconArrowRight size={16} stroke={2} />
-                    </Link>
-                  </div>
                 </div>
 
                 {/* 우측: 대시보드 목업 */}
