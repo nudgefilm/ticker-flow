@@ -18,6 +18,7 @@ export const COLLECT_JOBS = [
   "13f",
   "macro",
   "watchlist-tickers",
+  "calls",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

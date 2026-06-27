@@ -19,6 +19,7 @@ import {
   runMacroCollect,
   runProfileCollect,
   runWatchlistTickersCollect,
+  runCallsCollect,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -35,6 +36,7 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "13f":                run13fCollect,
   "macro":              runMacroCollect,
   "watchlist-tickers":  runWatchlistTickersCollect,
+  "calls":              runCallsCollect,
 };
 
 // collect 외 job — fetch 방식 유지

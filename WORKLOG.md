@@ -2,6 +2,56 @@
 
 ---
 
+## 2026-06-27 · 세션 38
+
+### 어닝콜 수집 파이프라인 FMP 전환
+
+- `src/lib/collect/calls.ts` 전면 재작성: Finnhub transcript → FMP transcript API
+- FMP API Base URL: `https://financialmodelingprep.com/stable`
+- 환경변수: `FMP_API_KEY` (신규), `FINNHUB_API_KEY`는 EPS·매출 보완용으로 optional 유지
+- 수집 흐름
+  - `/earning-call-transcript-dates?symbol={ticker}` → 가장 최근 quarter/year 선택
+  - `earnings_calls` 테이블에 ticker+quarter 이미 존재하면 skip (중복 방지)
+  - `/earning-call-transcript?symbol={ticker}&year={year}&quarter={quarter}` → content 조회
+  - Claude Sonnet 구조화 분석 (headline, guidance, keywords, key_statements, qa_pairs 등)
+  - Finnhub `/stock/earnings` 로 EPS·매출 보완 (optional — FINNHUB_API_KEY 없어도 동작)
+  - surprise_percent = (actual - estimate) / |estimate| × 100 직접 계산
+  - call_date: FMP 실제 날짜 사용
+  - upsert onConflict: ticker,quarter
+- `src/app/admin/system/trigger/page.tsx` 레이블 "Finnhub + Sonnet" → "FMP + Sonnet"
+- 빌드: ✓ Compiled successfully
+
+### 수집 전 Supabase SQL 실행 필요 (미완료)
+
+earnings_calls 테이블에 아래 컬럼이 없으면 추가 필요:
+```sql
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS quarter text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS call_date date;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_direction text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_previous text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_summary text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS headline_summary text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS revenue_actual text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS revenue_estimate text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS eps_actual text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS eps_estimate text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS surprise_percent numeric;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS keywords text[];
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS key_statements jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS qa_pairs jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS keyword_changes jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS tone_previous text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS tone_current text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS has_earnings_release boolean DEFAULT false;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS source_url text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS transcript_url text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS summary_generated_at timestamptz DEFAULT now();
+ALTER TABLE earnings_calls ADD CONSTRAINT earnings_calls_ticker_quarter_key UNIQUE (ticker, quarter);
+```
+SQL 실행 후 `pnpm gen:types` 재생성, supabase.ts 첫 줄 `export type Json =` 확인 필수.
+
+---
+
 ## 2026-06-24 · 세션 1
 
 ### 프로젝트 초기 셋업
@@ -1584,6 +1634,70 @@ CREATE TABLE stock_prices (
 - `fiscal_quarter` + `fiscal_year` → `Q{N} FY{YYYY}` 포맷
 - `processed_at` → `call_date` (ISO slice) + `relative_time` (오늘/어제/N일 전) + `summary_generated_at` (KST)
 - `key_points.tone_current ?? tone_change` — DB 컬럼 폴백
+
+**빌드 결과:** ✓ Compiled successfully
+
+---
+
+## 2026-06-27 · 세션 37
+
+### 어닝콜 요약 수집 파이프라인 구현
+
+**배경:** earnings_calls 테이블 실 데이터 수집 파이프라인 신규 구축. CLAUDE.md 17항 서비스 계층 분리 원칙 준수.
+
+**Supabase SQL (수동 실행 필요)**
+earnings_calls 테이블에 아래 컬럼이 없어 SQL Editor에서 직접 실행해야 합니다:
+```sql
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS quarter text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS call_date date;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_direction text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_previous text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS guidance_summary text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS headline_summary text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS revenue_actual text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS revenue_estimate text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS eps_actual text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS eps_estimate text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS surprise_percent numeric;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS keywords text[];
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS key_statements jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS qa_pairs jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS keyword_changes jsonb;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS tone_previous text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS tone_current text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS has_earnings_release boolean DEFAULT false;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS transcript_url text;
+ALTER TABLE earnings_calls ADD COLUMN IF NOT EXISTS summary_generated_at timestamptz DEFAULT now();
+ALTER TABLE earnings_calls ADD CONSTRAINT earnings_calls_ticker_quarter_key UNIQUE (ticker, quarter);
+```
+
+**신규 파일 2개**
+
+- `src/lib/collect/calls.ts` — 수집 서비스 계층
+  - `runCallsCollect(): Promise<CollectResult>` export
+  - 수집 대상: watchlist + earnings 테이블 최근 90일 실적 발표 종목, 최대 10개
+  - ① Finnhub `/stock/earnings-call-transcript` — 최신 transcript 조회 (없으면 skip)
+  - ② Finnhub `/stock/earnings` — EPS/매출 실적 수치 조회
+  - ③ Claude Sonnet (`claude-sonnet-4-6`) — 한국어 구조화 분석 JSON 생성
+    - headline_summary / guidance_direction / keywords / key_statements / qa_pairs / keyword_changes / tone 등 14개 필드
+    - 사실 서술체만 / 투자 의견 배제 / plain JSON 출력
+  - ④ earnings_calls 테이블 upsert (onConflict: "ticker,quarter")
+  - 기존 key_points / summary_kr / tone_change 컬럼도 동시 업데이트 (page.tsx 호환)
+  - 종목당 500ms 딜레이
+
+- `src/app/api/collect/calls/route.ts` — API route 진입점 (thin wrapper)
+  - `maxDuration = 300`
+  - `requireCollectAuth()` → `runCallsCollect()` 호출
+
+**수정 파일 5개**
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `src/lib/collect/types.ts` | COLLECT_JOBS에 `"calls"` 추가 |
+| `src/lib/collect/index.ts` | `export * from "./calls"` 추가 |
+| `src/app/api/admin/run/route.ts` | `runCallsCollect` import + COLLECT_MAP 등록 |
+| `vercel.json` | Cron `"0 2 * * *"` (매일 02:00 UTC = 11:00 KST) 추가 |
+| `src/app/admin/system/trigger/page.tsx` | TRIGGERS 배열 + Cron 스케줄 테이블에 "어닝콜 요약 수집" 추가 |
 
 **빌드 결과:** ✓ Compiled successfully
 

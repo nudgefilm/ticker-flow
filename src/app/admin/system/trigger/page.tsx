@@ -109,6 +109,11 @@ const TRIGGERS: Trigger[] = [
     label: "일보 다이제스트 발송 (Pro 유저)",
     desc: "Pro 플랜 유저에게 오늘의 주요 공시·뉴스를 이메일로 발송합니다.",
   },
+  {
+    id: "calls",
+    label: "어닝콜 요약 수집 (FMP + Sonnet)",
+    desc: "와치리스트 및 최근 90일 실적 발표 종목의 어닝콜 transcript를 FMP(Financial Modeling Prep)에서 수집하고 Claude Sonnet으로 한국어 구조화 요약을 생성합니다. 최대 10종목.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -323,6 +328,7 @@ export default function TriggerPage() {
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
             { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
             { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
+            { name: "어닝콜 요약 수집",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/calls"        },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
