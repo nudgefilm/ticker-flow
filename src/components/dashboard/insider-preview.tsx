@@ -123,7 +123,7 @@ export default function InsiderPreview() {
 
           {/* 각주 */}
           <div className="border-t border-white/[0.06] px-5 py-3 text-xs text-[#a6a6a6]">
-            인사이더 거래는 SEC에 공시된 사실 정보입니다. 투자 결정의 근거로 단독 활용하지
+            내부자 거래는 SEC에 공시된 사실 정보입니다. 투자 결정의 근거로 단독 활용하지
             마십시오.
           </div>
         </div>

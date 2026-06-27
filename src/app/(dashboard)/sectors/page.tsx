@@ -90,7 +90,7 @@ export default async function SectorsPage() {
 
       {/* 부제 */}
       <p className="text-sm text-[#a6a6a6]">
-        공시 활동량(30일)과 뉴스 활동량(7일) 기준으로 섹터 크기를 표시합니다.
+        공시 활동량(30일)과 뉴스 활동량(7일) 기준으로 섹터(업종) 크기를 표시합니다.
       </p>
 
       {/* 트리맵 카드 */}

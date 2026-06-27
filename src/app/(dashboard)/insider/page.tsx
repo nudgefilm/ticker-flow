@@ -196,7 +196,7 @@ export default function InsiderPage() {
       <div className="mt-6 flex-1">
         <ProGate
           iconName="user"
-          title="인사이더는 Pro 전용 기능입니다"
+          title="내부자 거래는 Pro 전용 기능입니다"
           description="CEO·임원진이 자사 주식을 사고팔았는지 빠르게 확인하세요.&#10;SEC Form 4 공시를 기반으로 주요 내부자 거래와 변화 흐름을 모니터링할 수 있습니다."
         >
           <Suspense fallback={<InsiderSkeleton />}>

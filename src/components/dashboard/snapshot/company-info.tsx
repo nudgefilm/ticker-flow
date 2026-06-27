@@ -18,7 +18,7 @@ export function CompanyInfo({ exchange, sector, industry }: Props) {
 
   const rows: { label: string; value: string }[] = [
     ...(exchange ? [{ label: "거래소", value: exchange }] : []),
-    ...(sectorKr ? [{ label: "섹터", value: sectorKr }] : []),
+    ...(sectorKr ? [{ label: "섹터 (업종)", value: sectorKr }] : []),
     ...(industry ? [{ label: "산업", value: industry }] : []),
     { label: "국가", value: "미국" },
     { label: "통화", value: "USD" },

@@ -11,7 +11,7 @@ export default function StockEarningsTable({
       <div className="mt-4 grid grid-cols-3 text-xs text-[#a6a6a6]">
         <span>분기</span>
         <span>매출</span>
-        <span>EPS</span>
+        <span>EPS (주당순이익)</span>
       </div>
       {rows.map((row) => (
         <div

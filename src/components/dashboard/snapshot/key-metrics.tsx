@@ -52,10 +52,10 @@ export function KeyMetrics({
       <MetricCard
         label="다음 실적 발표"
         value={nextEarnings ? `D-${nextEarnings.daysUntil}` : "미정"}
-        sub={nextEarnings ? `${nextEarnings.date} · ${nextEarnings.timing}` : undefined}
+        sub={nextEarnings ? `${nextEarnings.date} · ${nextEarnings.timing === "BMO" ? "BMO (개장 전)" : "AMC (장 마감 후)"}` : undefined}
       />
       <MetricCard
-        label="시장 예상 EPS"
+        label="시장 예상 EPS (주당순이익)"
         value={nextEarnings && nextEarnings.epsEstimate !== 0 ? nextEarnings.epsEstimate.toFixed(2) : "—"}
         sub={nextEarnings && nextEarnings.epsEstimate !== 0 ? "컨센서스" : undefined}
       />

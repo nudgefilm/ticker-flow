@@ -1472,6 +1472,123 @@ CREATE TABLE stock_prices (
 
 ---
 
+## 2026-06-27 · 세션 34
+
+### 공시/뉴스피드 차트 높이 균형 및 히어로 도넛 최대화
+
+**문제 1 — 좌측 도넛 카드 공백**
+- `DisclosureTypeChart` / `NewsSourceChart`: 수평 레이아웃(`items-center gap-8`)이라 도넛(h-48)이 행 높이를 결정
+- 우측 트렌드+섹터 카드 합계보다 짧아 `items-stretch` 그리드에서 공백 발생
+
+**수정 1:** 도넛 카드 레이아웃 수평 → 수직 전환
+- `flex flex-1 items-center gap-8` → `flex flex-1 flex-col items-center gap-5`
+- 범례: `flex min-w-0 flex-1 flex-col gap-3` → `flex w-full flex-1 flex-col justify-between`
+- 도넛 h-48 유지 (축소 없음), 범례가 나머지 높이를 자동으로 채움
+
+**문제 2 — 트렌드 차트 count 레이블 잠재 클리핑**
+- 각 바 컬럼 콘텐츠(count 레이블+바+날짜)가 ~88px인데 컨테이너가 84px
+
+**수정 2:** 컨테이너 높이 `BAR_HEIGHT + 32` → `BAR_HEIGHT + 40` (8px 확보)
+- `h-full` 제거 → 자연 높이로 렌더링 (우측 flex 컬럼에서 h-full 간섭 방지)
+
+**문제 3 — 섹터 차트 잔여 공간 미활용**
+- `h-full` 이 flex 컬럼 내에서 100% parent를 시도하면서 트렌드 차트와 경쟁
+
+**수정 3:** `h-full` → `flex-1` + 아이템 `justify-between`
+- `flex flex-1 flex-col rounded...` + `flex flex-1 flex-col justify-between` 으로 아이템 균등 배분
+
+**히어로 도넛 최대화 요청**
+- 히어로 목업 Card 1(공시유형분포): 도넛 `h-28 w-28` → `h-40 w-40`, `inset-[28px]` → `inset-[40px]`
+- 범례: `justify-between` + `flex-1`으로 잔여 공간 자동 채움
+- 결과: 도넛이 카드 좌우 공백 없이 최대 크기로 표시
+
+**수정 파일 7개**
+- `src/components/dashboard/disclosure-type-chart.tsx`
+- `src/components/dashboard/news-source-chart.tsx`
+- `src/components/dashboard/disclosure-trend-chart.tsx`
+- `src/components/dashboard/news-trend-chart.tsx`
+- `src/components/dashboard/sector-activity-chart.tsx`
+- `src/components/dashboard/news-sector-chart.tsx`
+- `src/components/hero.tsx`
+
+---
+
+## 2026-06-27 · 세션 35
+
+### CLAUDE.md 15항 초보자 배려 원칙 — 금융 용어 표기 통일
+
+전체 대시보드 페이지·컴포넌트에서 금융 용어 첫 등장 시 괄호 설명 병기, 반복 등장 시 용어만 표기, 좁은 공간은 hover tooltip 원칙 적용.
+
+**수정 파일 11개**
+
+| 파일 | 변경 내용 |
+|------|-----------|
+| `src/components/dashboard/sidebar.tsx` | 사이드바 레이블 "인사이더" → "내부자 거래" |
+| `src/app/(dashboard)/insider/page.tsx` | ProGate title "인사이더는" → "내부자 거래는" |
+| `src/components/dashboard/insider-preview.tsx` | 각주 "인사이더 거래는" → "내부자 거래는" |
+| `src/components/dashboard/snapshot/key-metrics.tsx` | 다음 실적 발표 sub 표시: `BMO` → `BMO (개장 전)`, `AMC` → `AMC (장 마감 후)` (표시 레이어에서 변환, timing 타입 "BMO"\|"AMC" 유지) |
+| `src/components/dashboard/calls-preview.tsx` | 첫 번째 Section label "가이던스" → "가이던스 (실적 전망)" |
+| `src/app/(dashboard)/sectors/page.tsx` | 부제 "섹터 크기를" → "섹터(업종) 크기를" |
+| `src/components/dashboard/snapshot/company-info.tsx` | 기업 정보 레이블 "섹터" → "섹터 (업종)" |
+| `src/app/(dashboard)/mypage/page.tsx` | 데이터 출처 "CPI" → "CPI(소비자물가지수)" |
+| `src/components/dashboard/stock-earnings-table.tsx` | EPS 컬럼 헤더 "EPS" → "EPS (주당순이익)" |
+| `src/components/dashboard/snapshot/key-metrics.tsx` | MetricCard label "시장 예상 EPS" → "시장 예상 EPS (주당순이익)" |
+| `src/components/dashboard/analysis-preview.tsx` | 수치 칩 "EPS $2.94" → "EPS(주당순이익) $2.94" |
+
+**이미 처리된 항목 (변경 불필요)**
+- `earnings/page.tsx`: EPS/BMO/AMC 하단 각주에 이미 설명 ✓
+- `insights/earnings-flow.tsx`: 하단에 "EPS(주당순이익)" 이미 명시 ✓
+- `macro/page.tsx`: INDICATOR_META의 desc에 "소비자물가지수" 이미 포함 ✓
+- `filing-filter-bar.tsx`: 8-K/10-K/10-Q/Form 4 tooltip 이미 구현 ✓
+
+**빌드 결과:** ✓ Compiled successfully
+
+---
+
+## 2026-06-27 · 세션 36
+
+### 어닝콜 요약 페이지(/calls) 실 데이터 연동
+
+**목적:** 기존 ProGate + CallsPreview 데모 제거, earnings_calls 테이블 실 데이터 연동
+
+**신규 파일 3개**
+
+- `src/lib/earnings-calls.ts`
+  - `EarningsCall` 인터페이스 (타입 중앙화)
+  - `GuidanceDirection`, `KeyStatement`, `QaPair`, `KeywordChange` 보조 타입
+
+- `src/components/dashboard/earnings-call-card.tsx`
+  - `"use client"` — Q&A expand/collapse `useState`
+  - 9개 섹션: 헤더 / 핵심요약(오렌지15%) / 실적요약(블루15%) / 가이던스 / 키워드 / 경영진발언 / Q&A / 전분기비교 / 하단링크
+  - 데이터 없는 섹션 자동 숨김 (조건부 렌더링)
+
+- `src/components/dashboard/calls-board.tsx`
+  - `"use client"` — 필터/페이지네이션 상태
+  - 필터: 기간(전체/1개월/3개월) · 가이던스방향(세그먼트) · 내 종목만(토글)
+  - `PAGE_SIZE = 3`, 3건 초과 시 페이지네이션 표시
+  - 빈 상태: "최근 3개월 내 어닝콜 데이터가 없습니다."
+  - 데이터 출처 카드 하단 고정
+
+**수정 파일 1개**
+
+- `src/app/(dashboard)/calls/page.tsx`
+  - `ProGate` + `CallsPreview` 완전 제거
+  - `export const dynamic = "force-dynamic"` 추가
+  - `async` 서버 컴포넌트로 전환
+  - `earnings_calls` 테이블 쿼리 (`adminClient`) + tickers 조인
+  - profiles 테이블에서 isPro 조회, watchlist에서 보유 종목 Set 생성
+  - `key_points` JSON 필드에서 EarningsCall 필드 매핑
+  - CLAUDE.md 16항 `as unknown as EarningsCallRow[]` 패턴 준수
+
+**데이터 매핑**
+- `fiscal_quarter` + `fiscal_year` → `Q{N} FY{YYYY}` 포맷
+- `processed_at` → `call_date` (ISO slice) + `relative_time` (오늘/어제/N일 전) + `summary_generated_at` (KST)
+- `key_points.tone_current ?? tone_change` — DB 컬럼 폴백
+
+**빌드 결과:** ✓ Compiled successfully
+
+---
+
 ## 다음 작업 예정
 - 각 collect 버튼 Vercel 배포 후 실제 동작 테스트
 - `auth.ts` 디버그 로그 제거 (401 이슈 완전 해소 확인 후)

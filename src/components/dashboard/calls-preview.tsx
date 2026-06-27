@@ -38,7 +38,7 @@ export default function CallsPreview() {
           </div>
 
           <div className="mt-4 flex flex-col gap-4">
-            <Section label="가이던스">
+            <Section label="가이던스 (실적 전망)">
               <div className="flex flex-col gap-2">
                 <span className="inline-flex w-fit items-center rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">
                   상향

@@ -45,7 +45,7 @@ export default function AnalysisPreview() {
 
             <Section label="주목할 수치">
               <div className="flex flex-wrap gap-2">
-                {["매출 $44.1B", "EPS $2.94", "데이터센터 비중 88%"].map((stat) => (
+                {["매출 $44.1B", "EPS(주당순이익) $2.94", "데이터센터 비중 88%"].map((stat) => (
                   <span
                     key={stat}
                     className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#cccccc]"

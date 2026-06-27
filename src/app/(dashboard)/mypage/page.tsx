@@ -239,7 +239,7 @@ export default function MyPage() {
                 { name: "공시 정보", desc: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스" },
                 { name: "뉴스", desc: "Finnhub (Reuters·CNBC·Bloomberg 등 주요 매체 제휴)" },
                 { name: "실적 캘린더", desc: "Finnhub (나스닥·NYSE 상장 기업 실적 발표 일정)" },
-                { name: "경제지표", desc: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI, 금리 등)" },
+                { name: "경제지표", desc: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI(소비자물가지수), 금리 등)" },
                 { name: "내부자 거래", desc: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)" },
               ].map((item) => (
                 <div

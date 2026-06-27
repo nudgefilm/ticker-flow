@@ -56,7 +56,7 @@ const navGroups: NavGroup[] = [
       { href: "/stocks", label: "종목 스냅샷", icon: IconBuilding },
       { href: "/analysis", label: "공시 인사이트", icon: IconBulb, pro: true },
       { href: "/calls", label: "어닝콜 요약", icon: IconMicrophone, pro: true },
-      { href: "/insider", label: "인사이더", icon: IconUser, pro: true },
+      { href: "/insider", label: "내부자 거래", icon: IconUser, pro: true },
       { href: "/sectors", label: "섹터 히트맵", icon: IconFlame, pro: true },
     ],
   },
