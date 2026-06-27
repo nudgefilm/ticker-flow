@@ -9,10 +9,15 @@ import { LegalModal, type LegalType } from "@/components/legal-modal";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [hasError, setHasError] = useState(false);
   const [legalType, setLegalType] = useState<LegalType | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const params = new URLSearchParams(window.location.search);
+    setHasError(params.get("error") === "auth");
+  }, []);
 
   async function handleGoogleLogin() {
     const supabase = createClient();
@@ -46,6 +51,13 @@ export default function LoginPage() {
           <p className="mb-8 text-center text-sm text-muted-foreground">
             미국 기업의 중요한 변화, 놓치지 마세요
           </p>
+
+          {/* 오류 메시지 */}
+          {hasError && (
+            <p className="mb-4 rounded-lg bg-red-500/10 px-4 py-2.5 text-center text-xs text-red-400">
+              로그인 중 오류가 발생했습니다. 다시 시도해 주세요.
+            </p>
+          )}
 
           {/* 구글 버튼 */}
           <button
