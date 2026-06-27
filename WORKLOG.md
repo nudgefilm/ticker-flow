@@ -323,7 +323,7 @@
 ### 버그 수정: Next.js 15 동적 라우트 params
 
 - **증상:** `DELETE /api/watchlist/[ticker]` TypeScript 빌드 에러
-- **원인:** Next.js 15에서 동적 라우트 핸들러의 `params`가 `Promise<{ ticker: string }>` 타입으로 변경
+- **원인:** Next.js 15에서 동적 라우트 핸들러의 `params`가 `Promise<{ ticker: string }>` ���입으로 변경
 - **해결:** context 타입을 `{ params: Promise<{ ticker: string }> }`로 수정, `await params`로 추출
 
 ### 와치리스트 Pro 플랜 배너 조건부 표시
@@ -647,7 +647,7 @@ CREATE TABLE stock_prices (
 - 기존 토큰 비용 더미 데이터 완전 교체 → 번역 완료율 기반 UI로 재설계
   - 상단 카드: 전체 완료율 / 번역 완료 건수 / 번역 대기 건수
   - 공시·뉴스 진행률 바 (퍼플 색상, 퍼센트 + 건수 표시)
-  - 하단 상세 테이블: 전체 / 완료 / 대기 / 완료율 4컬럼
+  - 하단 ��세 테이블: 전체 / 완료 / 대기 / 완료율 4컬럼
 
 ---
 
@@ -791,7 +791,7 @@ CREATE TABLE stock_prices (
 - 선: `polyline` stroke="#60a5fa" strokeWidth=2
 - 면: `polygon` fill rgba(96,165,250,0.08), 선 꼭짓점 + 우하단 + 좌하단
 - Y축: min/max에서 10% 패딩 자동 산출
-- X축 날짜 라벨: 첫날·중간·마지막날 3개, MM/DD 포맷
+- X축 날짜 ��벨: 첫날·중간·마지막날 3개, MM/DD 포맷
 - 데이터 2건 미만 시 수집 중 안내 텍스트 표시
 
 **페이지 레이아웃**
@@ -1469,6 +1469,42 @@ CREATE TABLE stock_prices (
 - ChangeSummary에 `events={insight.timeline}` 전달
 
 **빌드 결과:** ✓ Compiled successfully (에러 없음)
+
+---
+
+## 2026-06-27 · 어닝콜 요약 페이지(/calls) 전면 구현
+
+### 목적
+- 실적 발표 이후 경영진 핵심 발언을 한국어로 **구조화 요약**하는 Pro 전용 페이지
+- 투자 의견/해석 없이 공개 자료(8-K, Exhibit 99.1, Transcript) 기반 사실만 제공
+- 기존 `/calls`의 단순 미리보기(CallsPreview)를 풀 페이지 구현으로 교체
+
+### 신규 파일
+- `src/lib/mock/earnings-calls.ts`
+  - `EarningsCall` 타입 정의 (이후 earnings_calls 테이블 → 매핑만으로 동작)
+  - 하위 타입: `GuidanceDirection`, `KeyStatement`, `QaPair`, `KeywordChange`
+  - Mock 6종 (NVDA / TSLA / MSFT / AAPL / AMZN / GOOGL)
+- `src/components/dashboard/calls/earnings-call-card.tsx` (client)
+  - 카드 구조(중요도 순 Hierarchy): 헤더 → 핵심 요약 → 실적 요약 → 가이던스 → 핵심 키워드 → 경영진 핵심 발언(좌측 border quote) → Q&A(더보기 토글) → 전분기 대비 변화 → 하단(SEC/Transcript 링크 + 수집 시각)
+  - 가이던스 배지: 상향(green)/유지(neutral)/하향(red), 실적 발표 배지(blue)
+- `src/components/dashboard/calls/calls-board.tsx` (client)
+  - 필터 바(sticky): 기간(전체/1개월/3개월), 가이던스 방향(전체/상향/유지/하향), 내 종목만 Toggle Switch
+  - 1열 Full Width 카드 목록 + 클라이언트 페이지네이션(PAGE_SIZE=3)
+  - 빈 상태 + 데이터 출처 카드(SEC EDGAR / Transcript / Finnhub / TickerFlow AI Summary)
+
+### 변경 파일
+- `src/app/(dashboard)/calls/page.tsx`
+  - 헤더 설명 문구 갱신, ProGate 내부를 CallsBoard로 교체
+  - 면책 문구를 스펙 문구로 교체
+- `src/components/dashboard/calls-preview.tsx` 는 더 이상 /calls에서 미사용 (대시보드 프리뷰 용도로 잔존)
+
+### 구현 원칙 준수
+- 컴포넌트 단위 분리 / 카드 재사용 구조 / Mock 우선, API 연결만으로 동작하도록 타입 명확화
+- AI 투자 의견·해석 미포함, "상승 가능성/긍정적 전망" 등 표현 배제
+- 사용자는 카드 상단(핵심 요약)만 읽어도 핵심 이해 가능, 아래로 갈수록 세부 확인
+
+### 검증
+- `tsc --noEmit` 통과 (에러 없음)
 
 ---
 
