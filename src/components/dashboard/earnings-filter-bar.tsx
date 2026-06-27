@@ -48,7 +48,7 @@ export default function EarningsFilterBar() {
           {WEEK_DAYS.map((d) => (
             <div
               key={d.day}
-              className="flex flex-col items-center gap-1 rounded-[4px] border border-white/[0.08] bg-blue-500/[0.06] px-2 py-3 text-center"
+              className="flex flex-col items-center gap-1 rounded-[4px] border border-white/[0.08] bg-blue-500/[0.15] px-2 py-3 text-center"
             >
               <span className="text-xs text-[#a6a6a6]">{d.day}</span>
               <span className="text-lg font-semibold text-white">{d.count}건</span>
