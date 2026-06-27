@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-27 · 세션 44
+
+### 어닝콜 카드 UI 개선 (날짜·회사명·링크)
+
+**날짜 표시**
+- 상대시간("오늘", "3일 전") → 실제 발표일 날짜("2026.06.27") 표시
+- `call_date` 컬럼을 SELECT 쿼리에 추가, FMP transcript 실제 날짜 사용
+- `relativeTime()` 함수 및 `EarningsCall.relative_time` 필드 제거
+
+**회사명 정제**
+- `cleanCompanyName()` 함수 추가 (page.tsx)
+  - SEC 법인 state code 제거: ` /MO/`, ` /DE/` 등 패턴 제거
+  - 전각대문자(ALL CAPS) → title case 변환
+  - 예: "CHARTER COMMUNICATIONS, INC. /MO/" → "Charter Communications, Inc."
+  - `name_kr`이 있으면 그대로 사용, `name_en`만 정제 대상
+
+**링크 버튼**
+- SEC 원문: ticker 기반 SEC EDGAR URL로 항상 표시 (모든 카드)
+- Transcript: DB `transcript_url` 컬럼 직접 쿼리로 안정화
+  - 기존: `key_points.transcript_url` (항상 빈 값) → DB 컬럼 직접 참조
+
+---
+
 ## 2026-06-27 · 세션 43
 
 ### 어닝콜 수집 Cron 스케줄 변경
