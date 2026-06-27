@@ -270,14 +270,16 @@ export default function InsiderBoard({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {paginated.map((trade) => {
+          {paginated.map((trade, idx) => {
             const isBuy = trade.transaction_type === "buy";
             const company = trade.name_kr ?? trade.ticker;
 
             return (
               <div
                 key={trade.id}
-                className="rounded-xl border border-white/[0.08] bg-[#111111] p-4"
+                className={`rounded-xl border border-white/[0.08] p-4 ${
+                  idx % 2 === 0 ? "bg-[#111820]" : "bg-[#111111]"
+                }`}
               >
                 {/* 헤더 */}
                 <div className="flex items-start justify-between gap-2">
