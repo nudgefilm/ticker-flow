@@ -23,9 +23,9 @@ export default function WatchlistCard({
   const { ticker, company, newFilings, earningsDday, newNews } = stock;
 
   return (
-    <article className="overflow-hidden rounded-[6px] border border-white/[0.15] bg-[#111111]">
+    <article className="overflow-hidden rounded-[6px] border border-white/[0.15] bg-[#1a1a1a]">
       {/* 상단: 티커 + 회사명 + 삭제 */}
-      <div className="flex items-center justify-between gap-3 bg-[#1a1a1a] px-4 py-3">
+      <div className="flex items-center justify-between gap-3 bg-[#262626] px-4 py-3">
         <Link href={`/stocks/${ticker}`} className="min-w-0">
           <p className="text-sm font-semibold text-white">{ticker}</p>
           <p className="truncate text-xs text-[#60a5fa]">{company}</p>
@@ -53,7 +53,7 @@ export default function WatchlistCard({
             { value: earningsDday, label: "실적" },
             { value: newNews === 0 ? "없음" : `${newNews}건`, label: "새 뉴스" },
           ].map((item) => (
-            <div key={item.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5">
+            <div key={item.label} className="rounded-[4px] bg-[#262626] px-3 py-2.5">
               <p className="text-sm font-semibold text-white">{item.value}</p>
               <p className="mt-0.5 text-xs text-[#a6a6a6]">{item.label}</p>
             </div>
