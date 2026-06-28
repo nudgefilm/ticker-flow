@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 export type TrendingItem = {
@@ -108,9 +109,10 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
         className="mt-4 flex w-full gap-3 overflow-x-auto no-scrollbar"
       >
         {items.map((item) => (
-          <div
+          <Link
             key={item.ticker}
-            className="w-44 shrink-0 rounded-[6px] border border-emerald-400/50 bg-[#111111] p-4 shadow shadow-emerald-400/[0.12]"
+            href={`/stocks/${item.ticker}`}
+            className="w-44 shrink-0 rounded-[6px] border border-emerald-400/50 bg-[#111111] p-4 shadow shadow-emerald-400/[0.12] transition-colors hover:bg-[#1a1a1a]"
           >
             <span className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
               {item.ticker}
@@ -126,7 +128,7 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
                 </li>
               ))}
             </ul>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
