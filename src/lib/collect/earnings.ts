@@ -107,82 +107,140 @@ async function updateEarningsForTicker(
   ticker: string,
   apiKey: string,
   adminClient: ReturnType<typeof createAdminClient>
-): Promise<{ updated: number; skipped: number }> {
+): Promise<{ saved: number; skipped: number; error?: string }> {
   const res = await fetch(
     `https://finnhub.io/api/v1/stock/earnings?symbol=${ticker}&token=${apiKey}`,
     { signal: AbortSignal.timeout(8000) }
   );
-  if (!res.ok) return { updated: 0, skipped: 1 };
+  if (!res.ok) return { saved: 0, skipped: 1, error: `HTTP ${res.status}` };
 
   const surprises: FinnhubEarningsSurprise[] = await res.json();
-  if (!Array.isArray(surprises) || surprises.length === 0) return { updated: 0, skipped: 0 };
+  if (!Array.isArray(surprises) || surprises.length === 0) return { saved: 0, skipped: 0 };
 
   // actual이 있는 최근 4분기만
   const valid = surprises.filter((s) => s.actual != null && s.period).slice(0, 4);
-  if (valid.length === 0) return { updated: 0, skipped: 0 };
+  if (valid.length === 0) return { saved: 0, skipped: 0 };
 
-  let updated = 0;
+  let saved = 0;
   let skipped = 0;
+  const collectedAt = new Date().toISOString();
 
   for (const surprise of valid) {
-    const { error } = await adminClient
-      .from("earnings")
-      .upsert(
-        {
-          ticker: surprise.symbol,
-          report_date: surprise.period,
-          eps_estimate: surprise.estimate ?? null,
-          actual_eps: surprise.actual,
-        },
-        { onConflict: "ticker,report_date" }
-      );
+    // collected_at은 아직 생성 타입에 미반영 — as any 캐스트 사용
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (adminClient as any).from("earnings").upsert(
+      {
+        ticker: surprise.symbol,
+        report_date: surprise.period,
+        eps_estimate: surprise.estimate ?? null,
+        actual_eps: surprise.actual,
+        collected_at: collectedAt,
+      },
+      { onConflict: "ticker,report_date" }
+    );
 
     if (error) {
       console.error(`[collect/earnings-actual] ${ticker} ${surprise.period}:`, error.message);
       skipped++;
     } else {
-      updated++;
+      saved++;
     }
   }
 
-  return { updated, skipped };
+  return { saved, skipped };
 }
 
 export async function runEarningsActualCollect(
-  tickerParam?: string | null
+  tickerParam?: string | null,
+  offsetParam?: number
 ): Promise<CollectResult> {
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
+  const BATCH_SIZE = 50;
+  const offset = offsetParam ?? 0;
+  let firstError: string | undefined;
+  let total = 0;
   let tickers: string[];
 
   if (tickerParam) {
     tickers = [tickerParam.toUpperCase()];
+    total = 1;
   } else {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    // 전체 티커 수
+    const { count } = await adminClient
+      .from("tickers")
+      .select("*", { count: "exact", head: true });
+    total = count ?? 0;
 
-    const [{ data: watchlistRows }, { data: filingRows }] = await Promise.all([
-      adminClient.from("watchlist").select("ticker"),
-      adminClient.from("filings").select("ticker").gte("filed_at", sevenDaysAgo),
-    ]);
+    // earnings 테이블에서 우선순위 정렬:
+    // 1) actual_eps IS NULL 먼저 (실제값 미수집)
+    // 2) collected_at ASC (오래된 순)
+    // collected_at은 생성 타입에 미반영 — as any 캐스트 사용
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: earningsRows } = await (adminClient as any)
+      .from("earnings")
+      .select("ticker")
+      .order("actual_eps", { ascending: true, nullsFirst: true })
+      .order("collected_at", { ascending: true, nullsFirst: true })
+      .limit(5000);
 
-    const tickerSet = new Set<string>();
-    watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
-    filingRows?.forEach((r) => tickerSet.add(r.ticker));
+    // 티커 중복 제거 (우선순위 순서 유지)
+    const seen = new Set<string>();
+    const prioritized: string[] = [];
+    for (const row of (earningsRows as { ticker: string }[] | null) ?? []) {
+      if (!seen.has(row.ticker)) {
+        seen.add(row.ticker);
+        prioritized.push(row.ticker);
+      }
+    }
 
-    tickers = [...tickerSet].slice(0, 15);
+    // earnings 행이 없는 티커 추가 (미수집 종목)
+    const { data: allTickers } = await adminClient
+      .from("tickers")
+      .select("ticker")
+      .order("ticker", { ascending: true })
+      .limit(10000);
+
+    for (const row of allTickers ?? []) {
+      if (!seen.has(row.ticker)) {
+        prioritized.push(row.ticker);
+      }
+    }
+
+    // offset + BATCH_SIZE 적용
+    tickers = prioritized.slice(offset, offset + BATCH_SIZE);
   }
 
-  let totalUpdated = 0;
-  let totalSkipped = 0;
+  let processed = 0;
+  let saved = 0;
+  let skipped = 0;
 
   for (const ticker of tickers) {
-    const { updated, skipped } = await updateEarningsForTicker(ticker, apiKey, adminClient);
-    totalUpdated += updated;
-    totalSkipped += skipped;
+    try {
+      const res = await updateEarningsForTicker(ticker, apiKey, adminClient);
+      saved += res.saved;
+      skipped += res.skipped;
+      if (res.error && !firstError) firstError = res.error;
+    } catch (err) {
+      skipped++;
+      if (!firstError) firstError = err instanceof Error ? err.message : String(err);
+    }
+    processed++;
     if (tickers.length > 1) await new Promise((r) => setTimeout(r, 300));
   }
 
-  return { ok: true, tickers: tickers.length, upserted: totalUpdated, skipped: totalSkipped };
+  const nextOffset = offset + processed < total ? offset + processed : 0;
+
+  return {
+    ok: true,
+    total,
+    processed,
+    saved,
+    skipped,
+    offset,
+    nextOffset,
+    ...(firstError ? { firstError } : {}),
+  };
 }

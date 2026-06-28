@@ -20,7 +20,7 @@ export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
 
   return (
     <div
-      className="flex flex-col gap-4 rounded-[8px] border border-white/[0.08] bg-[#111111] overflow-hidden"
+      className="flex flex-col gap-4 rounded-[8px] border border-white/[0.08] bg-[#1a1a1a] overflow-hidden"
       style={{ borderTop: `2px solid ${groupColor}` }}
     >
       <div className="flex flex-col gap-4 p-5">

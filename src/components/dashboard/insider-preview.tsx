@@ -61,7 +61,7 @@ export default function InsiderPreview() {
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">거래 내역 미리보기</p>
 
       <div className="mt-4">
-        <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+        <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
           {/* 헤더 */}
           <div className={cn("grid bg-[#0f0f0f] px-5 py-3 text-xs text-[#a6a6a6]", COLS)}>
             <span>종목</span>
@@ -84,7 +84,7 @@ export default function InsiderPreview() {
             >
               {/* 종목 */}
               <div className="flex items-center gap-2">
-                <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
+                <span className="rounded-[4px] bg-[#262626] px-1.5 py-0.5 text-xs text-[#cccccc]">
                   {tx.ticker}
                 </span>
                 <span className="text-sm text-[#a6a6a6]">{tx.company}</span>

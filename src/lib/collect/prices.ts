@@ -88,38 +88,79 @@ async function fetchDayPrices(
   return { rows };
 }
 
-export async function runPricesCollect(tickerParam?: string | null): Promise<CollectResult> {
+export async function runPricesCollect(
+  tickerParam?: string | null,
+  offsetParam?: number
+): Promise<CollectResult> {
   const adminClient = createAdminClient();
+  const BATCH_SIZE = 50;
+  const offset = offsetParam ?? 0;
+  let firstError: string | undefined;
+  let total = 0;
   let tickers: string[];
 
   if (tickerParam) {
     tickers = [tickerParam.toUpperCase()];
+    total = 1;
   } else {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const [{ data: watchlistRows }, { data: filingRows }] = await Promise.all([
-      adminClient.from("watchlist").select("ticker"),
-      adminClient.from("filings").select("ticker").gte("filed_at", sevenDaysAgo),
-    ]);
+    // 전체 티커 수
+    const { count } = await adminClient
+      .from("tickers")
+      .select("*", { count: "exact", head: true });
+    total = count ?? 0;
 
-    const tickerSet = new Set<string>();
-    watchlistRows?.forEach((r) => tickerSet.add(r.ticker));
-    filingRows?.forEach((r) => tickerSet.add(r.ticker));
-    tickers = [...tickerSet].slice(0, 20);
+    // stock_prices에서 우선순위 정렬 (collected_at ASC NULLS FIRST)
+    // collected_at은 생성 타입에 미반영 — as any 캐스트 사용
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: priceRows } = await (adminClient as any)
+      .from("stock_prices")
+      .select("ticker")
+      .order("collected_at", { ascending: true, nullsFirst: true })
+      .limit(5000);
+
+    // 티커 중복 제거 (우선순위 순서 유지)
+    const seen = new Set<string>();
+    const prioritized: string[] = [];
+    for (const row of (priceRows as { ticker: string }[] | null) ?? []) {
+      if (!seen.has(row.ticker)) {
+        seen.add(row.ticker);
+        prioritized.push(row.ticker);
+      }
+    }
+
+    // stock_prices 행이 없는 티커 추가 (미수집 종목)
+    const { data: allTickers } = await adminClient
+      .from("tickers")
+      .select("ticker")
+      .order("ticker", { ascending: true })
+      .limit(10000);
+
+    for (const row of allTickers ?? []) {
+      if (!seen.has(row.ticker)) {
+        prioritized.push(row.ticker);
+      }
+    }
+
+    // offset + BATCH_SIZE 적용
+    tickers = prioritized.slice(offset, offset + BATCH_SIZE);
   }
 
-  let upserted = 0;
+  let processed = 0;
+  let saved = 0;
   let skipped = 0;
-  let firstError: string | null = null;
 
   for (const ticker of tickers) {
     const result = await fetchDayPrices(ticker);
+    const collectedAt = new Date().toISOString();
 
     if (!result || result.rows.length === 0) {
       if (result?.error && !firstError) firstError = `${ticker}: ${result.error}`;
       skipped++;
     } else {
-      const insertRows = result.rows.map((r) => ({ ticker, ...r }));
-      const { error } = await adminClient
+      // collected_at은 생성 타입에 미반영 — as any 캐스트 사용
+      const insertRows = result.rows.map((r) => ({ ticker, ...r, collected_at: collectedAt }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (adminClient as any)
         .from("stock_prices")
         .upsert(insertRows, { onConflict: "ticker,date" });
 
@@ -128,12 +169,24 @@ export async function runPricesCollect(tickerParam?: string | null): Promise<Col
         if (!firstError) firstError = `${ticker}: ${error.message}`;
         skipped++;
       } else {
-        upserted += result.rows.length;
+        saved += result.rows.length;
       }
     }
 
+    processed++;
     if (tickers.length > 1) await new Promise((r) => setTimeout(r, 300));
   }
 
-  return { ok: true, tickers: tickers.length, upserted, skipped, firstError };
+  const nextOffset = offset + processed < total ? offset + processed : 0;
+
+  return {
+    ok: true,
+    total,
+    processed,
+    saved,
+    skipped,
+    offset,
+    nextOffset,
+    ...(firstError ? { firstError } : {}),
+  };
 }

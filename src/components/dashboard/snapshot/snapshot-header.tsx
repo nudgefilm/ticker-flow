@@ -13,7 +13,7 @@ export function SnapshotHeader({ ticker, name, exchange, sector, industry, updat
     .join(" · ");
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+    <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
       <div className="flex items-center gap-2">
         <h1 className="text-xl font-bold text-white">{name}</h1>
         <span className="rounded bg-white/[0.06] px-2 py-0.5 text-xs font-medium text-white">

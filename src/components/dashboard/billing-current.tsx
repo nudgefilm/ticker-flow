@@ -8,7 +8,7 @@ export default function BillingCurrent({ plan, monthlyCheckoutUrl }: BillingCurr
   const isPro = plan === "pro"
 
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+    <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-6 py-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">현재 플랜</p>

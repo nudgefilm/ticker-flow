@@ -33,7 +33,7 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
 
       {/* Free 카드 */}
       <div
-        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#111111] ${
+        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#1a1a1a] ${
           !isPro
             ? "border-2 border-blue-400/60"
             : "border border-white/[0.08]"
@@ -72,7 +72,7 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
 
       {/* Pro 카드 (탭) */}
       <div
-        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#111111] ${
+        className={`flex flex-col overflow-hidden rounded-[6px] bg-[#1a1a1a] ${
           isPro
             ? "border-2 border-blue-400/60"
             : "border border-white/[0.08]"
@@ -89,7 +89,7 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
         <div className="flex flex-1 flex-col p-5">
 
         {/* 탭 스위처 */}
-        <div className="flex rounded-[6px] bg-[#1a1a1a] p-0.5">
+        <div className="flex rounded-[6px] bg-[#262626] p-0.5">
           <button
             onClick={() => setTab("monthly")}
             className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${

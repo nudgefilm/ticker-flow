@@ -7,8 +7,12 @@ import { runEarningsActualCollect } from "@/lib/collect/earnings";
 export async function GET(req: NextRequest) {
   const authError = await requireCollectAuth(req);
   if (authError) return authError;
+
   const ticker = req.nextUrl.searchParams.get("ticker");
-  const result = await runEarningsActualCollect(ticker);
+  const offsetRaw = req.nextUrl.searchParams.get("offset");
+  const offset = offsetRaw !== null ? parseInt(offsetRaw, 10) : 0;
+
+  const result = await runEarningsActualCollect(ticker, isNaN(offset) ? 0 : offset);
   if (!result.ok) return NextResponse.json(result, { status: 500 });
   return NextResponse.json(result);
 }

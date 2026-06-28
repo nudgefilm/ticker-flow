@@ -100,7 +100,7 @@ export default function SectorsPreview() {
 
       <div className="flex flex-col gap-3">
         {/* 히트맵 카드 */}
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           {/* 날짜 헤더 */}
           <div className="flex items-center gap-2">
             <div className="w-32 shrink-0" />
@@ -150,7 +150,7 @@ export default function SectorsPreview() {
           {SUMMARY.map((item) => (
             <div
               key={item.label}
-              className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-3"
+              className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4 py-3"
             >
               <p className="text-xs text-[#a6a6a6]">{item.label}</p>
               <p className="mt-1 text-sm font-medium text-white">{item.value}</p>

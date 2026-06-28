@@ -65,7 +65,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
         {/* 기간 */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-[#a6a6a6]">기간</span>
-          <div className="flex rounded-[4px] bg-[#111111] p-0.5">
+          <div className="flex rounded-[4px] bg-[#1a1a1a] p-0.5">
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -85,7 +85,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
         {/* 가이던스 방향 */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-[#a6a6a6]">가이던스</span>
-          <div className="flex rounded-[4px] bg-[#111111] p-0.5">
+          <div className="flex rounded-[4px] bg-[#1a1a1a] p-0.5">
             {GUIDANCE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -171,7 +171,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
       )}
 
       {/* 데이터 출처 카드 */}
-      <div className="mt-10 rounded-[8px] border border-white/[0.06] bg-[#111111] p-5">
+      <div className="mt-10 rounded-[8px] border border-white/[0.06] bg-[#1a1a1a] p-5">
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
           데이터 출처
         </p>

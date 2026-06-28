@@ -30,7 +30,7 @@ export default function NewsFeedCard({ news, className }: { news: NewsItem; clas
   const content = summary_kr ?? headline;
 
   return (
-    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#111111] p-5", className)}>
+    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5", className)}>
       {/* Row 1: 출처 + 날짜 */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[#a6a6a6]">{source ?? "—"}</span>
@@ -52,7 +52,7 @@ export default function NewsFeedCard({ news, className }: { news: NewsItem; clas
       {/* Row 4: 티커 태그 + 원문 보기 */}
       <div className="mt-3 flex items-center justify-between">
         {ticker ? (
-          <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#a6a6a6]">
+          <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#262626] px-2 py-1 text-xs text-[#a6a6a6]">
             {ticker}
           </Link>
         ) : (

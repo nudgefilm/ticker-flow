@@ -47,7 +47,7 @@ export default function SectorsBoard() {
     return (
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-32 animate-pulse rounded-[12px] border border-white/[0.08] bg-[#111111]" />
+          <div key={i} className="h-32 animate-pulse rounded-[12px] border border-white/[0.08] bg-[#1a1a1a]" />
         ))}
       </div>
     );
@@ -90,7 +90,7 @@ export default function SectorsBoard() {
             ))}
           </div>
           {/* 기간 세그먼트 */}
-          <div className="flex items-center rounded-[8px] border border-white/[0.08] bg-[#111111] p-0.5">
+          <div className="flex items-center rounded-[8px] border border-white/[0.08] bg-[#1a1a1a] p-0.5">
             {PERIOD_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
@@ -122,7 +122,7 @@ export default function SectorsBoard() {
               return (
                 <div
                   key={s.sector}
-                  className="relative overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#111111]"
+                  className="relative overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#1a1a1a]"
                   style={{ borderTop: `2px solid ${hexToRgba(color, 0.6)}` }}
                 >
                   {/* 배경 게이지 바 */}
@@ -169,7 +169,7 @@ export default function SectorsBoard() {
       )}
 
       {/* ── 트리맵 ── */}
-      <div className="overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#111111]">
+      <div className="overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#1a1a1a]">
         <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
           <div>
             <h2 className="text-sm font-semibold text-[#cccccc]">섹터 활동 트리맵</h2>
@@ -182,7 +182,7 @@ export default function SectorsBoard() {
       </div>
 
       {/* ── 섹터 요약 테이블 ── */}
-      <div className="overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#111111]">
+      <div className="overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#1a1a1a]">
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.06]">
@@ -268,7 +268,7 @@ export default function SectorsBoard() {
               return (
                 <div
                   key={s.sector}
-                  className="rounded-[12px] border border-white/[0.08] bg-[#111111] p-4"
+                  className="rounded-[12px] border border-white/[0.08] bg-[#1a1a1a] p-4"
                   style={{ borderLeft: `2px solid ${hexToRgba(color, 0.5)}` }}
                 >
                   <p className="mb-3 text-xs font-semibold" style={{ color }}>

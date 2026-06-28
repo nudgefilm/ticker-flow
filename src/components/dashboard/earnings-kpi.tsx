@@ -11,7 +11,7 @@ export default function EarningsKpi() {
       {KPI.map((item) => (
         <div
           key={item.label}
-          className="flex h-20 flex-col justify-center rounded-[6px] border border-white/[0.08] bg-[#111111] px-4"
+          className="flex h-20 flex-col justify-center rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4"
         >
           <p className="text-2xl font-semibold tabular-nums text-white">{item.value}</p>
           <p className="mt-0.5 text-xs text-[#a6a6a6]">{item.label}</p>

@@ -2,12 +2,9 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  type CollectResult,
   type CollectJob,
   type CollectHandler,
-  type FetchJob,
   isCollectJob,
-  isFetchJob,
   runFilingsCollect,
   runNewsCollect,
   runEarningsCollect,
@@ -20,31 +17,29 @@ import {
   runProfileCollect,
   runWatchlistTickersCollect,
   runCallsCollect,
+  runSeedTickersCollect,
+  runTranslateCollect,
+  runDigestCollect,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
 // Record<CollectJob, CollectHandler>: 누락·오타는 컴파일 오류로 즉시 검출
 const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
-  "profile":         runProfileCollect,
-  "filings":         runFilingsCollect,
-  "news":            runNewsCollect,
-  "earnings":        runEarningsCollect,
-  "earnings-actual": runEarningsActualCollect,
-  "prices":          runPricesCollect,
-  "insider":         runInsiderCollect,
-  "analyst":         runAnalystCollect,
-  "13f":                run13fCollect,
-  "macro":              runMacroCollect,
-  "watchlist-tickers":  runWatchlistTickersCollect,
-  "calls":              runCallsCollect,
-};
-
-// collect 외 job — fetch 방식 유지
-// Record<FetchJob, string>: 누락·오타는 컴파일 오류로 즉시 검출
-const FETCH_JOB_MAP: Record<FetchJob, string> = {
-  "seed-tickers": "/api/seed/tickers",
-  "translate":    "/api/translate",
-  "digest":       "/api/email/digest",
+  "profile":          runProfileCollect,
+  "filings":          runFilingsCollect,
+  "news":             runNewsCollect,
+  "earnings":         runEarningsCollect,
+  "earnings-actual":  runEarningsActualCollect,
+  "prices":           runPricesCollect,
+  "insider":          runInsiderCollect,
+  "analyst":          runAnalystCollect,
+  "13f":              run13fCollect,
+  "macro":            runMacroCollect,
+  "watchlist-tickers": runWatchlistTickersCollect,
+  "calls":            runCallsCollect,
+  "seed-tickers":     runSeedTickersCollect,
+  "translate":        runTranslateCollect,
+  "digest":           runDigestCollect,
 };
 
 export async function GET(req: NextRequest) {
@@ -53,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   const job = req.nextUrl.searchParams.get("job") ?? "";
 
-  if (!isCollectJob(job) && !isFetchJob(job)) {
+  if (!isCollectJob(job)) {
     return NextResponse.json({ error: `Unknown job: ${job}` }, { status: 400 });
   }
 
@@ -73,30 +68,7 @@ export async function GET(req: NextRequest) {
 
   after(async () => {
     try {
-      let result: CollectResult;
-
-      if (isCollectJob(job)) {
-        result = await COLLECT_MAP[job]();
-      } else if (isFetchJob(job)) {
-        const host = req.headers.get("host") ?? "localhost:3000";
-        const baseUrl =
-          process.env.NEXT_PUBLIC_SITE_URL ??
-          (host.includes("localhost") ? `http://${host}` : `https://${host}`);
-        const cronSecret = process.env.CRON_SECRET ?? "";
-        const cookieHeader = req.headers.get("cookie") ?? "";
-
-        const res = await fetch(`${baseUrl}${FETCH_JOB_MAP[job]}`, {
-          headers: {
-            Authorization: `Bearer ${cronSecret}`,
-            ...(cookieHeader && { Cookie: cookieHeader }),
-          },
-        });
-        result = res.ok
-          ? await res.json().catch(() => ({ ok: false }))
-          : { ok: false, error: `HTTP ${res.status}` };
-      } else {
-        result = { ok: false, error: `Unknown job: ${job}` };
-      }
+      const result = await COLLECT_MAP[job]();
 
       await (adminClient as any)
         .from("collect_runs")

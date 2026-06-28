@@ -8,7 +8,7 @@ export interface SummaryMetric {
 
 export default function WeeklySummaryCard({ metrics }: { metrics: SummaryMetric[] }) {
   return (
-    <div className="mt-6 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+    <div className="mt-6 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-6 py-5">
       <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         최근 7일 변화 요약
       </p>

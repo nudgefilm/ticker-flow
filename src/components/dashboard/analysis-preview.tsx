@@ -25,7 +25,7 @@ export default function AnalysisPreview() {
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         {/* Card 1: 8-K 심층 분석 */}
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           {/* 상단 */}
           <div className="flex items-center gap-2">
             <span className="rounded-[4px] border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 text-[11px] font-medium text-blue-400">
@@ -48,7 +48,7 @@ export default function AnalysisPreview() {
                 {["매출 $44.1B", "EPS(주당순이익) $2.94", "데이터센터 비중 88%"].map((stat) => (
                   <span
                     key={stat}
-                    className="rounded-[4px] bg-[#1a1a1a] px-2 py-1 text-xs text-[#cccccc]"
+                    className="rounded-[4px] bg-[#262626] px-2 py-1 text-xs text-[#cccccc]"
                   >
                     {stat}
                   </span>
@@ -75,7 +75,7 @@ export default function AnalysisPreview() {
         </div>
 
         {/* Card 2: 10-K 연간보고서 요약 */}
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           {/* 상단 */}
           <div className="flex items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">

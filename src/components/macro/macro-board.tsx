@@ -35,7 +35,7 @@ export default function MacroBoard({
         <p className="text-xs text-[#666666]">
           데이터 기준일: <span className="text-[#a6a6a6]">{referenceDate}</span>
         </p>
-        <div className="flex items-center rounded-[6px] border border-white/[0.08] bg-[#111111] p-0.5">
+        <div className="flex items-center rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-0.5">
           {tabKeys.map((key) => (
             <button
               key={key}

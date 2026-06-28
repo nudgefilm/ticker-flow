@@ -93,7 +93,7 @@ export default function EarningsFlow({ earnings }: { earnings: EarningsRow[] }) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.06]">
-                {earnings.map((e) => {
+                {[...earnings].reverse().map((e) => {
                   const s = surprise(e.epsEstimate, e.epsActual);
                   return (
                     <tr key={e.id}>

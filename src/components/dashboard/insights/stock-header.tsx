@@ -57,7 +57,7 @@ export default function StockHeader({
   const meta = [exchange, sectorKr, industry].filter(Boolean).join(" · ");
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+    <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">

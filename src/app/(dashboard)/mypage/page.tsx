@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 
 function SectionCard({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
       <p className="border-b border-white/[0.06] bg-[#242424] px-5 py-3.5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         {label}
       </p>
@@ -307,7 +307,7 @@ export default function MyPage() {
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div
-            className="relative z-10 w-full max-w-md rounded-[8px] border border-white/[0.08] bg-[#111111] p-6"
+            className="relative z-10 w-full max-w-md rounded-[8px] border border-white/[0.08] bg-[#1a1a1a] p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">

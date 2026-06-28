@@ -27,7 +27,7 @@ export default function BillingPlanCard({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-[6px] bg-[#111111] p-5",
+        "flex flex-col rounded-[6px] bg-[#1a1a1a] p-5",
         featured ? "border-2 border-white/[0.2]" : "border border-white/[0.08]"
       )}
     >

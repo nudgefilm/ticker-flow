@@ -8,7 +8,7 @@ export default function SectorActivityChart({ data }: Props) {
   const maxCount = Math.max(...data.map((d) => d.count), 1)
 
   return (
-    <div className="flex flex-1 flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
+    <div className="flex flex-1 flex-col rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-4">
       <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         섹터별 공시 활동
       </p>

@@ -74,7 +74,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/[0.06] p-5">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-[4px] bg-[#1a1a1a] px-2 py-0.5 text-xs font-medium text-[#60a5fa]">
+            <span className="rounded-[4px] bg-[#262626] px-2 py-0.5 text-xs font-medium text-[#60a5fa]">
               {call.ticker}
             </span>
             <span className="text-sm font-medium text-[#e5e5e5]">{call.company_name}</span>
@@ -175,7 +175,7 @@ export default function EarningsCallCard({ call }: { call: EarningsCall }) {
               {call.keywords.map((kw) => (
                 <span
                   key={kw}
-                  className="rounded-[4px] bg-[#1a1a1a] px-2.5 py-1 text-xs text-[#cccccc]"
+                  className="rounded-[4px] bg-[#262626] px-2.5 py-1 text-xs text-[#cccccc]"
                 >
                   {kw}
                 </span>

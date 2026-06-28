@@ -199,13 +199,16 @@ export default async function StockPage({
   }));
 
   // ── Earnings ──────────────────────────────────────────────────────────────
-  const earnings: EarningsRow[] = earningsRows.map((e) => ({
-    id: e.id,
-    quarter: deriveQuarter(e.report_date),
-    epsEstimate: e.eps_estimate,
-    epsActual: e.actual_eps,
-    reportDate: e.report_date,
-  }));
+  // Chart requires oldest-first (left→right = past→present); table reverses internally.
+  const earnings: EarningsRow[] = earningsRows
+    .map((e) => ({
+      id: e.id,
+      quarter: deriveQuarter(e.report_date),
+      epsEstimate: e.eps_estimate,
+      epsActual: e.actual_eps,
+      reportDate: e.report_date,
+    }))
+    .sort((a, b) => a.reportDate.localeCompare(b.reportDate));
 
   const companyName = info?.name_kr ?? info?.name_en ?? ticker;
   const updatedAt = quote?.dataDate

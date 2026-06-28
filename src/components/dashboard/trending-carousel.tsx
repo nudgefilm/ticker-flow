@@ -88,7 +88,7 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
             type="button"
             onClick={() => scroll("prev")}
             aria-label="이전"
-            className="rounded-[4px] border border-white/[0.08] bg-[#1a1a1a] p-1.5 text-[#a6a6a6] transition-colors hover:text-white"
+            className="rounded-[4px] border border-white/[0.08] bg-[#262626] p-1.5 text-[#a6a6a6] transition-colors hover:text-white"
           >
             <IconChevronLeft size={14} stroke={1.5} />
           </button>
@@ -96,7 +96,7 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
             type="button"
             onClick={() => scroll("next")}
             aria-label="다음"
-            className="rounded-[4px] border border-white/[0.08] bg-[#1a1a1a] p-1.5 text-[#a6a6a6] transition-colors hover:text-white"
+            className="rounded-[4px] border border-white/[0.08] bg-[#262626] p-1.5 text-[#a6a6a6] transition-colors hover:text-white"
           >
             <IconChevronRight size={14} stroke={1.5} />
           </button>
@@ -112,9 +112,9 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
           <Link
             key={item.ticker}
             href={`/stocks/${item.ticker}`}
-            className="w-44 shrink-0 rounded-[6px] border border-emerald-400/50 bg-[#111111] p-4 shadow shadow-emerald-400/[0.12] transition-colors hover:bg-[#1a1a1a]"
+            className="w-44 shrink-0 rounded-[6px] border border-emerald-400/50 bg-[#1a1a1a] p-4 shadow shadow-emerald-400/[0.12] transition-colors hover:bg-[#262626]"
           >
-            <span className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
+            <span className="inline-block rounded-[4px] bg-[#262626] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]">
               {item.ticker}
             </span>
             <p className="mt-2 truncate text-sm font-medium text-white">{item.company}</p>

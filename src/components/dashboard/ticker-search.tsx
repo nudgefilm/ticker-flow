@@ -83,13 +83,13 @@ export default function TickerSearch() {
       />
 
       {open && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111] shadow-xl">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] shadow-xl">
           {results.map((r) => (
             <button
               key={r.ticker}
               type="button"
               onClick={() => handleSelect(r.ticker)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[#1a1a1a]"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[#262626]"
             >
               <span className="shrink-0 rounded-[3px] bg-[#0a0a0a] px-1.5 py-0.5 font-mono text-[10px] text-[#cccccc]">
                 {r.ticker}

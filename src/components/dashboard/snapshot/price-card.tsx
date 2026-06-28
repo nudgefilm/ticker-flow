@@ -62,7 +62,7 @@ function RangeBar({ low, high, close }: { low: number; high: number; close: numb
 export function PriceCard({ quote }: { quote: Quote | null }) {
   if (!quote) {
     return (
-      <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+      <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
         <p className="text-xs text-[#a6a6a6]">최근 종가</p>
         <p className="mt-2 text-sm text-[#a6a6a6]">주가 데이터를 수집 중입니다.</p>
       </div>
@@ -74,7 +74,7 @@ export function PriceCard({ quote }: { quote: Quote | null }) {
   const color = up ? "#34d399" : "#f87171";
 
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-[#111111] p-5">
+    <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs text-[#a6a6a6]">최근 종가</p>

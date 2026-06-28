@@ -17,7 +17,7 @@ export default function NewsSourceChart({ sources, total }: Props) {
     : ""
 
   return (
-    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+    <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
       <p className="mb-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
         뉴스 출처 분포
       </p>
@@ -34,7 +34,7 @@ export default function NewsSourceChart({ sources, total }: Props) {
               className="h-full w-full rounded-full"
               style={{ background: gradient ? `conic-gradient(${gradient})` : "#1a1a1a" }}
             />
-            <div className="absolute inset-[48px] flex items-center justify-center rounded-full bg-[#111111]">
+            <div className="absolute inset-[48px] flex items-center justify-center rounded-full bg-[#1a1a1a]">
               <span className="text-2xl font-semibold tabular-nums text-white">
                 {total}
               </span>

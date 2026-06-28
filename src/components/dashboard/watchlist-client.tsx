@@ -123,7 +123,7 @@ export default function WatchlistClient({
               placeholder="티커 입력 (예: AAPL)"
               maxLength={10}
               autoFocus
-              className="h-9 flex-1 rounded-[6px] border border-white/[0.08] bg-[#111111] px-3 text-sm text-white placeholder-[#a6a6a6] outline-none focus:border-white/20"
+              className="h-9 flex-1 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-3 text-sm text-white placeholder-[#a6a6a6] outline-none focus:border-white/20"
             />
             <button
               onClick={handleAdd}
@@ -149,7 +149,7 @@ export default function WatchlistClient({
 
       {/* 최근 7일 변화 요약 */}
       {stocks.length > 0 && (
-        <div className="mt-5 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
+        <div className="mt-5 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-5 py-4">
           <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">최근 7일 변화</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[
@@ -197,7 +197,7 @@ export default function WatchlistClient({
 
       {/* 수집 중 토스트 */}
       {collectStatus && (
-        <div className="fixed bottom-5 right-5 z-50 w-80 rounded-xl border border-white/[0.08] bg-[#111111] p-4 shadow-xl">
+        <div className="fixed bottom-5 right-5 z-50 w-80 rounded-xl border border-white/[0.08] bg-[#1a1a1a] p-4 shadow-xl">
           <div className="flex items-start gap-3">
             {collectStatus === "collecting" ? (
               <IconRefresh size={16} stroke={1.5} className="mt-0.5 shrink-0 animate-spin text-blue-400" />
@@ -225,7 +225,7 @@ export default function WatchlistClient({
 
       {/* 업그레이드 배너 — Free 유저에게만 표시 */}
       {!isPro && (
-        <div className="mt-3 flex items-center justify-between rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4">
+        <div className="mt-3 flex items-center justify-between rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-5 py-4">
           <p className="text-sm text-[#cccccc]">
             Pro로 업그레이드하면 종목 수 제한 없이 등록할 수 있습니다.
           </p>

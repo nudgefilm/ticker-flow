@@ -27,7 +27,7 @@ function WatchlistSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="animate-pulse rounded-[6px] border border-white/[0.08] bg-[#111111] p-5"
+            className="animate-pulse rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">

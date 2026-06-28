@@ -43,7 +43,7 @@ function FilingFeedSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5 animate-pulse"
+          className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
         >
           <div className="flex items-center gap-2">
             <div className="h-5 w-20 rounded-[4px] bg-white/[0.06]" />

@@ -19,7 +19,7 @@ const points = PRICES.map((p, i) => {
 
 export default function StockChart() {
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+    <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
       <p className="text-xs uppercase tracking-widest text-[#a6a6a6]">주가 흐름 (90일)</p>
 
       <div className="mt-4 flex gap-3">
@@ -67,7 +67,7 @@ export default function StockChart() {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-[4px] bg-[#1a1a1a] px-3 py-2 text-xs"
+            className="rounded-[4px] bg-[#262626] px-3 py-2 text-xs"
           >
             <span className="text-[#a6a6a6]">{item.label} </span>
             <span className="tabular-nums text-[#cccccc]">{item.value}</span>

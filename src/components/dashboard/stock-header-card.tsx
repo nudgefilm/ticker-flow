@@ -29,16 +29,16 @@ export default function StockHeaderCard({
   stats,
 }: StockHeaderCardProps) {
   return (
-    <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+    <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-6 py-5">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         {/* 좌측: 티커 + 가격 */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
+            <span className="rounded-[4px] bg-[#262626] px-1.5 py-0.5 text-xs text-[#cccccc]">
               {ticker}
             </span>
             <span className="text-lg font-semibold text-white">{company}</span>
-            <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#a6a6a6]">
+            <span className="rounded-[4px] bg-[#262626] px-1.5 py-0.5 text-xs text-[#a6a6a6]">
               {exchange}
             </span>
           </div>

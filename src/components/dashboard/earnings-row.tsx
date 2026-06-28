@@ -48,7 +48,7 @@ export default function EarningsRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-[6px] border bg-[#111111] px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 rounded-[6px] border bg-[#1a1a1a] px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
         ddayVariant === "done" ? "border-green-500/30" : "border-white/[0.08]"
       )}
     >
@@ -63,7 +63,7 @@ export default function EarningsRow({
           {dday}
         </span>
         <span className="text-sm font-medium text-white">{company}</span>
-        <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
+        <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#262626] px-1.5 py-0.5 text-xs text-[#cccccc]">
           {ticker}
         </Link>
       </div>

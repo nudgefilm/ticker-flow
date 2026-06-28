@@ -44,7 +44,7 @@ export default async function BillingPage({
       )}
 
       {/* 현재 플랜 상태 */}
-      <div className="mt-6 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      <div className="mt-6 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
         <div className="border-b border-white/[0.06] bg-[#242424] px-6 py-4">
           <p className="text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">현재 플랜</p>
         </div>
@@ -77,7 +77,7 @@ export default async function BillingPage({
 
       {/* 구독 해지 — Pro 유저 전용, 페이지 최하단 */}
       {isPro && (
-        <div className="mt-8 rounded-[6px] border border-white/[0.08] bg-[#111111] px-6 py-5">
+        <div className="mt-8 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-6 py-5">
           <div className="mb-4 flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icon.png" alt="TickerFlow" width={20} height={20} className="rounded-sm" />

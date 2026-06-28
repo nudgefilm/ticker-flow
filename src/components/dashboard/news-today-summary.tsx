@@ -15,7 +15,7 @@ export default function NewsTodaySummary() {
         {STATS.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-4"
+            className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4 py-4"
           >
             <p className="text-xs text-[#a6a6a6]">{stat.label}</p>
             <p className="mt-1.5 text-2xl font-semibold tabular-nums text-white">

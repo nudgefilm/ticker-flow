@@ -72,7 +72,7 @@ export default function AlertsPreview() {
 
       <div className="mt-4 flex flex-col gap-3">
         {/* 카드 1: 알림 채널 */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 채널</p>
           <div className="flex flex-col gap-4">
             <SettingRow
@@ -89,7 +89,7 @@ export default function AlertsPreview() {
         </div>
 
         {/* 카드 2: 공시 유형 */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 받을 공시 유형</p>
           <div className="flex flex-col gap-3">
             <Checkbox label="8-K" desc="주요 경영 이벤트 공시 — CEO 교체, M&A, 계약 등" checked={true} />
@@ -101,7 +101,7 @@ export default function AlertsPreview() {
         </div>
 
         {/* 카드 3: 수신 시간대 */}
-        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="pointer-events-none rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           <p className="mb-4 text-xs uppercase tracking-wide text-[#a6a6a6]">알림 수신 시간대</p>
           <div className="flex flex-col gap-3">
             <Radio label="즉시 알림 (공시 등록 후 15분 이내)" selected={true} />

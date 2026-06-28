@@ -38,7 +38,7 @@ export default function MacroRow({
   const actualColor = actualVariant ? ACTUAL_COLOR[actualVariant] : "text-[#a6a6a6]";
 
   return (
-    <div className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       {/* 좌: 중요도 배지 + 지표명 */}
       <div className="flex items-center gap-3">
         <span

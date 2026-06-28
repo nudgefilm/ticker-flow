@@ -25,7 +25,7 @@ export default function CallsPreview() {
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {/* Card 1: NVDA */}
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">
               실적
@@ -55,7 +55,7 @@ export default function CallsPreview() {
                 {["Blackwell", "데이터센터", "수요", "마진", "중국"].map((kw) => (
                   <span
                     key={kw}
-                    className="rounded-[4px] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#cccccc]"
+                    className="rounded-[4px] bg-[#262626] px-2 py-0.5 text-xs text-[#cccccc]"
                   >
                     {kw}
                   </span>
@@ -83,7 +83,7 @@ export default function CallsPreview() {
         </div>
 
         {/* Card 2: TSLA */}
-        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
+        <div className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-[4px] border border-green-500/20 bg-green-500/10 px-1.5 py-0.5 text-[11px] font-medium text-green-400">
               실적
@@ -113,7 +113,7 @@ export default function CallsPreview() {
                 {["사이버트럭", "FSD", "생산", "마진", "에너지"].map((kw) => (
                   <span
                     key={kw}
-                    className="rounded-[4px] bg-[#1a1a1a] px-2 py-0.5 text-xs text-[#cccccc]"
+                    className="rounded-[4px] bg-[#262626] px-2 py-0.5 text-xs text-[#cccccc]"
                   >
                     {kw}
                   </span>

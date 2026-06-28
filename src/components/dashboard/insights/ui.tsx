@@ -12,7 +12,7 @@ export function InsightCard({
   className?: string;
 }) {
   return (
-    <div className={cn("overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]", className)}>
+    <div className={cn("overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]", className)}>
       <div className="border-b border-white/[0.06] bg-[#0f0f0f] px-5 py-3">
         <h2 className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">{title}</h2>
       </div>
@@ -76,7 +76,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-white/[0.08] bg-[#111111]">
+    <section className="overflow-hidden rounded-lg border border-white/[0.08] bg-[#1a1a1a]">
       <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] bg-[#242424] px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-white">{title}</h2>

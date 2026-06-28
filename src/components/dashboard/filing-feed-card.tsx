@@ -52,7 +52,7 @@ export default function FilingFeedCard({ filing, className }: { filing: Filing; 
   const content = summary_kr ?? title ?? "";
 
   return (
-    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#111111] p-5", className)}>
+    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5", className)}>
       {/* Row 1: 배지 + 티커 + 날짜 + SEC 링크 */}
       <div className="flex flex-wrap items-center gap-2">
         <span

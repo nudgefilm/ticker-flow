@@ -20,9 +20,13 @@ interface TriggerResult {
   ok: boolean;
   inserted?: number;
   updated?: number;
+  saved?: number;
+  processed?: number;
   skipped?: number;
   errors?: number;
   total?: number;
+  offset?: number;
+  nextOffset?: number;
   tickers?: number;
   filings?: number;
   news?: number;
@@ -87,12 +91,12 @@ const TRIGGERS: Trigger[] = [
   {
     id: "prices",
     label: "주가 히스토리 수집 (Yahoo Finance)",
-    desc: "와치리스트 + 최근 공시 종목의 현재가, 52주 최고/최저, 52주 수익률을 수집합니다. 최대 20종목.",
+    desc: "tickers 테이블 전체 종목의 최근 1개월 일별 종가를 Yahoo Finance에서 수집합니다. 1회 실행당 50종목 처리. ?offset=N 파라미터로 배치 지점 지정 가능.",
   },
   {
     id: "earnings-actual",
     label: "실적 어닝서프라이즈 업데이트 (Finnhub)",
-    desc: "와치리스트 + 최근 공시 종목의 실제 EPS를 Finnhub에서 조회해 earnings 테이블을 갱신합니다. 최대 15종목.",
+    desc: "tickers 테이블 전체 종목의 실제 EPS를 Finnhub에서 조회해 earnings 테이블을 갱신합니다. 1회 실행당 50종목 처리. ?offset=N 파라미터로 배치 지점 지정 가능.",
   },
   {
     id: "translate",
@@ -120,13 +124,16 @@ function resultSummary(result: TriggerResult): string {
   if (!result.ok) return result.error ?? "오류 발생";
   const parts: string[] = [];
   if (result.inserted   !== undefined) parts.push(`저장 ${result.inserted}건`);
+  if (result.saved      !== undefined) parts.push(`저장 ${result.saved}건`);
   if (result.updated    !== undefined) parts.push(`업데이트 ${result.updated}건`);
+  if (result.processed  !== undefined) parts.push(`처리 ${result.processed}종목`);
   if (result.skipped    !== undefined) parts.push(`스킵 ${result.skipped}건`);
   if (result.errors     !== undefined && result.errors > 0) parts.push(`에러 ${result.errors}건`);
   if (result.tickers    !== undefined) parts.push(`티커 ${result.tickers}개`);
   if (result.filings    !== undefined) parts.push(`공시 ${result.filings}건`);
   if (result.news       !== undefined) parts.push(`뉴스 ${result.news}건`);
   if (result.summarized !== undefined) parts.push(`요약 ${result.summarized}건`);
+  if (result.nextOffset !== undefined) parts.push(`오프셋 ${result.offset ?? 0}→${result.nextOffset}`);
   const summary = parts.join(" · ") || "완료";
   return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
 }

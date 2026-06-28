@@ -88,7 +88,7 @@ function EarningsSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="animate-pulse flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#111111] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+          className="animate-pulse flex flex-col gap-3 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
         >
           <div className="flex items-center gap-3">
             <div className="h-5 w-12 rounded-[4px] bg-white/[0.06]" />
@@ -247,7 +247,7 @@ export default async function EarningsPage({
         </Suspense>
       </div>
 
-      <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#111111] px-4 py-3.5">
+      <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4 py-3.5">
         <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#a6a6a6]" stroke={1.5} />
         <div className="space-y-1 text-sm">
           <p className="text-[#cccccc]">모든 시각은 한국 시간(KST) 기준입니다.</p>

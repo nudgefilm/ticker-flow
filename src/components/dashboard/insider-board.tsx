@@ -286,7 +286,7 @@ export default function InsiderBoard({
               <div
                 key={trade.id}
                 className={`rounded-xl border border-white/[0.08] p-4 ${
-                  idx % 2 === 0 ? "bg-[#111820]" : "bg-[#111111]"
+                  idx % 2 === 0 ? "bg-[#111820]" : "bg-[#1a1a1a]"
                 }`}
               >
                 {/* 헤더 */}
@@ -401,7 +401,7 @@ export default function InsiderBoard({
       )}
 
       {/* 데이터 소스 */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111111] px-4 py-3">
+      <div className="rounded-xl border border-white/[0.08] bg-[#1a1a1a] px-4 py-3">
         <p className="text-xs text-[#a6a6a6]">
           <span className="font-medium text-[#cccccc]">데이터 소스: </span>
           FMP(Financial Modeling Prep) · SEC Form 4 공시 기반 · 내부자 (임원·이사·10% 이상 대주주) 직접 매수·매도 거래만 표시됩니다.
