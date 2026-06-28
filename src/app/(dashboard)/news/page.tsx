@@ -15,6 +15,21 @@ const PAGE_SIZE = 50;
 
 const SOURCE_COLORS = ["#60a5fa", "#93c5fd", "#fbbf24", "#c084fc", "#6b7280"];
 
+// NewsSectorChart 컴포넌트 내부 SECTOR_KR과 동일한 순서 유지
+const SECTOR_KR: Record<string, string> = {
+  "Technology": "기술",
+  "Healthcare": "헬스케어",
+  "Financials": "금융",
+  "Consumer Discretionary": "경기소비재",
+  "Industrials": "산업재",
+  "Communication Services": "커뮤니케이션",
+  "Consumer Staples": "필수소비재",
+  "Energy": "에너지",
+  "Utilities": "유틸리티",
+  "Real Estate": "부동산",
+  "Materials": "소재",
+};
+
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
 function NewsFeedSkeleton() {
@@ -167,10 +182,15 @@ export default async function NewsPage({
     const sector = row.tickers?.sector;
     if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
   }
-  const sectorData = Object.entries(sectorCounts)
+  // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 항상 5개 표시
+  const activeSectors = Object.entries(sectorCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
     .map(([sector, count]) => ({ sector, count }));
+  const activeKeys = new Set(activeSectors.map((s) => s.sector));
+  const zeroSectors = Object.keys(SECTOR_KR)
+    .filter((sector) => !activeKeys.has(sector))
+    .map((sector) => ({ sector, count: 0 }));
+  const sectorData = [...activeSectors, ...zeroSectors].slice(0, 5);
 
   return (
     <div className="flex h-full flex-col">

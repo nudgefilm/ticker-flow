@@ -202,14 +202,15 @@ export default async function DashboardPage({
     if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
   }
 
-  const sectorData = Object.entries(sectorCounts)
+  // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 항상 5개 표시
+  const activeSectors = Object.entries(sectorCounts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([sector, count]) => ({
-      sector,
-      sectorKr: SECTOR_KR[sector] ?? sector,
-      count,
-    }));
+    .map(([sector, count]) => ({ sector, sectorKr: SECTOR_KR[sector] ?? sector, count }));
+  const activeKeys = new Set(activeSectors.map((s) => s.sector));
+  const zeroSectors = Object.entries(SECTOR_KR)
+    .filter(([sector]) => !activeKeys.has(sector))
+    .map(([sector, sectorKr]) => ({ sector, sectorKr, count: 0 }));
+  const sectorData = [...activeSectors, ...zeroSectors].slice(0, 5);
 
   return (
     <div className="flex h-full flex-col">
