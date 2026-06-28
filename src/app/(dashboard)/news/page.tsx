@@ -22,14 +22,23 @@ const SECTOR_KR: Record<string, string> = {
   "Financials": "금융",
   "Financial Services": "금융",
   "Consumer Discretionary": "경기소비재",
+  "Consumer Cyclical": "경기소비재",
   "Industrials": "산업재",
   "Communication Services": "커뮤니케이션",
   "Consumer Staples": "필수소비재",
+  "Consumer Defensive": "필수소비재",
   "Energy": "에너지",
   "Utilities": "유틸리티",
   "Real Estate": "부동산",
   "Materials": "소재",
 };
+
+// FMP 실제 반환값 기준 정규 섹터 목록 (11개) — 제로패딩용
+const CANONICAL_SECTORS = [
+  "Technology", "Healthcare", "Financial Services",
+  "Consumer Cyclical", "Consumer Defensive", "Industrials",
+  "Communication Services", "Energy", "Utilities", "Real Estate", "Materials",
+];
 
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
@@ -183,15 +192,15 @@ export default async function NewsPage({
     const sector = row.tickers?.sector;
     if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
   }
-  // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 항상 5개 표시
+  // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 전체 11개 표시
   const activeSectors = Object.entries(sectorCounts)
     .sort((a, b) => b[1] - a[1])
     .map(([sector, count]) => ({ sector, count }));
   const activeKeys = new Set(activeSectors.map((s) => s.sector));
-  const zeroSectors = Object.keys(SECTOR_KR)
+  const zeroSectors = CANONICAL_SECTORS
     .filter((sector) => !activeKeys.has(sector))
     .map((sector) => ({ sector, count: 0 }));
-  const sectorData = [...activeSectors, ...zeroSectors].slice(0, 5);
+  const sectorData = [...activeSectors, ...zeroSectors];
 
   return (
     <div className="flex h-full flex-col">

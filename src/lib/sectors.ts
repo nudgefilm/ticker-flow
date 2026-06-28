@@ -16,11 +16,13 @@ export const SECTOR_KR: Record<string, string> = {
   "Technology": "기술",
   "Healthcare": "헬스케어",
   "Financials": "금융",
-  "Financial Services": "금융",   // FMP API 반환값
+  "Financial Services": "금융",       // FMP API 반환값
   "Consumer Discretionary": "경기소비재",
+  "Consumer Cyclical": "경기소비재",   // FMP API 반환값
   "Industrials": "산업재",
   "Communication Services": "커뮤니케이션",
   "Consumer Staples": "필수소비재",
+  "Consumer Defensive": "필수소비재", // FMP API 반환값
   "Energy": "에너지",
   "Utilities": "유틸리티",
   "Real Estate": "부동산",
@@ -31,9 +33,11 @@ export const SECTOR_COLORS: Record<string, string> = {
   Technology: "#60a5fa",
   Healthcare: "#34d399",
   Financials: "#fbbf24",
-  "Financial Services": "#fbbf24",  // FMP API 반환값 (Financials와 동일 색상)
+  "Financial Services": "#fbbf24",    // FMP API 반환값
   "Consumer Discretionary": "#f87171",
+  "Consumer Cyclical": "#f87171",     // FMP API 반환값
   "Consumer Staples": "#fb923c",
+  "Consumer Defensive": "#fb923c",    // FMP API 반환값
   Energy: "#facc15",
   Industrials: "#a78bfa",
   Materials: "#4ade80",
@@ -60,7 +64,9 @@ export const SECTOR_KEYWORDS: Record<string, string[]> = {
   Financials: ["금리", "대출", "신용", "자사주", "예금"],
   "Financial Services": ["금리", "대출", "신용", "자사주", "예금"],
   "Consumer Discretionary": ["소비", "리테일", "전기차", "여행", "온라인"],
+  "Consumer Cyclical": ["소비", "리테일", "전기차", "여행", "온라인"],
   "Consumer Staples": ["식품", "유통", "가격", "배당", "브랜드"],
+  "Consumer Defensive": ["식품", "유통", "가격", "배당", "브랜드"],
   Energy: ["원유", "천연가스", "정제", "배당", "감산"],
   Industrials: ["수주", "항공", "물류", "설비", "방산"],
   Materials: ["철강", "화학", "구리", "리튬", "원자재"],

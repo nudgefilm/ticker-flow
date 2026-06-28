@@ -8,7 +8,8 @@ interface Props {
 
 const SECTOR_KR: Record<string, string> = {
   Technology: "기술", Healthcare: "헬스케어", Financials: "금융", "Financial Services": "금융",
-  "Consumer Discretionary": "임의소비재", "Consumer Staples": "필수소비재",
+  "Consumer Discretionary": "경기소비재", "Consumer Cyclical": "경기소비재",
+  "Consumer Staples": "필수소비재", "Consumer Defensive": "필수소비재",
   Energy: "에너지", Industrials: "산업재", Materials: "소재",
   "Real Estate": "부동산", Utilities: "유틸리티", "Communication Services": "커뮤니케이션",
 };
