@@ -15,6 +15,7 @@ import LandingShell from "@/components/landing-shell";
 import Footer from "@/components/footer";
 import FaqAccordion from "@/components/landing/faq-accordion";
 import ScreenTabs from "@/components/landing/screen-tabs";
+import DailyChanges from "@/components/landing/daily-changes";
 
 export const dynamic = "force-dynamic";
 
@@ -215,6 +216,11 @@ export default async function HomePage() {
               </div>
             </div>
           </section>
+
+          {/* ══════════════════════════════════════════════
+              1.5 오늘의 미국 기업 변화 (TOP 10)
+          ══════════════════════════════════════════════ */}
+          <DailyChanges />
 
           {/* ══════════════════════════════════════════════
               2. 실시간 변화 피드
