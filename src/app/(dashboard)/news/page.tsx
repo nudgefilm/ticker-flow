@@ -113,19 +113,17 @@ export default async function NewsPage({
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [sourceRaw, trendRaw, sectorNewsRaw, tickersRaw] = await Promise.all([
+  // 섹터 쿼리는 tickers!inner join으로 DB에서 직접 매핑 → JS 두 테이블 join 방식의 1000행 제한 우회
+  const [sourceRaw, trendRaw, sectorNewsRaw] = await Promise.all([
     // 쿼리 1: 출처 분포 (최근 30일)
     supabase.from("news").select("source").gte("published_at", thirtyDaysAgo),
     // 쿼리 2: 7일 추이
     supabase.from("news").select("published_at").gte("published_at", sevenDaysAgo),
-    // 쿼리 3: 섹터별 활동 (최근 7일 ticker)
+    // 쿼리 3: 섹터별 활동 — tickers inner join으로 sector 직접 조회
     supabase
       .from("news")
-      .select("ticker")
-      .gte("published_at", sevenDaysAgo)
-      .not("ticker", "is", null),
-    // ticker → sector 매핑
-    supabase.from("tickers").select("ticker, sector").not("sector", "is", null),
+      .select("tickers!inner(sector)")
+      .gte("published_at", sevenDaysAgo),
   ]);
 
   // 1. 출처 분포 집계
@@ -160,14 +158,13 @@ export default async function NewsPage({
   }
   const trendData = Object.entries(trendMap).map(([day, count]) => ({ day, count }));
 
-  // 3. 섹터별 활동 집계
-  const tickerSectorMap: Record<string, string> = {};
-  for (const t of tickersRaw.data ?? []) {
-    if (t.ticker && t.sector) tickerSectorMap[t.ticker] = t.sector;
-  }
+  // 3. 섹터별 활동 집계 — tickers join 결과에서 집계
+  type NewsWithSector = { tickers: { sector: string | null } | null };
+  const newsSectorRows = (sectorNewsRaw.data ?? []) as unknown as NewsWithSector[];
+
   const sectorCounts: Record<string, number> = {};
-  for (const row of sectorNewsRaw.data ?? []) {
-    const sector = tickerSectorMap[row.ticker ?? ""];
+  for (const row of newsSectorRows) {
+    const sector = row.tickers?.sector;
     if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
   }
   const sectorData = Object.entries(sectorCounts)

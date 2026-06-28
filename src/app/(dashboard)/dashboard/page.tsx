@@ -140,19 +140,20 @@ export default async function DashboardPage({
   const supabase = await createClient();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [filingsRaw, tickersRaw] = await Promise.all([
+  // filings: 유형분포·트렌드용(타입 포함) + 섹터용(tickers join)을 병렬 요청
+  // 섹터 쿼리는 tickers!inner join으로 DB에서 직접 매핑 → JS 두 테이블 join 방식의 1000행 제한 우회
+  const [filingsRaw, sectorRaw] = await Promise.all([
     supabase
       .from("filings")
       .select("form_type, filed_at, ticker")
       .gte("filed_at", thirtyDaysAgo),
     supabase
-      .from("tickers")
-      .select("ticker, sector")
-      .not("sector", "is", null),
+      .from("filings")
+      .select("tickers!inner(sector)")
+      .gte("filed_at", thirtyDaysAgo),
   ]);
 
   const allFilings = filingsRaw.data ?? [];
-  const allTickers = tickersRaw.data ?? [];
 
   // 1. 공시 유형 분포
   const typeCounts: Record<string, number> = {};
@@ -191,15 +192,13 @@ export default async function DashboardPage({
 
   const trendData = Object.entries(trendMap).map(([day, count]) => ({ day, count }));
 
-  // 3. 섹터별 공시 활동 (상위 5개)
-  const tickerSectorMap: Record<string, string> = {};
-  for (const t of allTickers) {
-    if (t.ticker && t.sector) tickerSectorMap[t.ticker] = t.sector;
-  }
+  // 3. 섹터별 공시 활동 — tickers join 결과에서 집계
+  type FilingWithSector = { tickers: { sector: string | null } | null };
+  const sectorFilings = (sectorRaw.data ?? []) as unknown as FilingWithSector[];
 
   const sectorCounts: Record<string, number> = {};
-  for (const f of allFilings) {
-    const sector = tickerSectorMap[f.ticker];
+  for (const f of sectorFilings) {
+    const sector = f.tickers?.sector;
     if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
   }
 
