@@ -1,19 +1,16 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
 
-interface YahooChartResponse {
-  chart: {
-    result: Array<{
-      timestamp: number[];
-      indicators: {
-        quote: Array<{
-          close: (number | null)[];
-          volume: (number | null)[];
-        }>;
-      };
-    }> | null;
-    error: { code: string; description: string } | null;
-  };
+interface FmpHistoricalItem {
+  date: string;
+  close: number;
+  changePercent: number | null;
+  volume: number | null;
+}
+
+interface FmpHistoricalResponse {
+  symbol: string;
+  historical: FmpHistoricalItem[];
 }
 
 type DayPrice = {
@@ -24,66 +21,43 @@ type DayPrice = {
 };
 
 async function fetchDayPrices(
-  ticker: string
+  ticker: string,
+  apiKey: string
 ): Promise<{ rows: DayPrice[]; error?: string } | null> {
+  const from = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const to = new Date().toISOString().slice(0, 10);
   const url =
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
-    `?range=1mo&interval=1d&includePrePost=false`;
+    `https://financialmodelingprep.com/stable/historical-price-eod/full` +
+    `?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}&apikey=${apiKey}`;
 
   let res: Response;
   try {
-    res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://finance.yahoo.com/",
-        Origin: "https://finance.yahoo.com",
-      },
-    });
+    res = await fetch(url);
   } catch (e) {
     return { rows: [], error: `fetch error: ${String(e)}` };
   }
 
   if (!res.ok) return { rows: [], error: `HTTP ${res.status}` };
 
-  let data: YahooChartResponse;
+  let data: FmpHistoricalResponse;
   try {
     data = await res.json();
   } catch {
     return { rows: [], error: "JSON parse error" };
   }
 
-  if (data.chart.error) return { rows: [], error: data.chart.error.description };
-
-  const result = data.chart.result?.[0];
-  if (!result) return { rows: [], error: "no result" };
-
-  const timestamps = result.timestamp ?? [];
-  const closes  = result.indicators?.quote?.[0]?.close  ?? [];
-  const volumes = result.indicators?.quote?.[0]?.volume ?? [];
-
-  const rows: DayPrice[] = [];
-  for (let i = 0; i < timestamps.length; i++) {
-    const close = closes[i];
-    if (close == null || !isFinite(close)) continue;
-
-    const date = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
-    const prevClose = i > 0 ? closes[i - 1] : null;
-    const change_pct =
-      prevClose != null && prevClose > 0
-        ? Math.round(((close - prevClose) / prevClose) * 10000) / 100
-        : null;
-
-    rows.push({
-      date,
-      close: Math.round(close * 100) / 100,
-      change_pct,
-      volume: volumes[i] ?? null,
-    });
+  if (!data.historical || data.historical.length === 0) {
+    return { rows: [], error: "no data" };
   }
+
+  const rows: DayPrice[] = data.historical
+    .filter((item) => item.close != null)
+    .map((item) => ({
+      date: item.date,
+      close: Math.round(item.close * 100) / 100,
+      change_pct: item.changePercent != null ? Math.round(item.changePercent * 100) / 100 : null,
+      volume: item.volume ?? null,
+    }));
 
   return { rows };
 }
@@ -92,6 +66,9 @@ export async function runPricesCollect(
   tickerParam?: string | null,
   offsetParam?: number
 ): Promise<CollectResult> {
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) return { ok: false, error: "FMP_API_KEY not set", retryable: false };
+
   const adminClient = createAdminClient();
   const BATCH_SIZE = 50;
   const offset = offsetParam ?? 0;
@@ -156,7 +133,7 @@ export async function runPricesCollect(
   let skipped = 0;
 
   for (const ticker of tickers) {
-    const result = await fetchDayPrices(ticker);
+    const result = await fetchDayPrices(ticker, apiKey);
     const collectedAt = new Date().toISOString();
 
     if (!result || result.rows.length === 0) {

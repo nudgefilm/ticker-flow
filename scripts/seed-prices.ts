@@ -1,7 +1,7 @@
 /**
  * scripts/seed-prices.ts
  * tickers 테이블 전체 종목의 1년 일봉 주가 데이터를
- * Yahoo Finance에서 수집해 stock_prices 테이블에 저장하는 로컬 실행 스크립트.
+ * FMP에서 수집해 stock_prices 테이블에 저장하는 로컬 실행 스크립트.
  *
  * 실행:
  *   npx tsx scripts/seed-prices.ts
@@ -35,9 +35,10 @@ loadEnvLocal();
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const FMP_API_KEY = process.env.FMP_API_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("필수 환경변수 누락: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY");
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !FMP_API_KEY) {
+  console.error("필수 환경변수 누락: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, FMP_API_KEY");
   process.exit(1);
 }
 
@@ -46,20 +47,17 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) as any;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ── Yahoo Finance 응답 타입 ──────────────────────────────────────────────────
-interface YahooChartResponse {
-  chart: {
-    result: Array<{
-      timestamp: number[];
-      indicators: {
-        quote: Array<{
-          close: (number | null)[];
-          volume: (number | null)[];
-        }>;
-      };
-    }> | null;
-    error: { code: string; description: string } | null;
-  };
+// ── FMP API 응답 타입 ────────────────────────────────────────────────────────
+interface FmpHistoricalItem {
+  date: string;
+  close: number;
+  changePercent: number | null;
+  volume: number | null;
+}
+
+interface FmpHistoricalResponse {
+  symbol: string;
+  historical: FmpHistoricalItem[];
 }
 
 type DayPrice = {
@@ -71,70 +69,30 @@ type DayPrice = {
   collected_at: string;
 };
 
-// ── Yahoo Finance 1년 일봉 조회 ──────────────────────────────────────────────
+// ── FMP 1년 일봉 조회 ────────────────────────────────────────────────────────
 async function fetchYearPrices(ticker: string, collectedAt: string): Promise<DayPrice[] | null> {
-  const url =
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}` +
-    `?range=1y&interval=1d&includePrePost=false`;
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${encodeURIComponent(ticker)}&apikey=${FMP_API_KEY}`;
 
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-          "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-        Referer: "https://finance.yahoo.com/",
-        Origin: "https://finance.yahoo.com",
-      },
-    });
-  } catch (e) {
-    throw new Error(`fetch 오류: ${String(e)}`);
-  }
-
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  let data: YahooChartResponse;
-  try {
-    data = await res.json();
-  } catch {
-    throw new Error("JSON 파싱 오류");
-  }
+  const data: FmpHistoricalResponse = await res.json();
+  if (!data.historical || data.historical.length === 0) return null;
 
-  if (data.chart.error) throw new Error(data.chart.error.description);
-
-  const result = data.chart.result?.[0];
-  if (!result) return null;
-
-  const timestamps = result.timestamp ?? [];
-  const closes = result.indicators?.quote?.[0]?.close ?? [];
-  const volumes = result.indicators?.quote?.[0]?.volume ?? [];
-
-  const rows: DayPrice[] = [];
-  for (let i = 0; i < timestamps.length; i++) {
-    const close = closes[i];
-    if (close == null || !isFinite(close)) continue;
-
-    const date = new Date(timestamps[i] * 1000).toISOString().slice(0, 10);
-    const prevClose = i > 0 ? closes[i - 1] : null;
-    const change_pct =
-      prevClose != null && prevClose > 0
-        ? Math.round(((close - prevClose) / prevClose) * 10000) / 100
-        : null;
-
-    rows.push({
+  // FMP는 최신순 정렬 — 1년치 필터 (오늘 기준 365일 이내)
+  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const rows: DayPrice[] = data.historical
+    .filter((item) => item.date >= cutoff && item.close != null)
+    .map((item) => ({
       ticker,
-      date,
-      close: Math.round(close * 100) / 100,
-      change_pct,
-      volume: volumes[i] ?? null,
+      date: item.date,
+      close: Math.round(item.close * 100) / 100,
+      change_pct: item.changePercent != null ? Math.round(item.changePercent * 100) / 100 : null,
+      volume: item.volume ?? null,
       collected_at: collectedAt,
-    });
-  }
+    }));
 
-  return rows;
+  return rows.length > 0 ? rows : null;
 }
 
 // ── Supabase PostgREST 1000행 제한 우회 — 전체 티커 조회 ─────────────────────
@@ -182,7 +140,7 @@ async function main() {
 
   console.log(`대상 종목: ${total}개\n`);
 
-  let saved = 0;
+  let savedRows = 0;
   let skipped = 0;
   let errors = 0;
 
@@ -195,7 +153,7 @@ async function main() {
     try {
       const rows = await fetchYearPrices(ticker, collectedAt);
 
-      if (!rows || rows.length === 0) {
+      if (!rows) {
         console.log(`${prefix} 스킵 — 데이터 없음`);
         skipped++;
       } else {
@@ -207,8 +165,8 @@ async function main() {
           console.error(`${prefix} DB 오류 — ${upsertErr.message}`);
           errors++;
         } else {
-          console.log(`${prefix} 저장 — ${rows.length}행  (누적 저장: ${saved + rows.length} / 스킵: ${skipped} / 오류: ${errors})`);
-          saved += rows.length;
+          savedRows += rows.length;
+          console.log(`${prefix} 저장 — ${rows.length}행  (누적 저장: ${savedRows} / 스킵: ${skipped} / 오류: ${errors})`);
         }
       }
     } catch (e) {
@@ -222,8 +180,8 @@ async function main() {
 
   console.log("\n=== 최종 결과 ===");
   console.log(`전체 종목: ${total}`);
-  console.log(`저장 행수: ${saved}`);
-  console.log(`스킵 종목: ${skipped}  (Yahoo Finance 데이터 없음)`);
+  console.log(`저장 행수: ${savedRows}`);
+  console.log(`스킵 종목: ${skipped}  (FMP 데이터 없음)`);
   console.log(`오류 종목: ${errors}`);
 }
 
