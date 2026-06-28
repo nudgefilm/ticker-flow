@@ -128,16 +128,22 @@ export async function runPricesCollect(
       }
     }
 
-    // stock_prices 행이 없는 티커 추가 (미수집 종목)
-    const { data: allTickers } = await adminClient
-      .from("tickers")
-      .select("ticker")
-      .order("ticker", { ascending: true })
-      .limit(10000);
-
-    for (const row of allTickers ?? []) {
-      if (!seen.has(row.ticker)) {
-        prioritized.push(row.ticker);
+    // stock_prices 행이 없는 티커 추가 — PostgREST 1000행 제한 우회: range 페이지네이션
+    {
+      const TICKER_PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data } = await adminClient
+          .from("tickers")
+          .select("ticker")
+          .order("ticker", { ascending: true })
+          .range(from, from + TICKER_PAGE - 1);
+        if (!data || data.length === 0) break;
+        for (const row of data) {
+          if (!seen.has(row.ticker)) prioritized.push(row.ticker);
+        }
+        if (data.length < TICKER_PAGE) break;
+        from += TICKER_PAGE;
       }
     }
 

@@ -23,8 +23,23 @@ export async function runNewsCollect(): Promise<CollectResult> {
 
     const adminClient = createAdminClient();
 
-    const { data: knownRows } = await adminClient.from("tickers").select("ticker");
-    const tickerSet = new Set<string>(knownRows?.map((r) => r.ticker) ?? []);
+    // tickerSet 전체 조회 — PostgREST 1000행 제한 우회: range 페이지네이션
+    const tickerSet = new Set<string>();
+    {
+      const TICKER_PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data } = await adminClient
+          .from("tickers")
+          .select("ticker")
+          .range(from, from + TICKER_PAGE - 1);
+        if (!data || data.length === 0) break;
+        for (const r of data) tickerSet.add(r.ticker);
+        if (data.length < TICKER_PAGE) break;
+        from += TICKER_PAGE;
+      }
+    }
+    console.log(`[collect/news] tickerSet 종목 수: ${tickerSet.size}개`);
 
     let inserted = 0;
     let skipped = 0;

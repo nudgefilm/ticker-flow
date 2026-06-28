@@ -93,10 +93,27 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
     }
 
     const hits = await fetchAllHits(startdt, enddt);
+    console.log(`[collect/filings] EDGAR hits: ${hits.length}건`);
+
     const adminClient = createAdminClient();
 
-    const { data: knownRows } = await adminClient.from("tickers").select("ticker");
-    const tickerSet = new Set<string>(knownRows?.map((r) => r.ticker) ?? []);
+    // tickerSet 전체 조회 — PostgREST 1000행 제한 우회: range 페이지네이션
+    const tickerSet = new Set<string>();
+    {
+      const TICKER_PAGE = 1000;
+      let from = 0;
+      while (true) {
+        const { data } = await adminClient
+          .from("tickers")
+          .select("ticker")
+          .range(from, from + TICKER_PAGE - 1);
+        if (!data || data.length === 0) break;
+        for (const r of data) tickerSet.add(r.ticker);
+        if (data.length < TICKER_PAGE) break;
+        from += TICKER_PAGE;
+      }
+    }
+    console.log(`[collect/filings] tickerSet 종목 수: ${tickerSet.size}개`);
 
     let inserted = 0;
     let skipNoTicker = 0;
@@ -157,6 +174,14 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
       }
     }
 
+    const tickerMatched = hits.length - skipNoTicker;
+    const insertAttempted = tickerMatched - skipTickerErr;
+    const skipped = skipNoTicker + skipTickerErr + skipFilingErr;
+    console.log(`[collect/filings] ticker 매칭: ${tickerMatched}건`);
+    console.log(`[collect/filings] insert 시도: ${insertAttempted}건`);
+    console.log(`[collect/filings] 저장: ${inserted}건`);
+    console.log(`[collect/filings] 스킵: ${skipped}건 (ticker없음 ${skipNoTicker} / ticker오류 ${skipTickerErr} / upsert오류 ${skipFilingErr})`);
+
     let summarized = 0;
     let summarizeFailed = 0;
     if (process.env.ANTHROPIC_API_KEY) {
@@ -170,7 +195,7 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
       period: { startdt, enddt },
       total: hits.length,
       inserted,
-      skipped: skipNoTicker + skipTickerErr + skipFilingErr,
+      skipped,
       summarized,
       ...(summarizeFailed > 0 && { summarizeFailed }),
       debug: { skipNoTicker, skipTickerErr, skipFilingErr, firstError: firstError ?? null, sampleSource: hits[0]?._source ?? null },
