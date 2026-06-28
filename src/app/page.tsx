@@ -483,12 +483,6 @@ export default async function HomePage() {
 
         <Footer />
 
-        {/* 면책 문구 */}
-        <div className="border-t border-border py-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            본 서비스는 공개 정보를 기반으로 한 참고용 모니터링 도구입니다. 투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.
-          </p>
-        </div>
       </LandingShell>
     </div>
   );
