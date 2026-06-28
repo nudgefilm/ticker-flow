@@ -8,7 +8,7 @@
  * Phase 2: 전체 종목 과거 4분기 실적 수집
  *   - tickers 테이블 전체 종목 대상 (1000행씩 range() 반복)
  *   - API: /stock/earnings?symbol={ticker} (최근 4분기 actual_eps)
- *   - 종목당 300ms 딜레이
+ *   - 종목당 500ms 딜레이
  *
  * 실행:
  *   npx tsx scripts/seed-earnings.ts
@@ -276,7 +276,7 @@ async function main() {
       p2Errors++;
     }
 
-    if (i < total - 1) await delay(300);
+    if (i < total - 1) await delay(500);
   }
 
   console.log(`\nPhase 2 완료 — 저장: ${p2Saved}행 / 스킵: ${p2Skipped} / 오류: ${p2Errors}`);
