@@ -103,10 +103,6 @@ interface FinnhubEarningsSurprise {
   year: number;
 }
 
-function daysDiff(a: string, b: string): number {
-  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / (1000 * 60 * 60 * 24);
-}
-
 async function updateEarningsForTicker(
   ticker: string,
   apiKey: string,
@@ -121,36 +117,28 @@ async function updateEarningsForTicker(
   const surprises: FinnhubEarningsSurprise[] = await res.json();
   if (!Array.isArray(surprises) || surprises.length === 0) return { updated: 0, skipped: 0 };
 
+  // actual이 있는 최근 4분기만
   const valid = surprises.filter((s) => s.actual != null && s.period).slice(0, 4);
   if (valid.length === 0) return { updated: 0, skipped: 0 };
-
-  const today = new Date().toISOString().slice(0, 10);
-  const { data: dbRows } = await adminClient
-    .from("earnings")
-    .select("ticker, report_date, actual_eps")
-    .eq("ticker", ticker)
-    .lte("report_date", today)
-    .limit(20);
-
-  if (!dbRows || dbRows.length === 0) return { updated: 0, skipped: valid.length };
 
   let updated = 0;
   let skipped = 0;
 
   for (const surprise of valid) {
-    const match = dbRows.find(
-      (row) => row.actual_eps == null && daysDiff(surprise.period, row.report_date) <= 90
-    );
-    if (!match) { skipped++; continue; }
-
     const { error } = await adminClient
       .from("earnings")
-      .update({ actual_eps: surprise.actual, eps_estimate: surprise.estimate ?? undefined })
-      .eq("ticker", ticker)
-      .eq("report_date", match.report_date);
+      .upsert(
+        {
+          ticker: surprise.symbol,
+          report_date: surprise.period,
+          eps_estimate: surprise.estimate ?? null,
+          actual_eps: surprise.actual,
+        },
+        { onConflict: "ticker,report_date" }
+      );
 
     if (error) {
-      console.error(`[collect/earnings-actual] ${ticker} ${match.report_date}:`, error.message);
+      console.error(`[collect/earnings-actual] ${ticker} ${surprise.period}:`, error.message);
       skipped++;
     } else {
       updated++;
