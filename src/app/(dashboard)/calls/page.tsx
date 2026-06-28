@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
+import ProGate from "@/components/dashboard/pro-gate";
 import CallsBoard from "@/components/dashboard/calls-board";
 import type { EarningsCall, GuidanceDirection, KeyStatement, QaPair, KeywordChange } from "@/lib/earnings-calls";
 
@@ -131,7 +132,13 @@ export default async function CallsPage() {
         어닝콜(실적 발표 컨퍼런스콜)이란 경영진이 투자자·애널리스트에게 실적을 직접 설명하는 자리입니다.
       </p>
       <div className="mt-6 flex-1">
-        <CallsBoard calls={calls} isPro={isPro} />
+        <ProGate
+          iconName="microphone"
+          title="어닝콜 요약은 Pro 전용 기능입니다"
+          description="1시간이 넘는 어닝콜을 한국어로 요약합니다.&#10;핵심 발언, Q&A, 가이던스 변화를 한눈에 확인하세요."
+        >
+          <CallsBoard calls={calls} isPro={isPro} />
+        </ProGate>
       </div>
       <DashboardDisclaimer />
     </div>
