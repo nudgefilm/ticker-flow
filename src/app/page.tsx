@@ -65,8 +65,8 @@ export default async function HomePage() {
       .limit(20),
     admin
       .from("news")
-      .select("id, ticker, headline, published_at")
-      .not("headline", "is", null)
+      .select("id, ticker, summary_kr, published_at")
+      .not("summary_kr", "is", null)
       .order("published_at", { ascending: false })
       .limit(5),
   ]);
@@ -83,9 +83,9 @@ export default async function HomePage() {
       time: timeAgo(f.filed_at),
       category: "공시",
     })),
-    ...((newsList ?? []).filter((n) => n.headline).slice(0, 1).map((n) => ({
+    ...((newsList ?? []).slice(0, 1).map((n) => ({
       ticker: n.ticker ?? "—",
-      label: n.headline!,
+      label: n.summary_kr!,
       time: timeAgo(n.published_at),
       category: "뉴스",
     }))),
