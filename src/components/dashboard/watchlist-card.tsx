@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { IconTrash, IconLock, IconLoader2 } from "@tabler/icons-react";
+import { IconTrash, IconLoader2, IconChevronRight } from "@tabler/icons-react";
 
 export interface WatchlistStock {
   ticker: string;
@@ -23,20 +23,18 @@ export default function WatchlistCard({
   const { ticker, company, newFilings, earningsDday, newNews } = stock;
 
   return (
-    <article className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-      {/* Row 1: 티커 + 회사명 + 삭제 */}
-      <div className="flex items-center justify-between gap-3">
-        <Link href={`/stocks/${ticker}`} className="flex items-center gap-2">
-          <span className="rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs text-[#cccccc]">
-            {ticker}
-          </span>
-          <span className="text-sm font-medium text-[#60a5fa]">{company}</span>
-        </Link>
+    <article className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      {/* 상단: 티커 + 회사명 + 삭제 */}
+      <div className="flex items-center justify-between gap-3 bg-[#1a1a1a] px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{ticker}</p>
+          <p className="truncate text-xs text-[#a6a6a6]">{company}</p>
+        </div>
         <button
           type="button"
           onClick={onDelete}
           disabled={isDeleting}
-          className="text-[#a6a6a6] transition-colors hover:text-white disabled:opacity-50"
+          className="shrink-0 text-[#a6a6a6] transition-colors hover:text-white disabled:opacity-50"
           aria-label="종목 삭제"
         >
           {isDeleting ? (
@@ -47,34 +45,29 @@ export default function WatchlistCard({
         </button>
       </div>
 
-      {/* Row 2: 공시 / 실적 / 뉴스 */}
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {[
-          { value: newFilings === 0 ? "없음" : `${newFilings}건`, label: "새 공시" },
-          { value: earningsDday, label: "실적" },
-          { value: newNews === 0 ? "없음" : `${newNews}건`, label: "새 뉴스" },
-        ].map((item) => (
-          <div key={item.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5">
-            <p className="text-sm font-semibold text-white">{item.value}</p>
-            <p className="mt-0.5 text-xs text-[#a6a6a6]">{item.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Row 3: 링크 */}
-      <div className="mt-3 flex items-center gap-4 border-t border-white/[0.06] pt-3">
-        <Link href="/dashboard" className="text-xs text-[#a6a6a6] transition-colors hover:text-white">
-          공시 보기
-        </Link>
-        <Link href="/news" className="text-xs text-[#a6a6a6] transition-colors hover:text-white">
-          뉴스 보기
-        </Link>
-        <div className="ml-auto flex items-center gap-1.5">
-          <IconLock size={14} stroke={1.5} className="text-[#a6a6a6]" />
-          <Link href="/billing" className="text-xs text-[#a6a6a6] transition-colors hover:text-white">
-            변화 분석 보기
-          </Link>
+      <div className="p-4">
+        {/* 공시 / 실적 / 뉴스 */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { value: newFilings === 0 ? "없음" : `${newFilings}건`, label: "새 공시" },
+            { value: earningsDday, label: "실적" },
+            { value: newNews === 0 ? "없음" : `${newNews}건`, label: "새 뉴스" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-[4px] bg-[#1a1a1a] px-3 py-2.5">
+              <p className="text-sm font-semibold text-white">{item.value}</p>
+              <p className="mt-0.5 text-xs text-[#a6a6a6]">{item.label}</p>
+            </div>
+          ))}
         </div>
+
+        {/* 종목 스냅샷 링크 */}
+        <Link
+          href={`/stocks/${ticker}`}
+          className="mt-3 flex items-center justify-between rounded-[4px] border border-white/[0.06] px-3 py-2 text-xs text-[#a6a6a6] transition-colors hover:border-white/[0.12] hover:text-white"
+        >
+          <span>종목 스냅샷</span>
+          <IconChevronRight size={13} stroke={1.5} />
+        </Link>
       </div>
     </article>
   );
