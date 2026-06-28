@@ -16,6 +16,7 @@ export const SECTOR_KR: Record<string, string> = {
   "Technology": "기술",
   "Healthcare": "헬스케어",
   "Financials": "금융",
+  "Financial Services": "금융",   // FMP API 반환값
   "Consumer Discretionary": "경기소비재",
   "Industrials": "산업재",
   "Communication Services": "커뮤니케이션",
@@ -30,6 +31,7 @@ export const SECTOR_COLORS: Record<string, string> = {
   Technology: "#60a5fa",
   Healthcare: "#34d399",
   Financials: "#fbbf24",
+  "Financial Services": "#fbbf24",  // FMP API 반환값 (Financials와 동일 색상)
   "Consumer Discretionary": "#f87171",
   "Consumer Staples": "#fb923c",
   Energy: "#facc15",
@@ -56,6 +58,7 @@ export const SECTOR_KEYWORDS: Record<string, string[]> = {
   Technology: ["AI", "Semiconductor", "Cloud", "GPU", "Data Center"],
   Healthcare: ["FDA", "임상", "신약", "바이오", "승인"],
   Financials: ["금리", "대출", "신용", "자사주", "예금"],
+  "Financial Services": ["금리", "대출", "신용", "자사주", "예금"],
   "Consumer Discretionary": ["소비", "리테일", "전기차", "여행", "온라인"],
   "Consumer Staples": ["식품", "유통", "가격", "배당", "브랜드"],
   Energy: ["원유", "천연가스", "정제", "배당", "감산"],

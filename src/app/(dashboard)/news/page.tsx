@@ -20,6 +20,7 @@ const SECTOR_KR: Record<string, string> = {
   "Technology": "기술",
   "Healthcare": "헬스케어",
   "Financials": "금융",
+  "Financial Services": "금융",
   "Consumer Discretionary": "경기소비재",
   "Industrials": "산업재",
   "Communication Services": "커뮤니케이션",
