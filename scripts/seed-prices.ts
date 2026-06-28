@@ -71,7 +71,11 @@ type DayPrice = {
 
 // ── FMP 1년 일봉 조회 ────────────────────────────────────────────────────────
 async function fetchYearPrices(ticker: string, collectedAt: string): Promise<DayPrice[] | null> {
-  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${encodeURIComponent(ticker)}&apikey=${FMP_API_KEY}`;
+  const to = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const url =
+    `https://financialmodelingprep.com/stable/historical-price-eod/full` +
+    `?symbol=${encodeURIComponent(ticker)}&from=${from}&to=${to}&apikey=${FMP_API_KEY}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -79,10 +83,8 @@ async function fetchYearPrices(ticker: string, collectedAt: string): Promise<Day
   const data: FmpHistoricalResponse = await res.json();
   if (!data.historical || data.historical.length === 0) return null;
 
-  // FMP는 최신순 정렬 — 1년치 필터 (오늘 기준 365일 이내)
-  const cutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const rows: DayPrice[] = data.historical
-    .filter((item) => item.date >= cutoff && item.close != null)
+    .filter((item) => item.close != null)
     .map((item) => ({
       ticker,
       date: item.date,
