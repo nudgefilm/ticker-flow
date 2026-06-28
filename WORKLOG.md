@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-28 · 세션 48
+
+### 랜딩 페이지 recent-changes.tsx 데이터 품질 개선
+
+**변경 내용**
+- 공시 우선순위 필터 강화: `getFormPriority()` 함수 추가
+  - 0순위: 8-K + PRIORITY_EVENT_TYPES (CEO 교체 등)
+  - 2순위: Form 4 내부자거래
+  - 3순위: 10-K 연간보고서
+  - 4순위: 10-Q 분기보고서
+  - 5순위: 8-K (event_type 없는 것)
+  - 10순위: S-1, DEF 14A 등 후순위 공시
+- 뉴스 카드 추가: 공시 6건 미만 시 뉴스로 채움
+  - `headline IS NOT NULL` 조건으로 제목 없는 뉴스 제외
+  - headline 표시 (제목), summary_kr 있으면 함께 표시
+- 카드 타입 분리: `CardItem = { kind: "filing" | "news"; data }` 유니온 타입
+
+**수정 파일**
+- `src/components/recent-changes.tsx`
+
+---
+
 ## 2026-06-28 · 세션 47
 
 ### Google OAuth 로그인 버그 수정

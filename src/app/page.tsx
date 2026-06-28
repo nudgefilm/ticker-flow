@@ -55,30 +55,37 @@ export default async function HomePage() {
   const admin = createAdminClient();
 
   // ── 실시간 피드 데이터 ──────────────────────────────────────────────────────
-  const [{ data: filings }, { data: newsList }] = await Promise.all([
+  const SKIP_FORMS = new Set(["S-1", "S-1/A", "DEF 14A", "424B4", "S-3", "S-3/A"]);
+
+  const [{ data: rawFilings }, { data: newsList }] = await Promise.all([
     admin
       .from("filings")
       .select("id, ticker, form_type, filed_at")
       .order("filed_at", { ascending: false })
-      .limit(2),
+      .limit(20),
     admin
       .from("news")
       .select("id, ticker, headline, published_at")
+      .not("headline", "is", null)
       .order("published_at", { ascending: false })
-      .limit(1),
+      .limit(5),
   ]);
+
+  const priorityFilings = (rawFilings ?? [])
+    .filter((f) => !SKIP_FORMS.has(f.form_type))
+    .slice(0, 2);
 
   type FeedItem = { ticker: string; label: string; time: string; category: string };
   const feedItems: FeedItem[] = [
-    ...((filings ?? []).map((f) => ({
+    ...priorityFilings.map((f) => ({
       ticker: f.ticker,
       label: formTypeKr(f.form_type),
       time: timeAgo(f.filed_at),
       category: "공시",
-    }))),
-    ...((newsList ?? []).map((n) => ({
+    })),
+    ...((newsList ?? []).filter((n) => n.headline).slice(0, 1).map((n) => ({
       ticker: n.ticker ?? "—",
-      label: "뉴스 수집",
+      label: n.headline!,
       time: timeAgo(n.published_at),
       category: "뉴스",
     }))),
@@ -258,10 +265,10 @@ export default async function HomePage() {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
-                  { icon: "📄", text: "영어 공시를 직접 읽어야 합니다." },
-                  { icon: "🎙", text: "1시간 넘는 어닝콜을 들어야 합니다." },
-                  { icon: "🌐", text: "뉴스·공시·실적이 여러 사이트에 흩어져 있습니다." },
-                  { icon: "⏰", text: "결국 중요한 변화를 놓치게 됩니다.", highlight: true },
+                  { icon: "📄", text: "SEC 공시를 열었는데 영어라 이해하기 어려웠습니다." },
+                  { icon: "🎙", text: "어닝콜이 1시간이 넘어서 끝까지 보기 어려웠습니다." },
+                  { icon: "🌐", text: "여러 사이트를 오가며 정보를 확인해야 했습니다." },
+                  { icon: "⏰", text: "중요한 변화를 뒤늦게 알게 되었습니다.", highlight: true },
                 ].map((item, i) => (
                   <div
                     key={i}

@@ -17,12 +17,24 @@ const EVENT_TYPE_KR: Record<string, string> = {
 const PRIORITY_EVENT_TYPES = ["ceo_change", "cfo_change", "buyback", "insider_trade", "ma", "guidance", "contract"];
 
 const FORM_TYPE_KR: Record<string, string> = {
-  "8-K":   "8-K 주요이벤트",
-  "10-K":  "10-K 연간보고서",
-  "10-Q":  "10-Q 분기보고서",
-  "4":     "Form 4 내부자거래",
+  "8-K":    "8-K 주요이벤트",
+  "10-K":   "10-K 연간보고서",
+  "10-Q":   "10-Q 분기보고서",
+  "4":      "Form 4 내부자거래",
   "DEF 14A": "위임장 설명서",
 };
+
+// 낮을수록 먼저 노출
+function getFormPriority(formType: string, eventType: string | null): number {
+  const ft = formType.toUpperCase();
+  if (ft.startsWith("8-K") && eventType && PRIORITY_EVENT_TYPES.includes(eventType)) return 0;
+  if (ft === "4" || ft === "4/A") return 2;
+  if (ft.startsWith("10-K")) return 3;
+  if (ft.startsWith("10-Q")) return 4;
+  if (ft.startsWith("8-K")) return 5;
+  // S-1, DEF 14A 등 후순위
+  return 10;
+}
 
 type BadgeVariant = "blue" | "green" | "amber" | "purple";
 
@@ -68,32 +80,78 @@ type FilingRow = {
   filed_at: string;
 };
 
+type NewsRow = {
+  ticker: string | null;
+  headline: string;
+  summary_kr: string | null;
+  published_at: string;
+};
+
+type CardItem =
+  | { kind: "filing"; data: FilingRow }
+  | { kind: "news"; data: NewsRow };
+
 export default async function RecentChanges() {
-  let filings: FilingRow[] = [];
+  let cards: CardItem[] = [];
   const nameMap = new Map<string, string>();
 
   try {
     const admin = createAdminClient();
     const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
-    const { data } = await admin
+    const { data: rawFilings } = await admin
       .from("filings")
       .select("ticker, form_type, event_type, summary_kr, filed_at")
       .not("summary_kr", "is", null)
       .gte("filed_at", sevenDaysAgo)
       .order("filed_at", { ascending: false })
-      .limit(30);
+      .limit(50);
 
-    const all = (data ?? []) as unknown as FilingRow[];
-    const priority  = all.filter((r) => r.event_type && PRIORITY_EVENT_TYPES.includes(r.event_type));
-    const remaining = all.filter((r) => !r.event_type || !PRIORITY_EVENT_TYPES.includes(r.event_type));
-    filings = [...priority, ...remaining].slice(0, 6);
+    const allFilings = (rawFilings ?? []) as unknown as FilingRow[];
 
-    if (filings.length > 0) {
+    // 우선순위 오름차순 → 동일 우선순위 내 최신 순
+    const sorted = allFilings.sort((a, b) => {
+      const pDiff = getFormPriority(a.form_type, a.event_type) - getFormPriority(b.form_type, b.event_type);
+      if (pDiff !== 0) return pDiff;
+      return new Date(b.filed_at).getTime() - new Date(a.filed_at).getTime();
+    });
+
+    cards = sorted.slice(0, 6).map((f) => ({ kind: "filing", data: f }));
+
+    // 공시가 6건 미만이면 뉴스로 채움
+    if (cards.length < 6) {
+      const { data: rawNews } = await admin
+        .from("news")
+        .select("ticker, headline, summary_kr, published_at")
+        .not("headline", "is", null)
+        .gte("published_at", sevenDaysAgo)
+        .order("published_at", { ascending: false })
+        .limit(20);
+
+      const validNews = ((rawNews ?? []) as unknown as NewsRow[]).filter(
+        (n) => n.headline && n.headline.trim().length > 0
+      );
+
+      const needed = 6 - cards.length;
+      for (const n of validNews.slice(0, needed)) {
+        cards.push({ kind: "news", data: n });
+      }
+    }
+
+    // 회사명 일괄 조회
+    const tickers = [
+      ...new Set(
+        cards
+          .map((c) => (c.kind === "filing" ? c.data.ticker : c.data.ticker))
+          .filter((t): t is string => t !== null && t !== undefined)
+      ),
+    ];
+
+    if (tickers.length > 0) {
       const { data: tickerRows } = await admin
         .from("tickers")
         .select("ticker, name_kr, name_en")
-        .in("ticker", filings.map((f) => f.ticker));
+        .in("ticker", tickers);
       for (const t of tickerRows ?? []) {
         nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
       }
@@ -102,8 +160,7 @@ export default async function RecentChanges() {
     // admin 자격증명 없으면 빈 상태로 fallback
   }
 
-  // 데이터가 없으면 안내 메시지
-  if (filings.length === 0) {
+  if (cards.length === 0) {
     return (
       <section className="mx-auto max-w-6xl px-6 py-16 md:py-20">
         <div className="mb-10 text-center">
@@ -127,37 +184,81 @@ export default async function RecentChanges() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filings.map((filing) => {
-          const badge = getEventBadge(filing.event_type, filing.form_type);
-          const companyName = nameMap.get(filing.ticker) ?? filing.ticker;
-          return (
-            <div
-              key={`${filing.ticker}-${filing.filed_at}`}
-              className="rounded-lg border border-border bg-card p-5 space-y-3"
-            >
-              {/* 배지 + 시각 */}
-              <div className="flex items-center justify-between gap-2">
+        {cards.map((card, idx) => {
+          if (card.kind === "filing") {
+            const filing = card.data;
+            const badge = getEventBadge(filing.event_type, filing.form_type);
+            const companyName = nameMap.get(filing.ticker) ?? filing.ticker;
+            return (
+              <div
+                key={`filing-${filing.ticker}-${filing.filed_at}-${idx}`}
+                className="rounded-lg border border-border bg-card p-5 flex flex-col gap-2.5"
+              >
+                {/* ticker */}
+                <p className="text-base font-bold text-foreground">
+                  {filing.ticker}
+                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">· {companyName}</span>
+                </p>
+
+                {/* 배지 */}
                 <span
-                  className={`inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-medium ${BADGE_CLASSES[badge.variant]}`}
+                  className={`self-start inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-medium ${BADGE_CLASSES[badge.variant]}`}
                 >
                   {badge.label}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {formatRelativeTime(filing.filed_at)}
-                </span>
-              </div>
 
-              {/* 회사명 */}
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {filing.ticker}
-                  <span className="ml-1.5 font-normal text-muted-foreground">· {companyName}</span>
+                {/* 요약 */}
+                <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground flex-1">
+                  {filing.summary_kr}
+                </p>
+
+                {/* 시간 */}
+                <p className="text-xs text-muted-foreground text-right">
+                  {formatRelativeTime(filing.filed_at)}
                 </p>
               </div>
+            );
+          }
+
+          // 뉴스 카드
+          const news = card.data;
+          const ticker = news.ticker ?? null;
+          const companyName = ticker ? (nameMap.get(ticker) ?? ticker) : null;
+          return (
+            <div
+              key={`news-${ticker ?? "general"}-${news.published_at}-${idx}`}
+              className="rounded-lg border border-border bg-card p-5 flex flex-col gap-2.5"
+            >
+              {/* ticker */}
+              <p className="text-base font-bold text-foreground">
+                {ticker ?? "시장 뉴스"}
+                {ticker && companyName && companyName !== ticker && (
+                  <span className="ml-1.5 text-sm font-normal text-muted-foreground">· {companyName}</span>
+                )}
+              </p>
+
+              {/* 배지 */}
+              <span
+                className={`self-start inline-flex items-center rounded-[4px] border px-1.5 py-0.5 text-[11px] font-medium ${BADGE_CLASSES["blue"]}`}
+              >
+                뉴스
+              </span>
+
+              {/* 제목 */}
+              <p className="line-clamp-2 text-sm font-medium text-foreground">
+                {news.headline}
+              </p>
 
               {/* 요약 */}
-              <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                {filing.summary_kr}
+              {news.summary_kr && (
+                <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground flex-1">
+                  {news.summary_kr}
+                </p>
+              )}
+
+              {/* 시간 */}
+              <p className="text-xs text-muted-foreground text-right">
+                {formatRelativeTime(news.published_at)}
               </p>
             </div>
           );
