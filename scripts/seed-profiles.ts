@@ -1,10 +1,9 @@
 /**
  * scripts/seed-profiles.ts
- * tickers 테이블에서 sector NULL 종목을 FMP API로 일괄 조회하여 sector/industry 업데이트.
+ * tickers 테이블에서 sector NULL 종목 전체를 FMP API로 일괄 조회하여 sector/industry 업데이트.
  *
  * 실행:
- *   npx ts-node scripts/seed-profiles.ts
- *   npx tsx scripts/seed-profiles.ts       (ts-node 오류 시)
+ *   npx tsx scripts/seed-profiles.ts
  */
 
 import * as fs from "fs";
@@ -64,23 +63,45 @@ async function fetchProfile(ticker: string): Promise<FmpProfile | null> {
   return Array.isArray(data) && data.length > 0 ? data[0] : null;
 }
 
+// ── Supabase PostgREST 1000행 제한을 우회한 전체 조회 ────────────────────────
+async function fetchAllNullSectorTickers(): Promise<string[]> {
+  const PAGE = 1000;
+  const result: string[] = [];
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("tickers")
+      .select("ticker")
+      .is("sector", null)
+      .order("ticker")
+      .range(from, from + PAGE - 1);
+
+    if (error) throw new Error(`tickers 조회 실패: ${error.message}`);
+    if (!data || data.length === 0) break;
+
+    result.push(...data.map((r) => r.ticker));
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  return result;
+}
+
 // ── 메인 ────────────────────────────────────────────────────────────────────
 async function main() {
   console.log("\n=== TickerFlow seed-profiles ===");
-  console.log("sector NULL 종목 조회 중...\n");
+  console.log("sector NULL 종목 전체 조회 중...\n");
 
-  const { data: tickers, error } = await supabase
-    .from("tickers")
-    .select("ticker")
-    .is("sector", null)
-    .order("ticker");
-
-  if (error) {
-    console.error("tickers 조회 실패:", error.message);
+  let tickers: string[];
+  try {
+    tickers = await fetchAllNullSectorTickers();
+  } catch (e) {
+    console.error(e instanceof Error ? e.message : e);
     process.exit(1);
   }
 
-  const total = tickers?.length ?? 0;
+  const total = tickers.length;
   if (total === 0) {
     console.log("sector NULL 종목 없음. 완료.");
     return;
@@ -93,7 +114,7 @@ async function main() {
   let errors = 0;
 
   for (let i = 0; i < total; i++) {
-    const ticker = tickers![i].ticker;
+    const ticker = tickers[i];
     const prefix = `[${String(i + 1).padStart(String(total).length, " ")}/${total}] ${ticker.padEnd(6, " ")}`;
 
     try {
