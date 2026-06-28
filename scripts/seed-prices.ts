@@ -48,16 +48,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) as any;
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // ── FMP API 응답 타입 ────────────────────────────────────────────────────────
-interface FmpHistoricalItem {
+// stable 엔드포인트는 배열을 직접 반환 (v3의 { symbol, historical: [] } 구조 아님)
+interface FmpPriceItem {
   date: string;
-  close: number;
+  close: number | null;
   changePercent: number | null;
   volume: number | null;
-}
-
-interface FmpHistoricalResponse {
-  symbol: string;
-  historical: FmpHistoricalItem[];
 }
 
 type DayPrice = {
@@ -80,22 +76,30 @@ async function fetchYearPrices(ticker: string, collectedAt: string, logRaw = fal
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  const data: FmpHistoricalResponse = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw: any = await res.json();
 
   if (logRaw) {
     console.log(`\n[DEBUG] ${ticker} FMP 응답 원문:`);
-    console.log(JSON.stringify(data, null, 2));
+    console.log(JSON.stringify(raw, null, 2));
     console.log(`[DEBUG] 응답 끝\n`);
   }
 
-  if (!data.historical || data.historical.length === 0) return null;
+  // stable API: 배열 직접 반환 / v3 호환: { symbol, historical: [] }
+  const items: FmpPriceItem[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.historical)
+    ? raw.historical
+    : [];
 
-  const rows: DayPrice[] = data.historical
+  if (items.length === 0) return null;
+
+  const rows: DayPrice[] = items
     .filter((item) => item.close != null)
     .map((item) => ({
       ticker,
       date: item.date,
-      close: Math.round(item.close * 100) / 100,
+      close: Math.round(item.close! * 100) / 100,
       change_pct: item.changePercent != null ? Math.round(item.changePercent * 100) / 100 : null,
       volume: item.volume ?? null,
       collected_at: collectedAt,
