@@ -70,7 +70,7 @@ type DayPrice = {
 };
 
 // ── FMP 1년 일봉 조회 ────────────────────────────────────────────────────────
-async function fetchYearPrices(ticker: string, collectedAt: string): Promise<DayPrice[] | null> {
+async function fetchYearPrices(ticker: string, collectedAt: string, logRaw = false): Promise<DayPrice[] | null> {
   const to = new Date().toISOString().slice(0, 10);
   const from = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const url =
@@ -81,6 +81,13 @@ async function fetchYearPrices(ticker: string, collectedAt: string): Promise<Day
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
   const data: FmpHistoricalResponse = await res.json();
+
+  if (logRaw) {
+    console.log(`\n[DEBUG] ${ticker} FMP 응답 원문:`);
+    console.log(JSON.stringify(data, null, 2));
+    console.log(`[DEBUG] 응답 끝\n`);
+  }
+
   if (!data.historical || data.historical.length === 0) return null;
 
   const rows: DayPrice[] = data.historical
@@ -153,7 +160,7 @@ async function main() {
     const collectedAt = new Date().toISOString();
 
     try {
-      const rows = await fetchYearPrices(ticker, collectedAt);
+      const rows = await fetchYearPrices(ticker, collectedAt, i === 0);
 
       if (!rows) {
         console.log(`${prefix} 스킵 — 데이터 없음`);
