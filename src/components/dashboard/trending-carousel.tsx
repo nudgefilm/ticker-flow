@@ -6,6 +6,7 @@ import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 export type TrendingItem = {
   ticker: string;
   company: string;
+  companyKr?: string;
   sentences: string[];  // max 2
 };
 
@@ -115,6 +116,9 @@ export default function TrendingCarousel({ items }: { items: TrendingItem[] }) {
               {item.ticker}
             </span>
             <p className="mt-2 truncate text-sm font-medium text-white">{item.company}</p>
+            {item.companyKr && (
+              <p className="truncate text-xs text-[#a6a6a6]">{item.companyKr}</p>
+            )}
             <ul className="mt-3 space-y-1">
               {item.sentences.map((s, i) => (
                 <li key={i} className="text-xs leading-snug text-[#a6a6a6]">

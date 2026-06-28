@@ -318,8 +318,11 @@ async function TrendingContent() {
       .order("report_date", { ascending: true }).limit(20),
   ]);
 
-  const nameMap = new Map(
-    (tickerNamesRes.data ?? []).map((r) => [r.ticker, r.name_kr ?? r.name_en ?? r.ticker])
+  const nameEnMap = new Map(
+    (tickerNamesRes.data ?? []).map((r) => [r.ticker, r.name_en ?? r.ticker])
+  );
+  const nameKrMap = new Map(
+    (tickerNamesRes.data ?? []).map((r) => [r.ticker, r.name_kr ?? null])
   );
   const insiderBuys  = new Map<string, number>();
   const insiderSells = new Map<string, number>();
@@ -367,9 +370,12 @@ async function TrendingContent() {
     if (sentences.length === 0)
       sentences.push("최근 7일 주요 활동 없음");
 
+    const companyEn = nameEnMap.get(ticker) ?? ticker;
+    const companyKr = nameKrMap.get(ticker) ?? undefined;
     return {
       ticker,
-      company: nameMap.get(ticker) ?? ticker,
+      company: companyEn,
+      companyKr: companyKr !== companyEn ? companyKr : undefined,
       sentences,
     };
   });
