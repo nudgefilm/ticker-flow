@@ -23,13 +23,13 @@ export default function WatchlistCard({
   const { ticker, company, newFilings, earningsDday, newNews } = stock;
 
   return (
-    <article className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+    <article className="overflow-hidden rounded-[6px] border border-white/[0.15] bg-[#111111]">
       {/* 상단: 티커 + 회사명 + 삭제 */}
       <div className="flex items-center justify-between gap-3 bg-[#1a1a1a] px-4 py-3">
-        <div className="min-w-0">
+        <Link href={`/stocks/${ticker}`} className="min-w-0">
           <p className="text-sm font-semibold text-white">{ticker}</p>
-          <p className="truncate text-xs text-[#a6a6a6]">{company}</p>
-        </div>
+          <p className="truncate text-xs text-[#60a5fa]">{company}</p>
+        </Link>
         <button
           type="button"
           onClick={onDelete}
