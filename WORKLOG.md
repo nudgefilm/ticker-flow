@@ -2,6 +2,47 @@
 
 ---
 
+## 2026-06-28 · 세션 49
+
+### collect 함수 PostgREST 1000행 제한 우회 + 데이터 시딩 스크립트 정비
+
+**문제**
+`filings.ts`, `news.ts`, `earnings.ts`, `analyst.ts`, `prices.ts`의 tickers 전체 조회가
+PostgREST 기본 1000행 제한에 걸려 전체 종목 처리 불가.
+
+**해결**
+`adminClient.from("tickers").select("ticker")` 단일 쿼리를 `.range(from, from+999)` 반복 루프로 교체.
+`prices.ts`는 추가로 Yahoo Finance → FMP API(`historical-price-eod/full`)로 교체.
+
+**변경 파일**
+- `src/lib/collect/filings.ts`: tickerSet range 페이지네이션 + 6단계 console.log 추가
+  - EDGAR hits 건수 / tickerSet 크기 / ticker 매칭 / insert 시도 / 저장 / 스킵
+- `src/lib/collect/news.ts`: tickerSet range 페이지네이션
+- `src/lib/collect/earnings.ts`: tickerSet(runEarningsCollect) + allTickers(runEarningsActualCollect) range 페이지네이션
+- `src/lib/collect/analyst.ts`: allTickers range 페이지네이션
+- `src/lib/collect/prices.ts`: allTickers range 페이지네이션 + Yahoo Finance → FMP API 교체
+
+**신규 스크립트**
+
+| 파일 | 설명 |
+|------|------|
+| `scripts/seed-tickers.ts` | SEC EDGAR에서 NASDAQ+NYSE 전체 종목 일괄 upsert |
+| `scripts/seed-profiles.ts` | FMP API로 sector NULL 종목 일괄 업데이트 |
+| `scripts/seed-prices.ts` | FMP `historical-price-eod/full`로 1년 일봉 일괄 수집 |
+| `scripts/seed-earnings.ts` | Finnhub 실적 일정(날짜 범위 30일 청크) + 과거 4분기 actual_eps 전체 종목 수집 |
+| `scripts/seed-analyst.ts` | Finnhub 애널리스트 추천 전체 종목 수집 (429 재시도 포함) |
+
+**주요 버그 수정**
+- `seed-prices.ts`: FMP stable API는 `{ symbol, historical: [] }` 아닌 배열 직접 반환 → `Array.isArray()` 분기로 처리
+- `seed-earnings.ts`: 동일 청크 내 ticker+report_date 중복 → upsert 전 JS 중복 제거
+
+**공통 패턴 (모든 스크립트)**
+- `.env.local` 수동 파싱 (dotenv 미설치 환경)
+- `range()` 1000행 페이지네이션으로 PostgREST 제한 우회
+- 실행: `npx tsx scripts/{파일명}.ts`
+
+---
+
 ## 2026-06-28 · 세션 48
 
 ### 랜딩 페이지 recent-changes.tsx 데이터 품질 개선
