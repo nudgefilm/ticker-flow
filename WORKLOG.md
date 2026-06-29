@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-06-29 · 세션 52
+
+### 규제 감사 — SnapshotAnalyst 제거, 내부자 표현 수정, 잔존 투자 등급 표현 점검
+
+**SnapshotAnalyst 완전 제거**
+- `src/components/dashboard/snapshot/snapshot-analyst.tsx` 파일 삭제
+- `src/app/(dashboard)/stocks/[symbol]/page.tsx`
+  - `SnapshotAnalyst` import 제거
+  - `AnalystRow` 타입 import 제거
+  - `analyst_ratings` 쿼리 제거 (Promise.all 8개 → 7개)
+  - `analystRows` 변수 제거
+  - `<SnapshotAnalyst>` 렌더링 제거
+
+**내부자 표현 수정** (`src/app/(dashboard)/watchlist/page.tsx`)
+- `"내부자 매수 N건 확인"` → `"내부자 취득 N건 확인"`
+- `"내부자 매도 N건 확인"` → `"내부자 처분 N건 확인"`
+- 주석도 동일하게 수정
+
+**잔존 투자 등급 표현 점검 결과**
+
+| 파일 | 내용 | 판단 |
+|------|------|------|
+| `src/app/admin/page.tsx:96,100,101,103` | `strong_buy`, `buy` 컬럼명 참조 + 어드민 활동 점수 계산 | **어드민 내부 로직** — 사용자 노출 없음, 수정 불필요 |
+| `src/app/admin/page.tsx:380` | `"Strong Buy 5+개+8"` — 어드민 툴팁 설명 | **어드민 내부** — 사용자 노출 없음, 수정 불필요 |
+| `src/lib/collect/calls.ts:103` | `"매수" 등 표현 절대 사용하지 않습니다` — 프롬프트 금지 지침 | **금지 지침 선언** — 정상 |
+
+결론: 사용자 노출 화면에 투자 등급 표현 잔존 없음.
+
+---
+
 ## 2026-06-29 · 세션 51
 
 ### 실적 캘린더 배당 탭 + 인사이더 기관 보유 현황 + 종목 주식 분할 타임라인 + 경제지표 그리드 수정

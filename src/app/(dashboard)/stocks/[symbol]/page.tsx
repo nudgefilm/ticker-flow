@@ -8,7 +8,6 @@ import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filing
 import { SnapshotNews } from "@/components/dashboard/snapshot/snapshot-news";
 import { CompanyInfo } from "@/components/dashboard/snapshot/company-info";
 import { SnapshotInsider } from "@/components/dashboard/snapshot/snapshot-insider";
-import { SnapshotAnalyst } from "@/components/dashboard/snapshot/snapshot-analyst";
 import { StockSplits } from "@/components/dashboard/snapshot/stock-splits";
 import EarningsFlow from "@/components/dashboard/insights/earnings-flow";
 import DataSources from "@/components/dashboard/insights/data-sources";
@@ -20,8 +19,6 @@ import type {
   InsiderTrade,
   EarningsRow,
 } from "@/lib/insights/types";
-import type { AnalystRow } from "@/components/dashboard/snapshot/snapshot-analyst";
-
 export const dynamic = "force-dynamic";
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
@@ -61,7 +58,7 @@ export default async function StockPage({
   const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, analystRes, splitsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, splitsRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -109,12 +106,6 @@ export default async function StockPage({
         .limit(1)
         .maybeSingle(),
       supabase
-        .from("analyst_ratings")
-        .select("id, period, strong_buy, buy, hold, sell, strong_sell")
-        .eq("ticker", ticker)
-        .order("period", { ascending: false })
-        .limit(3),
-      supabase
         .from("stock_splits")
         .select("id, split_date, numerator, denominator")
         .eq("ticker", ticker)
@@ -128,7 +119,6 @@ export default async function StockPage({
   const insiderRows     = insiderRes.data ?? [];
   const earningsRows    = earningsRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
-  const analystRows     = (analystRes.data ?? []) as AnalystRow[];
   const splitRows       = splitsRes.data ?? [];
 
   // ── Quote ────────────────────────────────────────────────────────────────
@@ -262,8 +252,6 @@ export default async function StockPage({
         />
         <SnapshotInsider trades={trades} />
       </div>
-
-      <SnapshotAnalyst ratings={analystRows} />
 
       <SnapshotFilings filings={filings} ticker={ticker} />
       <SnapshotNews news={news} />

@@ -350,15 +350,15 @@ async function TrendingContent() {
 
     const sentences: string[] = [];
 
-    // 우선순위: 실적 예정 > 내부자 매수 > 내부자 매도 > 공시 > 뉴스
+    // 우선순위: 실적 예정 > 내부자 취득 > 내부자 처분 > 공시 > 뉴스
     if (eDate) {
       const dday = Math.round((new Date(eDate + "T00:00:00").getTime() - todayMs) / 86_400_000);
       sentences.push(dday === 0 ? "실적 발표 오늘 예정" : `실적 발표 D-${dday}일 예정`);
     }
     if (sentences.length < 2 && buys > 0)
-      sentences.push(`내부자 매수 ${buys}건 확인`);
+      sentences.push(`내부자 취득 ${buys}건 확인`);
     if (sentences.length < 2 && sells > 0)
-      sentences.push(`내부자 매도 ${sells}건 확인`);
+      sentences.push(`내부자 처분 ${sells}건 확인`);
     if (sentences.length < 2 && fc > 0) {
       const ft = fTypes[0] ? expandFormType(fTypes[0]) : null;
       const suffix = fTypes.length > 1 ? " 등" : "";
