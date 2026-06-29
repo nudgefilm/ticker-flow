@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-06-29 · 세션 58
+
+### earnings_calls guidance_direction + management_tone 반영
+
+- `src/lib/collect/calls.ts`:
+  - `CallAnalysis` 인터페이스에 `management_tone?: "positive" | "neutral" | "negative"` 추가
+  - Claude Sonnet 프롬프트 마지막 줄에 `{"guidance_direction":"...","management_tone":"..."}` JSON 출력 지시 추가
+  - 응답 마지막 줄 JSON 파싱 로직 추가 (last-line extraction)
+  - upsert payload에 `management_tone` 컬럼 추가
+- `src/app/admin/page.tsx`:
+  - `EarningsCallRow` 타입 선언 + `earningsCallsByTicker` Map 전처리 추가
+  - 병렬 쿼리에 `earnings_calls` 추가 (`(admin as any).from(...)` 패턴)
+  - `allCandidates`에 earningsCallsByTicker.keys() 포함
+  - Earnings Score: guidance_direction="up" → +10 + "guidance_up" 태그, management_tone="positive" → +2
+
+---
+
 ## 2026-06-29 · 세션 57
 
 ### filings.event_type 자동 분류 파이프라인

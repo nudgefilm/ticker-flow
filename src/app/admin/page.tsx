@@ -134,7 +134,7 @@ async function AdminWatchSection() {
   })();
 
   // Phase 1 — 병렬 쿼리
-  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes] =
+  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes, callsRes] =
     await Promise.all([
       admin.from("filings")
         .select("ticker, form_type, event_type, filed_at")
@@ -162,6 +162,10 @@ async function AdminWatchSection() {
       admin.from("tickers")
         .select("ticker, sector, industry")
         .limit(2000),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (admin as any).from("earnings_calls")
+        .select("ticker, guidance_direction, management_tone")
+        .limit(1000),
     ]);
 
   // ── 전처리 ────────────────────────────────────────────────────────────────
@@ -215,6 +219,12 @@ async function AdminWatchSection() {
     sectorByTicker.set(t.ticker, t.sector ?? null);
   }
 
+  type EarningsCallRow = { ticker: string; guidance_direction: string | null; management_tone: string | null };
+  const earningsCallsByTicker = new Map<string, EarningsCallRow>();
+  for (const c of (callsRes.data ?? []) as EarningsCallRow[]) {
+    if (!earningsCallsByTicker.has(c.ticker)) earningsCallsByTicker.set(c.ticker, c);
+  }
+
   // 후보 풀
   const allCandidates = new Set([
     ...filingsByTicker.keys(),
@@ -222,6 +232,7 @@ async function AdminWatchSection() {
     ...insiderByTicker.keys(),
     ...holdingsCurr.keys(),
     ...earningsByTicker.keys(),
+    ...earningsCallsByTicker.keys(),
   ]);
 
   if (allCandidates.size === 0) {
@@ -264,14 +275,15 @@ async function AdminWatchSection() {
   const scored: CandidateItem[] = [];
 
   for (const ticker of allCandidates) {
-    const filings   = filingsByTicker.get(ticker) ?? [];
-    const newsItems = newsByTicker.get(ticker)    ?? [];
-    const insiders  = insiderByTicker.get(ticker) ?? [];
-    const currHold  = holdingsCurr.get(ticker)    ?? new Map<string, InstData>();
-    const prevHold  = holdingsPrev.get(ticker)    ?? new Map<string, InstData>();
+    const filings   = filingsByTicker.get(ticker)      ?? [];
+    const newsItems = newsByTicker.get(ticker)         ?? [];
+    const insiders  = insiderByTicker.get(ticker)      ?? [];
+    const currHold  = holdingsCurr.get(ticker)         ?? new Map<string, InstData>();
+    const prevHold  = holdingsPrev.get(ticker)         ?? new Map<string, InstData>();
     const earnData  = earningsByTicker.get(ticker);
-    const prices    = pricesByTicker.get(ticker)  ?? [];
-    const sector    = sectorByTicker.get(ticker)  ?? null;
+    const callData  = earningsCallsByTicker.get(ticker);
+    const prices    = pricesByTicker.get(ticker)       ?? [];
+    const sector    = sectorByTicker.get(ticker)       ?? null;
     const tags      = new Set<ReasonTag>();
 
     let totalDecaySum = 0;
@@ -358,8 +370,15 @@ async function AdminWatchSection() {
 
     // ── Earnings Score ───────────────────────────────────────────────────────
     let earningsRaw = 0;
+    // earnings_calls: guidance_direction / management_tone
+    if (callData?.guidance_direction === "up") {
+      earningsRaw += 10;
+      tags.add("guidance_up");
+    }
+    if (callData?.management_tone === "positive") earningsRaw += 2;
+    // EPS / Revenue beat (earnings 테이블)
     if (earnData) {
-      const epsBeat  = earnData.actual_eps    != null && earnData.eps_estimate     != null && earnData.actual_eps    > earnData.eps_estimate;
+      const epsBeat  = earnData.actual_eps     != null && earnData.eps_estimate     != null && earnData.actual_eps     > earnData.eps_estimate;
       const revBeat  = earnData.actual_revenue != null && earnData.revenue_estimate != null && earnData.actual_revenue > earnData.revenue_estimate;
       if (epsBeat && revBeat)      { earningsRaw += 8; tags.add("both_beat"); }
       else if (epsBeat)            { earningsRaw += 5; tags.add("eps_beat"); }

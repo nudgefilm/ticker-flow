@@ -43,6 +43,7 @@ interface CallAnalysis {
   keyword_changes: { keyword: string; direction: "up" | "down" }[];
   tone_previous: string;
   tone_current: string;
+  management_tone?: "positive" | "neutral" | "negative";
 }
 
 // ─── 종목별 수집 결과 ──────────────────────────────────────────────────────────
@@ -129,7 +130,11 @@ async function analyzeWithSonnet(
 }
 
 어닝콜 전문:
-${transcript.slice(0, 80_000)}`;
+${transcript.slice(0, 80_000)}
+
+응답 마지막 줄에 반드시 아래 JSON 한 줄만 출력하라:
+{"guidance_direction":"up|maintain|down","management_tone":"positive|neutral|negative"}
+JSON 외 다른 텍스트 금지.`;
 
   try {
     console.log(`[calls] Sonnet 호출 시작 (transcript ${transcript.length}자)`);
@@ -164,13 +169,38 @@ ${transcript.slice(0, 80_000)}`;
     }
 
     const text = data?.content?.[0]?.text ?? "";
-    const match = text.match(/\{[\s\S]*\}/);
+
+    // 마지막 줄에서 {guidance_direction, management_tone} 추출 시도
+    const lines = text.trimEnd().split("\n");
+    const lastLine = lines[lines.length - 1].trim();
+    let extractedGuidance: "up" | "maintain" | "down" | null = null;
+    let extractedTone: "positive" | "neutral" | "negative" | null = null;
+    try {
+      const lastJson = JSON.parse(lastLine) as Record<string, string>;
+      if (["up", "maintain", "down"].includes(lastJson.guidance_direction ?? "")) {
+        extractedGuidance = lastJson.guidance_direction as "up" | "maintain" | "down";
+      }
+      if (["positive", "neutral", "negative"].includes(lastJson.management_tone ?? "")) {
+        extractedTone = lastJson.management_tone as "positive" | "neutral" | "negative";
+      }
+    } catch {
+      // 마지막 줄이 JSON이 아닌 경우 무시
+    }
+
+    // 마지막 줄이 단독 JSON이었으면 제거 후 메인 JSON 블록 추출
+    const textForMain = extractedGuidance || extractedTone
+      ? lines.slice(0, -1).join("\n")
+      : text;
+    const match = textForMain.match(/\{[\s\S]*\}/);
     if (!match) {
       return { analysis: null, detail: `Sonnet JSON 블록 없음. 응답(200): ${text.slice(0, 200)}` };
     }
 
     try {
       const analysis = JSON.parse(match[0]) as CallAnalysis;
+      // 마지막 줄 추출값 우선, 없으면 메인 JSON 값 유지
+      if (extractedGuidance) analysis.guidance_direction = extractedGuidance;
+      analysis.management_tone = extractedTone ?? undefined;
       return { analysis, detail: "Sonnet 분석 완료" };
     } catch {
       return { analysis: null, detail: `Sonnet JSON 파싱 실패: ${match[0].slice(0, 120)}` };
@@ -363,6 +393,7 @@ async function collectForTicker(
     summary_generated_at: new Date().toISOString(),
     summary_kr: analysis.headline_summary,
     tone_change: analysis.tone_current,
+    management_tone: analysis.management_tone ?? null,
     key_points: keyPoints,
     processed_at: new Date().toISOString(),
   };
