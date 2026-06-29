@@ -109,18 +109,24 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
     effective: s.activityScore > 0 ? s.activityScore : s.tickerCount * 0.5,
   }));
 
-  // 2. 최솟값 2% 보정
-  const rawTotal = withEffective.reduce((sum, s) => sum + s.effective, 0) || 1;
-  const minVal = rawTotal * MIN_PCT;
-  const floored = withEffective.map((s) => ({
+  // 2. 로그 스케일 변환 — 크기 편차 완화
+  const withLog = withEffective.map((s) => ({
     ...s,
-    effective: Math.max(s.effective, minVal),
+    logScore: Math.log1p(s.effective),
   }));
 
-  // 3. activityScore 내림차순 정렬
+  // 3. 최솟값 2% 보정
+  const rawTotal = withLog.reduce((sum, s) => sum + s.logScore, 0) || 1;
+  const minVal = rawTotal * MIN_PCT;
+  const floored = withLog.map((s) => ({
+    ...s,
+    logScore: Math.max(s.logScore, minVal),
+  }));
+
+  // 4. activityScore 내림차순 정렬 (원본 점수 기준)
   const sorted = [...floored].sort((a, b) => b.effective - a.effective);
 
-  // 4. 섹터별 고유 색상 + 활동량 기준 명도
+  // 5. 섹터별 고유 색상 + 활동량 기준 명도
   const n = sorted.length;
   const topCut = Math.ceil(n / 3);
   const midCut = Math.ceil((2 * n) / 3);
@@ -130,9 +136,9 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
     return hexToRgba(hex, opacity);
   });
 
-  // 5. 면적 정규화
-  const totalVal = sorted.reduce((sum, s) => sum + s.effective, 0);
-  const normalized = sorted.map((s) => (s.effective / totalVal) * W * H);
+  // 6. 면적 정규화 (로그 스케일 기반)
+  const totalVal = sorted.reduce((sum, s) => sum + s.logScore, 0);
+  const normalized = sorted.map((s) => (s.logScore / totalVal) * W * H);
 
   // 6. 레이아웃
   const rects = squarify(normalized, 0, 0, W, H);
