@@ -282,6 +282,7 @@ export type Database = {
           key_statements: Json | null
           keyword_changes: Json | null
           keywords: string[] | null
+          management_tone: string | null
           processed_at: string | null
           qa_pairs: Json | null
           quarter: string | null
@@ -313,6 +314,7 @@ export type Database = {
           key_statements?: Json | null
           keyword_changes?: Json | null
           keywords?: string[] | null
+          management_tone?: string | null
           processed_at?: string | null
           qa_pairs?: Json | null
           quarter?: string | null
@@ -344,6 +346,7 @@ export type Database = {
           key_statements?: Json | null
           keyword_changes?: Json | null
           keywords?: string[] | null
+          management_tone?: string | null
           processed_at?: string | null
           qa_pairs?: Json | null
           quarter?: string | null
@@ -590,6 +593,36 @@ export type Database = {
         }
         Relationships: []
       }
+      price_targets: {
+        Row: {
+          adj_price_target: number | null
+          analyst_company: string | null
+          collected_at: string | null
+          id: string
+          price_target: number | null
+          published_date: string | null
+          ticker: string
+        }
+        Insert: {
+          adj_price_target?: number | null
+          analyst_company?: string | null
+          collected_at?: string | null
+          id?: string
+          price_target?: number | null
+          published_date?: string | null
+          ticker: string
+        }
+        Update: {
+          adj_price_target?: number | null
+          analyst_company?: string | null
+          collected_at?: string | null
+          id?: string
+          price_target?: number | null
+          published_date?: string | null
+          ticker?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -608,6 +641,30 @@ export type Database = {
           email?: string | null
           id?: string
           plan?: string
+        }
+        Relationships: []
+      }
+      short_interest: {
+        Row: {
+          collected_at: string
+          id: string
+          short_float: number | null
+          short_ratio: number | null
+          ticker: string
+        }
+        Insert: {
+          collected_at?: string
+          id?: string
+          short_float?: number | null
+          short_ratio?: number | null
+          ticker: string
+        }
+        Update: {
+          collected_at?: string
+          id?: string
+          short_float?: number | null
+          short_ratio?: number | null
+          ticker?: string
         }
         Relationships: []
       }
@@ -696,6 +753,48 @@ export type Database = {
           name_en?: string
           name_kr?: string | null
           sector?: string | null
+          ticker?: string
+        }
+        Relationships: []
+      }
+      top30_daily: {
+        Row: {
+          date: string
+          earnings_score: number | null
+          event_score: number | null
+          final_score: number | null
+          id: string
+          market_score: number | null
+          metadata: Json | null
+          rank: number | null
+          reason_tags: string[] | null
+          smart_score: number | null
+          ticker: string
+        }
+        Insert: {
+          date?: string
+          earnings_score?: number | null
+          event_score?: number | null
+          final_score?: number | null
+          id?: string
+          market_score?: number | null
+          metadata?: Json | null
+          rank?: number | null
+          reason_tags?: string[] | null
+          smart_score?: number | null
+          ticker: string
+        }
+        Update: {
+          date?: string
+          earnings_score?: number | null
+          event_score?: number | null
+          final_score?: number | null
+          id?: string
+          market_score?: number | null
+          metadata?: Json | null
+          rank?: number | null
+          reason_tags?: string[] | null
+          smart_score?: number | null
           ticker?: string
         }
         Relationships: []
