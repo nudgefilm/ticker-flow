@@ -1,0 +1,108 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { CollectResult } from "./types";
+
+const HAIKU_MODEL = "claude-haiku-4-5-20251001";
+const BATCH_LIMIT = 50;
+const DELAY_MS    = 200;
+
+const CATEGORIES = [
+  "ceo_change", "cfo_change", "buyback", "ma", "guidance",
+  "contract", "dividend", "offering", "lawsuit", "earnings", "other",
+] as const;
+type Category = typeof CATEGORIES[number];
+
+async function callHaiku(prompt: string): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key":           apiKey,
+        "anthropic-version":   "2023-06-01",
+        "content-type":        "application/json",
+      },
+      body: JSON.stringify({
+        model:      HAIKU_MODEL,
+        max_tokens: 20,
+        messages:   [{ role: "user", content: prompt }],
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data?.content?.[0]?.text as string | undefined)?.trim().toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+export async function runClassifyFilings(): Promise<CollectResult> {
+  const admin = createAdminClient();
+
+  const { data: rows, error } = await admin
+    .from("filings")
+    .select("id, title, summary_kr")
+    .is("event_type", null)
+    .eq("form_type", "8-K")
+    .order("filed_at", { ascending: false })
+    .limit(BATCH_LIMIT);
+
+  if (error) return { ok: false, error: error.message, retryable: true };
+
+  const emptyDist = Object.fromEntries(CATEGORIES.map((c) => [c, 0])) as Record<Category, number>;
+
+  if (!rows || rows.length === 0) {
+    return { ok: true, total: 0, classified: 0, distribution: emptyDist, otherRate: "0%" };
+  }
+
+  const distribution: Record<Category, number> = { ...emptyDist };
+  let classified = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const title       = row.title       ?? "";
+    const description = row.summary_kr  ?? "";
+
+    const prompt = `다음 SEC 8-K 공시 제목과 설명을 읽고 아래 카테고리 중 하나만 반환하라.
+카테고리: ceo_change, cfo_change, buyback, ma, guidance, contract, dividend, offering, lawsuit, earnings, other
+제목: ${title}
+설명: ${description}
+카테고리 단어 하나만 출력. 다른 텍스트 금지.`;
+
+    const raw      = await callHaiku(prompt);
+    const category = (raw && (CATEGORIES as readonly string[]).includes(raw))
+      ? (raw as Category)
+      : "other";
+
+    const { error: updateErr } = await admin
+      .from("filings")
+      .update({ event_type: category })
+      .eq("id", row.id);
+
+    if (!updateErr) {
+      distribution[category]++;
+      classified++;
+    }
+
+    if (i < rows.length - 1) await delay(DELAY_MS);
+  }
+
+  const otherPct  = classified > 0 ? Math.round((distribution.other / classified) * 100) : 0;
+  const otherRate = `${otherPct}%`;
+
+  const result: CollectResult = {
+    ok: true,
+    total: rows.length,
+    classified,
+    distribution,
+    otherRate,
+  };
+
+  if (otherPct > 40) {
+    result.warning = "other 비율 높음 — 프롬프트 개선 검토";
+  }
+
+  return result;
+}

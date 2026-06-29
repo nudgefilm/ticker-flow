@@ -22,6 +22,7 @@ export const COLLECT_JOBS = [
   "seed-tickers",
   "translate",
   "digest",
+  "classify-filings",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

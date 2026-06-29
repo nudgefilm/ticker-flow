@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-06-29 · 세션 57
+
+### filings.event_type 자동 분류 파이프라인
+
+- `src/lib/collect/classify-filings.ts` 신규 — `runClassifyFilings()` 구현
+  - event_type IS NULL인 8-K 공시 50건 조회
+  - Claude Haiku로 11개 카테고리 분류 (ceo_change/buyback/ma/guidance/contract/dividend/offering/lawsuit/cfo_change/earnings/other)
+  - 건당 200ms 딜레이, distribution 집계 + otherRate, other 40% 초과 시 warning
+- `src/lib/collect/types.ts`: COLLECT_JOBS에 "classify-filings" 추가
+- `src/lib/collect/index.ts`: `runClassifyFilings` export 추가
+- `src/app/api/collect/classify-filings/route.ts` 신규 — thin wrapper (GET, requireCollectAuth)
+- `src/app/api/admin/run/route.ts`: import + COLLECT_MAP에 classify-filings 추가
+- `vercel.json`: cron "0 2 * * *" → /api/collect/classify-filings 추가
+- `src/app/admin/system/trigger/page.tsx`:
+  - "공시 이벤트 자동 분류 (Haiku)" 트리거 버튼 추가
+  - TriggerResult에 `classified/otherRate/distribution/warning` 필드 추가
+  - distribution 테이블 + warning 렌더링 추가
+  - Cron 스케줄 안내 테이블에 항목 추가
+
+---
+
 ## 2026-06-29 · 세션 56
 
 ### 어드민 기업동향 스코어링 엔진 전면 개편

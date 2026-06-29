@@ -31,6 +31,10 @@ interface TriggerResult {
   filings?: number;
   news?: number;
   summarized?: number;
+  classified?: number;
+  otherRate?: string;
+  distribution?: Record<string, number>;
+  warning?: string;
   error?: string;
   firstError?: string;
   debug?: DebugInfo;
@@ -118,6 +122,11 @@ const TRIGGERS: Trigger[] = [
     label: "어닝콜 요약 수집 (FMP + Sonnet)",
     desc: "와치리스트 및 최근 90일 실적 발표 종목의 어닝콜 transcript를 FMP(Financial Modeling Prep)에서 수집하고 Claude Sonnet으로 한국어 구조화 요약을 생성합니다. 최대 10종목.",
   },
+  {
+    id: "classify-filings",
+    label: "공시 이벤트 자동 분류 (Haiku)",
+    desc: "event_type이 미분류된 8-K 공시를 Claude Haiku로 분류합니다. ceo_change / buyback / ma / guidance 등 11개 카테고리. 최대 50건, 건당 200ms 딜레이.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -132,8 +141,10 @@ function resultSummary(result: TriggerResult): string {
   if (result.tickers    !== undefined) parts.push(`티커 ${result.tickers}개`);
   if (result.filings    !== undefined) parts.push(`공시 ${result.filings}건`);
   if (result.news       !== undefined) parts.push(`뉴스 ${result.news}건`);
-  if (result.summarized !== undefined) parts.push(`요약 ${result.summarized}건`);
-  if (result.nextOffset !== undefined) parts.push(`오프셋 ${result.offset ?? 0}→${result.nextOffset}`);
+  if (result.summarized  !== undefined) parts.push(`요약 ${result.summarized}건`);
+  if (result.classified  !== undefined) parts.push(`분류 ${result.classified}건`);
+  if (result.otherRate   !== undefined) parts.push(`other ${result.otherRate}`);
+  if (result.nextOffset  !== undefined) parts.push(`오프셋 ${result.offset ?? 0}→${result.nextOffset}`);
   const summary = parts.join(" · ") || "완료";
   return result.firstError ? `${summary} (오류: ${result.firstError})` : summary;
 }
@@ -279,6 +290,24 @@ export default function TriggerPage() {
                       {JSON.stringify(result.debug, null, 2)}
                     </pre>
                   )}
+
+                  {result?.distribution && (
+                    <div className="mt-2 space-y-1">
+                      <div className="grid grid-cols-4 gap-x-2 gap-y-0.5">
+                        {Object.entries(result.distribution).map(([cat, cnt]) => (
+                          <div key={cat} className="flex items-center justify-between">
+                            <span className="text-[10px] text-[#a6a6a6]">{cat}</span>
+                            <span className="text-[10px] font-medium text-white">{cnt as number}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {result.warning && (
+                        <p className="mt-1 text-[10px] font-medium text-yellow-400">
+                          ⚠ {result.warning}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -335,7 +364,8 @@ export default function TriggerPage() {
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
             { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
             { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
-            { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"        },
+            { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"              },
+            { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

@@ -59,6 +59,10 @@
     {
       "path": "/api/collect/calls",
       "schedule": "22 2 * * *"
+    },
+    {
+      "path": "/api/collect/classify-filings",
+      "schedule": "0 2 * * *"
     }
   ]
 }

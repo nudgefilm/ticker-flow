@@ -20,6 +20,7 @@ import {
   runSeedTickersCollect,
   runTranslateCollect,
   runDigestCollect,
+  runClassifyFilings,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -38,8 +39,9 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "watchlist-tickers": runWatchlistTickersCollect,
   "calls":            runCallsCollect,
   "seed-tickers":     runSeedTickersCollect,
-  "translate":        runTranslateCollect,
-  "digest":           runDigestCollect,
+  "translate":         runTranslateCollect,
+  "digest":            runDigestCollect,
+  "classify-filings":  runClassifyFilings,
 };
 
 export async function GET(req: NextRequest) {
