@@ -132,6 +132,11 @@ const TRIGGERS: Trigger[] = [
     label: "Short Interest 수집 (FMP)",
     desc: "와치리스트 + 최근 7일 공시 종목의 공매도 비율(Short Float·Short Ratio)을 FMP에서 수집합니다. 최대 30종목, 300ms 딜레이.",
   },
+  {
+    id: "price-targets",
+    label: "Price Target 수집 (FMP)",
+    desc: "와치리스트 + 최근 7일 공시 종목의 애널리스트 목표주가를 FMP에서 수집합니다. 최근 90일 이내 데이터만 저장. 최대 30종목, 300ms 딜레이.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -372,6 +377,7 @@ export default function TriggerPage() {
             { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"              },
             { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
+            { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

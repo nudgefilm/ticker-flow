@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-29 · 세션 60
+
+### Price Target 수집 파이프라인
+
+- `src/lib/collect/price-targets.ts` 신규 — `runPriceTargetsCollect()` 구현
+  - FMP `/stable/price-target?symbol={ticker}` 호출 (AbortSignal.timeout 8초)
+  - 와치리스트 + 최근 7일 공시 종목 합집합, 최대 30종목, 300ms 딜레이
+  - 최근 90일 이내 데이터만 저장, `price_targets` upsert (onConflict: ticker, analyst_company, published_date)
+  - 반환: `{ ok, total, updated, skipped, errors }`
+- `src/lib/collect/types.ts`: COLLECT_JOBS에 "price-targets" 추가
+- `src/lib/collect/index.ts`: `runPriceTargetsCollect` export 추가
+- `src/app/api/collect/price-targets/route.ts` 신규 — thin wrapper (GET, requireCollectAuth, maxDuration 300)
+- `src/app/api/admin/run/route.ts`: import + COLLECT_MAP에 "price-targets" 추가
+- `vercel.json`: cron "55 1 * * 1" → /api/collect/price-targets (매주 월요일) 추가
+- `src/app/admin/system/trigger/page.tsx`: "Price Target 수집 (FMP)" 트리거 버튼 + 크론 테이블 항목 추가
+- `src/app/admin/page.tsx` Smart Money Score 개선:
+  - Phase 1 병렬 쿼리에 `price_targets` 추가 (`(admin as any).from(...)`, 최근 30일)
+  - `priceTargetsByTicker` Map 전처리 (ticker별 최신 2개 records, published_date DESC)
+  - 최신 price_target > 직전 시: smartRaw +5, "target_up" 태그, meta.targetUp = true
+  - ReasonTag에 "target_up" 추가 · TAG_LABELS: "목표가↑" · tagStyle: teal
+
+---
+
 ## 2026-06-29 · 세션 59
 
 ### Short Interest 수집 파이프라인

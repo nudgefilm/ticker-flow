@@ -22,6 +22,7 @@ import {
   runDigestCollect,
   runClassifyFilings,
   runShortInterestCollect,
+  runPriceTargetsCollect,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -44,6 +45,7 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "digest":            runDigestCollect,
   "classify-filings":  runClassifyFilings,
   "short-interest":    runShortInterestCollect,
+  "price-targets":     runPriceTargetsCollect,
 };
 
 export async function GET(req: NextRequest) {

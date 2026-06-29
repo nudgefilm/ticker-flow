@@ -15,3 +15,4 @@ export * from "./translate";
 export * from "./digest";
 export * from "./classify-filings";
 export * from "./short-interest";
+export * from "./price-targets";

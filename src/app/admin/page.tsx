@@ -21,7 +21,7 @@ type ReasonTag =
   | "insider_buy" | "insider_buy_large" | "13f_new" | "13f_increase"
   | "eps_beat" | "revenue_beat" | "both_beat" | "guidance_up"
   | "price_up_20" | "price_up_10" | "volume_spike" | "volatility_spike"
-  | "short_decrease";
+  | "short_decrease" | "target_up";
 
 type Metadata = {
   event: number;
@@ -49,6 +49,7 @@ const TAG_LABELS: Record<ReasonTag, string> = {
   guidance_up: "가이던스Up", price_up_20: "30일+20%", price_up_10: "30일+10%",
   volume_spike: "거래량급증", volatility_spike: "변동성급증",
   short_decrease: "공매도↓",
+  target_up: "목표가↑",
 };
 
 const ET_WEIGHTS: Record<string, number> = {
@@ -74,6 +75,8 @@ function tagStyle(tag: ReasonTag): string {
       return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
     case "volume_spike": case "volatility_spike": case "short_decrease":
       return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
+    case "target_up":
+      return "bg-teal-500/10 text-teal-400 border border-teal-500/20";
     default:
       return "bg-white/[0.06] text-[#a6a6a6] border border-white/[0.08]";
   }
@@ -136,7 +139,7 @@ async function AdminWatchSection() {
   })();
 
   // Phase 1 — 병렬 쿼리
-  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes, callsRes, shortInterestRes] =
+  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes, callsRes, shortInterestRes, priceTargetRes] =
     await Promise.all([
       admin.from("filings")
         .select("ticker, form_type, event_type, filed_at")
@@ -172,6 +175,12 @@ async function AdminWatchSection() {
       (admin as any).from("short_interest")
         .select("ticker, short_float, collected_at")
         .order("collected_at", { ascending: false })
+        .limit(2000),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (admin as any).from("price_targets")
+        .select("ticker, price_target, published_date")
+        .gte("published_date", d30)
+        .order("published_date", { ascending: false })
         .limit(2000),
     ]);
 
@@ -243,6 +252,17 @@ async function AdminWatchSection() {
     }
   }
 
+  // price_targets: ticker별 최신 2개 (published_date DESC 정렬 결과)
+  type PriceTargetRow = { ticker: string; price_target: number | null; published_date: string | null };
+  const priceTargetsByTicker = new Map<string, PriceTargetRow[]>();
+  for (const pt of (priceTargetRes.data ?? []) as PriceTargetRow[]) {
+    const arr = priceTargetsByTicker.get(pt.ticker) ?? [];
+    if (arr.length < 2) {
+      arr.push(pt);
+      priceTargetsByTicker.set(pt.ticker, arr);
+    }
+  }
+
   // 후보 풀
   const allCandidates = new Set([
     ...filingsByTicker.keys(),
@@ -300,8 +320,9 @@ async function AdminWatchSection() {
     const prevHold  = holdingsPrev.get(ticker)         ?? new Map<string, InstData>();
     const earnData  = earningsByTicker.get(ticker);
     const callData  = earningsCallsByTicker.get(ticker);
-    const siRows    = shortInterestByTicker.get(ticker) ?? [];
-    const prices    = pricesByTicker.get(ticker)       ?? [];
+    const siRows    = shortInterestByTicker.get(ticker)  ?? [];
+    const ptRows    = priceTargetsByTicker.get(ticker)  ?? [];
+    const prices    = pricesByTicker.get(ticker)        ?? [];
     const sector    = sectorByTicker.get(ticker)       ?? null;
     const tags      = new Set<ReasonTag>();
 
@@ -391,6 +412,12 @@ async function AdminWatchSection() {
       siRows[0].short_float < siRows[1].short_float;
     if (shortDecrease) { smartRaw += 4; tags.add("short_decrease"); }
 
+    // 목표주가 상향: 최신 > 직전 (최근 30일 내 데이터)
+    const targetUp = ptRows.length >= 2 &&
+      ptRows[0].price_target != null && ptRows[1].price_target != null &&
+      ptRows[0].price_target > ptRows[1].price_target;
+    if (targetUp) { smartRaw += 5; tags.add("target_up"); }
+
     const smartScore = smartRaw;
 
     // ── Earnings Score ───────────────────────────────────────────────────────
@@ -453,7 +480,7 @@ async function AdminWatchSection() {
         newsCount: newsItems.length, dedupNewsCount: uniqueNews.length,
         decayAvg: totalDecayN > 0 ? totalDecaySum / totalDecayN : 0,
         sectorPenalty: false,
-        insiderAmount, guidanceDirection: null, shortDecrease, targetUp: false,
+        insiderAmount, guidanceDirection: null, shortDecrease, targetUp,
       },
       filings: filings.length,
       news: newsItems.length,
