@@ -90,7 +90,7 @@ export function PriceCard({ quote }: { quote: Quote | null }) {
 
       <div className="my-5">
         <PriceLineChart history={history} up={up} />
-        <p className="mt-1 text-right text-[11px] text-[#a6a6a6]">최근 30일 종가 추이</p>
+        <p className="mt-1 text-right text-[11px] text-[#a6a6a6]">1년 종가 추이</p>
       </div>
 
       <RangeBar low={week52Low} high={week52High} close={close} />

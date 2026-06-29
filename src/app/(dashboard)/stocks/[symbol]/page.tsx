@@ -8,6 +8,7 @@ import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filing
 import { SnapshotNews } from "@/components/dashboard/snapshot/snapshot-news";
 import { CompanyInfo } from "@/components/dashboard/snapshot/company-info";
 import { SnapshotInsider } from "@/components/dashboard/snapshot/snapshot-insider";
+import { SnapshotAnalyst } from "@/components/dashboard/snapshot/snapshot-analyst";
 import EarningsFlow from "@/components/dashboard/insights/earnings-flow";
 import DataSources from "@/components/dashboard/insights/data-sources";
 import type {
@@ -18,6 +19,7 @@ import type {
   InsiderTrade,
   EarningsRow,
 } from "@/lib/insights/types";
+import type { AnalystRow } from "@/components/dashboard/snapshot/snapshot-analyst";
 
 export const dynamic = "force-dynamic";
 
@@ -56,8 +58,9 @@ export default async function StockPage({
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
   const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, analystRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -68,8 +71,8 @@ export default async function StockPage({
         .from("stock_prices")
         .select("date, close")
         .eq("ticker", ticker)
-        .order("date", { ascending: true })
-        .limit(30),
+        .gte("date", oneYearAgo)
+        .order("date", { ascending: true }),
       supabase
         .from("filings")
         .select("id, form_type, filed_at, summary_kr, event_type, url")
@@ -89,7 +92,7 @@ export default async function StockPage({
         .select("id, name, title, transaction_type, shares, price, value, transaction_date")
         .eq("ticker", ticker)
         .order("transaction_date", { ascending: false })
-        .limit(5),
+        .limit(10),
       supabase
         .from("earnings")
         .select("id, report_date, eps_estimate, actual_eps")
@@ -104,6 +107,12 @@ export default async function StockPage({
         .order("report_date", { ascending: true })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("analyst_ratings")
+        .select("id, period, strong_buy, buy, hold, sell, strong_sell")
+        .eq("ticker", ticker)
+        .order("period", { ascending: false })
+        .limit(3),
     ]);
 
   const info            = tickerRes.data;
@@ -113,6 +122,7 @@ export default async function StockPage({
   const insiderRows     = insiderRes.data ?? [];
   const earningsRows    = earningsRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
+  const analystRows     = (analystRes.data ?? []) as AnalystRow[];
 
   // ── Quote ────────────────────────────────────────────────────────────────
   let quote: Quote | null = null;
@@ -243,6 +253,8 @@ export default async function StockPage({
         />
         <SnapshotInsider trades={trades} />
       </div>
+
+      <SnapshotAnalyst ratings={analystRows} />
 
       <SnapshotFilings filings={filings} ticker={ticker} />
       <SnapshotNews news={news} />

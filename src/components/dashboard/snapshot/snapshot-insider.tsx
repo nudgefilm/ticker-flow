@@ -10,12 +10,12 @@ function compactAmount(n: number | null): string {
 
 export function SnapshotInsider({ trades }: { trades: InsiderTrade[] }) {
   return (
-    <SectionCard title="내부자 거래" description="내부자(임원·이사·10% 이상 대주주) 최근 5건">
+    <SectionCard title="내부자 거래" description="내부자(임원·이사·10% 이상 대주주) 최근 10건">
       {trades.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 내부자 거래 내역이 없습니다.</p>
       ) : (
         <ul className="divide-y divide-white/[0.06]">
-          {trades.slice(0, 5).map((t) => {
+          {trades.slice(0, 10).map((t) => {
             const buy = t.type === "매수";
             return (
               <li
