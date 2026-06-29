@@ -301,20 +301,20 @@ async function TrendingContent() {
   for (const [t, d] of filingsData) totalCount.set(t, (totalCount.get(t) ?? 0) + d.count);
   for (const [t, n] of newsCount) totalCount.set(t, (totalCount.get(t) ?? 0) + n);
 
-  const top10 = Array.from(totalCount.entries())
+  const top30 = Array.from(totalCount.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
+    .slice(0, 30)
     .map(([t]) => t);
 
-  if (top10.length === 0) return null;
+  if (top30.length === 0) return null;
 
-  // ③ 상위 10개 대상 추가 조회 (회사명·내부자거래·실적 일정)
+  // ③ 상위 30개 대상 추가 조회 (회사명·내부자거래·실적 일정)
   const [tickerNamesRes, insiderRes, earningsRes] = await Promise.all([
-    supabase.from("tickers").select("ticker, name_kr, name_en").in("ticker", top10),
+    supabase.from("tickers").select("ticker, name_kr, name_en").in("ticker", top30),
     supabase.from("insider_trades").select("ticker, transaction_type")
-      .in("ticker", top10).gte("transaction_date", sevenDaysAgoDate).limit(200),
+      .in("ticker", top30).gte("transaction_date", sevenDaysAgoDate).limit(200),
     supabase.from("earnings").select("ticker, report_date")
-      .in("ticker", top10).gte("report_date", today)
+      .in("ticker", top30).gte("report_date", today)
       .order("report_date", { ascending: true }).limit(20),
   ]);
 
@@ -339,7 +339,7 @@ async function TrendingContent() {
   // ④ 팩트 문장 생성
   const todayMs = new Date(today + "T00:00:00").getTime();
 
-  const items: TrendingItem[] = top10.map((ticker) => {
+  const items: TrendingItem[] = top30.map((ticker) => {
     const fd       = filingsData.get(ticker);
     const fc       = fd?.count ?? 0;
     const fTypes   = fd?.formTypes ?? [];
