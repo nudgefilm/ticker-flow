@@ -11,7 +11,17 @@ export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 25;
 
-// ─── 헬퍼 함수 ────────────────────────────────────────────────────────────────
+// ─── 공통 헬퍼 ────────────────────────────────────────────────────────────────
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  const currentYear = new Date().getFullYear().toString();
+  if (y === currentYear) return `${parseInt(m)}월 ${parseInt(d)}일`;
+  return `${y}. ${parseInt(m)}. ${parseInt(d)}`;
+}
+
+// ─── 실적 헬퍼 ────────────────────────────────────────────────────────────────
 
 function getDday(reportDateStr: string): { label: string; variant: Earnings["ddayVariant"] } {
   const today = new Date();
@@ -54,6 +64,15 @@ type DbEarning = {
   revenue_estimate: number | null;
   actual_eps: number | null;
   actual_revenue: number | null;
+  tickers: { name_kr: string | null; name_en: string | null } | null;
+};
+
+type DbDividend = {
+  id: string;
+  ticker: string;
+  ex_date: string | null;
+  payment_date: string | null;
+  dividend: number | null;
   tickers: { name_kr: string | null; name_en: string | null } | null;
 };
 
@@ -106,9 +125,36 @@ function EarningsSkeleton() {
   );
 }
 
+function DividendSkeleton() {
+  return (
+    <div className="animate-pulse overflow-hidden rounded-lg border border-white/[0.08]">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex gap-4 border-b border-white/[0.06] px-5 py-3.5 last:border-0"
+        >
+          <div className="h-4 w-16 rounded bg-white/[0.06]" />
+          <div className="h-4 w-32 rounded bg-white/[0.06]" />
+          <div className="h-4 w-20 rounded bg-white/[0.06]" />
+          <div className="h-4 w-20 rounded bg-white/[0.06]" />
+          <div className="h-4 w-16 rounded bg-white/[0.06]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── 페이지네이션 ─────────────────────────────────────────────────────────────
 
-function EarningsPagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+function Pagination({
+  currentPage,
+  totalPages,
+  prefix,
+}: {
+  currentPage: number;
+  totalPages: number;
+  prefix: string; // e.g. "?" or "?tab=dividends&"
+}) {
   const pages: (number | "ellipsis")[] = [];
 
   if (totalPages <= 7) {
@@ -129,9 +175,9 @@ function EarningsPagination({ currentPage, totalPages }: { currentPage: number; 
   return (
     <div className="mt-6 flex items-center justify-center gap-1">
       <Link
-        href={`?page=${currentPage - 1}`}
+        href={`${prefix}page=${currentPage - 1}`}
         aria-disabled={currentPage === 1}
-        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === 1 ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-[#ffffff]"}`}
+        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === 1 ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-white"}`}
       >
         <IconChevronLeft size={14} stroke={1.5} />
       </Link>
@@ -142,11 +188,11 @@ function EarningsPagination({ currentPage, totalPages }: { currentPage: number; 
         ) : (
           <Link
             key={p}
-            href={`?page=${p}`}
+            href={`${prefix}page=${p}`}
             className={`${btn} border ${
               p === currentPage
-                ? "border-white/20 bg-[#1a1a1a] text-[#ffffff]"
-                : "border-white/[0.08] text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-[#ffffff]"
+                ? "border-white/20 bg-[#1a1a1a] text-white"
+                : "border-white/[0.08] text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-white"
             }`}
           >
             {p}
@@ -155,9 +201,9 @@ function EarningsPagination({ currentPage, totalPages }: { currentPage: number; 
       )}
 
       <Link
-        href={`?page=${currentPage + 1}`}
+        href={`${prefix}page=${currentPage + 1}`}
         aria-disabled={currentPage === totalPages}
-        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === totalPages ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-[#ffffff]"}`}
+        className={`${btn} border border-white/[0.08] text-[#a6a6a6] ${currentPage === totalPages ? "pointer-events-none opacity-30" : "hover:bg-[#1a1a1a] hover:text-white"}`}
       >
         <IconChevronRight size={14} stroke={1.5} />
       </Link>
@@ -165,19 +211,21 @@ function EarningsPagination({ currentPage, totalPages }: { currentPage: number; 
   );
 }
 
-// ─── 실 데이터 목록 ───────────────────────────────────────────────────────────
+// ─── 실적 목록 ────────────────────────────────────────────────────────────────
 
 async function EarningsList({ page }: { page: number }) {
   const supabase = await createClient();
 
   const today   = new Date().toISOString().slice(0, 10);
   const limit30 = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
-
-  const offset = (page - 1) * PAGE_SIZE;
+  const offset  = (page - 1) * PAGE_SIZE;
 
   const { data, error, count } = await supabase
     .from("earnings")
-    .select("ticker, report_date, time_of_day, eps_estimate, revenue_estimate, actual_eps, actual_revenue, tickers(name_kr, name_en)", { count: "exact" })
+    .select(
+      "ticker, report_date, time_of_day, eps_estimate, revenue_estimate, actual_eps, actual_revenue, tickers(name_kr, name_en)",
+      { count: "exact" }
+    )
     .gte("report_date", today)
     .lte("report_date", limit30)
     .order("report_date", { ascending: true })
@@ -211,8 +259,107 @@ async function EarningsList({ page }: { page: number }) {
         ))}
       </div>
       {totalPages > 1 && (
-        <EarningsPagination currentPage={page} totalPages={totalPages} />
+        <Pagination currentPage={page} totalPages={totalPages} prefix="?" />
       )}
+    </>
+  );
+}
+
+// ─── 배당 목록 ────────────────────────────────────────────────────────────────
+
+async function DividendsList({ page }: { page: number }) {
+  const supabase = await createClient();
+
+  const today  = new Date().toISOString().slice(0, 10);
+  const offset = (page - 1) * PAGE_SIZE;
+
+  const { data, error, count } = await supabase
+    .from("dividends")
+    .select(
+      "id, ticker, ex_date, payment_date, dividend, tickers(name_kr, name_en)",
+      { count: "exact" }
+    )
+    .gte("ex_date", today)
+    .order("ex_date", { ascending: true })
+    .range(offset, offset + PAGE_SIZE - 1);
+
+  if (error) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.
+      </p>
+    );
+  }
+
+  const rows = (data ?? []) as unknown as DbDividend[];
+
+  if (rows.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-[#a6a6a6]">
+        예정된 배당 일정이 없습니다.
+      </p>
+    );
+  }
+
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-lg border border-white/[0.08]">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-white/[0.08] bg-[#111111]">
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">티커</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">회사명</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">배당락일</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">지급일</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-[#a6a6a6]">배당금/주</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-[#a6a6a6]">수익률(%)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.05]">
+            {rows.map((row) => {
+              const company = row.tickers?.name_kr ?? row.tickers?.name_en ?? "—";
+              const dividend = row.dividend != null ? `$${row.dividend.toFixed(4)}` : "—";
+
+              return (
+                <tr
+                  key={row.id}
+                  className="bg-[#111111] transition-colors hover:bg-[#1a1a1a]"
+                >
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/stocks/${row.ticker}`}
+                      className="font-mono text-sm font-semibold text-[#60a5fa] hover:underline"
+                    >
+                      {row.ticker}
+                    </Link>
+                  </td>
+                  <td className="max-w-[180px] px-4 py-3 text-sm text-[#cccccc]">
+                    <span className="block truncate">{company}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm tabular-nums text-white">
+                    {fmtDate(row.ex_date)}
+                  </td>
+                  <td className="px-4 py-3 text-sm tabular-nums text-[#a6a6a6]">
+                    {fmtDate(row.payment_date)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm font-medium tabular-nums text-white">
+                    {dividend}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-[#a6a6a6]">—</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {totalPages > 1 && (
+        <Pagination currentPage={page} totalPages={totalPages} prefix="?tab=dividends&" />
+      )}
+      <p className="mt-2 text-right text-[11px] text-[#a6a6a6]">
+        수익률은 추후 제공 예정입니다.
+      </p>
     </>
   );
 }
@@ -222,45 +369,76 @@ async function EarningsList({ page }: { page: number }) {
 export default async function EarningsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; tab?: string }>;
 }) {
   const params = await searchParams;
+  const tab  = params.tab === "dividends" ? "dividends" : "earnings";
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+
+  const tabBtn = (active: boolean) =>
+    `rounded-[4px] px-4 py-1.5 text-sm font-medium transition-colors ${
+      active
+        ? "bg-[#262626] text-white"
+        : "text-[#a6a6a6] hover:text-[#cccccc]"
+    }`;
 
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="실적 캘린더" />
       <p className="mt-2 text-sm text-[#a6a6a6]">
-        주요 미국 기업의 실적 발표 일정을 한국 시간 기준으로 제공합니다.
+        주요 미국 기업의 실적 발표 및 배당 일정을 한국 시간 기준으로 제공합니다.
       </p>
 
-      <div className="mt-6">
-        <EarningsFilterBar />
+      {/* ── 탭 네비게이션 ── */}
+      <div className="mt-6 flex w-fit items-center rounded-[6px] border border-white/[0.08] bg-[#111111] p-1">
+        <Link href="?tab=earnings" className={tabBtn(tab === "earnings")}>
+          실적 발표
+        </Link>
+        <Link href="?tab=dividends" className={tabBtn(tab === "dividends")}>
+          배당 일정
+        </Link>
       </div>
 
-      <div className="mt-8">
-        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
-          향후 30일 실적 일정
-        </p>
-        <Suspense key={page} fallback={<EarningsSkeleton />}>
-          <EarningsList page={page} />
-        </Suspense>
-      </div>
-
-      <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4 py-3.5">
-        <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#a6a6a6]" stroke={1.5} />
-        <div className="space-y-1 text-sm">
-          <p className="text-[#cccccc]">모든 시각은 한국 시간(KST) 기준입니다.</p>
-          <p className="text-[#a6a6a6]">
-            실적 발표 일정은 기업 사정에 따라 변경될 수 있습니다.
-          </p>
-          <div className="flex flex-wrap gap-x-5 gap-y-0.5 pt-1 text-xs text-[#a6a6a6]">
-            <span><span className="text-[#cccccc]">EPS</span> — 주당순이익 (Earnings Per Share)</span>
-            <span><span className="text-[#cccccc]">BMO</span> — 개장 전 발표 (Before Market Open)</span>
-            <span><span className="text-[#cccccc]">AMC</span> — 장 마감 후 발표 (After Market Close)</span>
+      {tab === "earnings" ? (
+        <>
+          <div className="mt-6">
+            <EarningsFilterBar />
           </div>
+
+          <div className="mt-8">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+              향후 30일 실적 일정
+            </p>
+            <Suspense key={`earnings-${page}`} fallback={<EarningsSkeleton />}>
+              <EarningsList page={page} />
+            </Suspense>
+          </div>
+
+          <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-4 py-3.5">
+            <IconInfoCircle className="mt-0.5 size-4 shrink-0 text-[#a6a6a6]" stroke={1.5} />
+            <div className="space-y-1 text-sm">
+              <p className="text-[#cccccc]">모든 시각은 한국 시간(KST) 기준입니다.</p>
+              <p className="text-[#a6a6a6]">
+                실적 발표 일정은 기업 사정에 따라 변경될 수 있습니다.
+              </p>
+              <div className="flex flex-wrap gap-x-5 gap-y-0.5 pt-1 text-xs text-[#a6a6a6]">
+                <span><span className="text-[#cccccc]">EPS</span> — 주당순이익 (Earnings Per Share)</span>
+                <span><span className="text-[#cccccc]">BMO</span> — 개장 전 발표 (Before Market Open)</span>
+                <span><span className="text-[#cccccc]">AMC</span> — 장 마감 후 발표 (After Market Close)</span>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="mt-8">
+          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+            배당락일 기준 예정 일정
+          </p>
+          <Suspense key={`dividends-${page}`} fallback={<DividendSkeleton />}>
+            <DividendsList page={page} />
+          </Suspense>
         </div>
-      </div>
+      )}
 
       <DashboardDisclaimer />
     </div>

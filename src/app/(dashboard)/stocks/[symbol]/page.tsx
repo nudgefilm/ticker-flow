@@ -9,6 +9,7 @@ import { SnapshotNews } from "@/components/dashboard/snapshot/snapshot-news";
 import { CompanyInfo } from "@/components/dashboard/snapshot/company-info";
 import { SnapshotInsider } from "@/components/dashboard/snapshot/snapshot-insider";
 import { SnapshotAnalyst } from "@/components/dashboard/snapshot/snapshot-analyst";
+import { StockSplits } from "@/components/dashboard/snapshot/stock-splits";
 import EarningsFlow from "@/components/dashboard/insights/earnings-flow";
 import DataSources from "@/components/dashboard/insights/data-sources";
 import type {
@@ -60,7 +61,7 @@ export default async function StockPage({
   const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, analystRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, analystRes, splitsRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -113,6 +114,11 @@ export default async function StockPage({
         .eq("ticker", ticker)
         .order("period", { ascending: false })
         .limit(3),
+      supabase
+        .from("stock_splits")
+        .select("id, split_date, numerator, denominator")
+        .eq("ticker", ticker)
+        .order("split_date", { ascending: false }),
     ]);
 
   const info            = tickerRes.data;
@@ -123,6 +129,7 @@ export default async function StockPage({
   const earningsRows    = earningsRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
   const analystRows     = (analystRes.data ?? []) as AnalystRow[];
+  const splitRows       = splitsRes.data ?? [];
 
   // ── Quote ────────────────────────────────────────────────────────────────
   let quote: Quote | null = null;
@@ -242,6 +249,8 @@ export default async function StockPage({
       />
 
       <PriceCard quote={quote} />
+
+      <StockSplits splits={splitRows} />
 
       <KeyMetrics quote={quote} nextEarnings={nextEarnings} />
 

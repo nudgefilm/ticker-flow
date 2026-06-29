@@ -59,10 +59,20 @@ export default function MacroBoard({
           <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
             {group.label}
           </p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {group.indicators.map((ind) => (
-              <IndicatorCard key={ind.seriesId} ind={ind} />
-            ))}
+          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+            {group.indicators.map((ind, i) => {
+              const isLastOdd =
+                i === group.indicators.length - 1 &&
+                group.indicators.length % 2 !== 0;
+              return (
+                <div
+                  key={ind.seriesId}
+                  className={`w-full${isLastOdd ? " md:col-span-2" : ""}`}
+                >
+                  <IndicatorCard ind={ind} />
+                </div>
+              );
+            })}
           </div>
         </section>
       ))}

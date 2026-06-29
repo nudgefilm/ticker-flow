@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-06-29 · 세션 50
+
+### 종목 스냅샷 실 DB 데이터 연결
+
+**변경 파일**
+- `src/app/(dashboard)/stocks/[symbol]/page.tsx`
+  - `stock_prices`: `.limit(30)` → `.gte("date", oneYearAgo)` (1년 일봉)
+  - `insider_trades`: limit 5 → 10
+  - `analyst_ratings` 쿼리 추가 (최근 3개 기간, period DESC)
+  - `SnapshotAnalyst` 컴포넌트 추가 (CompanyInfo/SnapshotInsider 그리드 아래 배치)
+- `src/components/dashboard/snapshot/price-card.tsx`: "최근 30일 종가 추이" → "1년 종가 추이"
+- `src/components/dashboard/snapshot/snapshot-insider.tsx`: 설명·slice 5 → 10
+- `src/components/dashboard/snapshot/snapshot-analyst.tsx`: 신규 생성
+  - 최신 기간 바 차트 (Strong Buy/Buy/Hold/Sell/Strong Sell, maxCount 기준 정규화)
+  - 최근 3개 기간 비교 테이블
+  - 출처: Finnhub, 투자 의견 면책 문구 포함
+
+---
+
 ## 2026-06-28 · 세션 49
 
 ### collect 함수 PostgREST 1000행 제한 우회 + 데이터 시딩 스크립트 정비
