@@ -1,7 +1,7 @@
 # TickerFlow — 프로젝트 컨텍스트 (CLAUDE.md)
 
 > Claude Code가 이 파일을 항상 먼저 읽고 작업을 시작합니다.
-> 업데이트: 2026-06-26
+> 업데이트: 2026-06-29
 
 ---
 
@@ -130,15 +130,14 @@ SEC 공시, 뉴스, 실적 일정은 이러한 변화를 탐지하기 위한 데
 
 # 5. 데이터 소스
 
-| 소스              | 제공 데이터         |
-| --------------- | -------------- |
-| SEC EDGAR API   | 공시 원문          |
-| edgartools      | EDGAR 파싱       |
-| Finnhub         | 뉴스·실적 캘린더·경제지표 |
-| Finnhub Premium | 내부자 거래         |
-| yfinance        | 종가 데이터         |
-| Claude Haiku    | 한국어 요약         |
-| Claude Sonnet   | 심층 리포트         |
+| 소스              | 제공 데이터                     |
+| --------------- | -------------------------- |
+| SEC EDGAR API   | 공시 원문                      |
+| edgartools      | EDGAR 파싱                   |
+| Finnhub         | 뉴스·실적 캘린더·경제지표·배당 일정·내부자 거래 |
+| FMP API         | 종가 데이터 (1년 일봉)             |
+| Claude Haiku    | 한국어 요약                     |
+| Claude Sonnet   | 심층 리포트                     |
 
 ---
 

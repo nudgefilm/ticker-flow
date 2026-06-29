@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-06-29 · 세션 51
+
+### 실적 캘린더 배당 탭 + 인사이더 기관 보유 현황 + 종목 주식 분할 타임라인 + 경제지표 그리드 수정
+
+**변경 파일**
+- `src/app/(dashboard)/earnings/page.tsx`
+  - 상단 탭 추가: "실적 발표" / "배당 일정" (`?tab=earnings` 기본 / `?tab=dividends`)
+  - `dividends` 테이블 연결: ex_date >= today, ASC, 25건 페이지네이션
+  - 탭별 URL 파라미터 보존을 위해 `Pagination` 컴포넌트에 `prefix` 파라미터 추가
+  - 수익률(%) 컬럼 포함, 현재는 "—" 표시 (주가 조회 없이는 계산 불가)
+- `src/app/(dashboard)/insider/page.tsx`
+  - `InstitutionalHoldings` 섹션 신규 추가 (Pro 전용, InsiderBoard 위에 배치)
+  - `institutional_holdings` 최신 분기 파악 → 해당 분기 최대 2000행 조회 후 JS 집계
+  - institution_name 기준 총 보유 금액 내림차순 상위 10개 표시
+  - 보유 금액 포맷: T/B/M 단위 자동 변환
+- `src/components/dashboard/snapshot/stock-splits.tsx`: 신규 생성
+  - `stock_splits` 테이블 연결, split_date DESC 정렬
+  - `numerator:denominator` 비율 표시, denominator > numerator 시 "역분할(Reverse Split)" 표기
+  - 데이터 없으면 컴포넌트 null 반환 (섹션 미표시)
+  - `stocks/[symbol]/page.tsx` 주가 차트(PriceCard) 바로 아래 배치
+- `src/components/macro/macro-board.tsx`
+  - 그리드 `sm:grid-cols-2 lg:grid-cols-3` → `md:grid-cols-2 w-full` (2열 고정)
+  - 홀수 마지막 카드에 `md:col-span-2` 적용
+- `src/components/macro/indicator-card.tsx`
+  - 외부 div에 `h-full w-full` 추가 → 그리드 셀 전체 채움
+
+---
+
 ## 2026-06-29 · 세션 50
 
 ### 종목 스냅샷 실 DB 데이터 연결
