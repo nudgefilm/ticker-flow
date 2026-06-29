@@ -2,6 +2,51 @@
 
 ---
 
+## 2026-06-29 · 세션 63
+
+### 사이트 표기 불일치 수정
+
+**랜딩 페이지 FEATURES 섹션 (`src/app/page.tsx`)**
+- 와치리스트 `pro: true` → `pro: false` (실제 Free 기능)
+- 섹터 히트맵 `pro: false` → `pro: true` (실제 Pro 기능, ProGate 적용 중)
+
+**FAQ PlanBreakdown + 텍스트 (`src/components/landing/faq-accordion.tsx`)**
+- Free 목록: 섹터 히트맵 제거, 실적 캘린더 추가
+- Pro 목록: 와치리스트 제거, 섹터 히트맵·알림 설정 추가 ("Free의 모든 기능" 표현 통일)
+- FAQ 설명 텍스트: 실제 플랜 구분에 맞게 수정
+
+**마이페이지 데이터 출처 (`src/app/(dashboard)/mypage/page.tsx`)**
+- 어닝콜 항목 추가: "기업 공식 실적 발표 컨퍼런스콜 기반 한국어 요약"
+- FMP 항목 미표기 (중간 공급자, 공개 불필요)
+
+**사이드바 그룹명**: 변경 없음 (사용자 요청으로 "인사이트"/"매크로" 유지)
+
+**기준:** `billing-plans-client.tsx` 및 실제 ProGate 구현 상태
+
+---
+
+## 2026-06-29 · 세션 62
+
+### 전체 페이지 전수조사 — 버그 4건 수정
+
+**조사 대상:** /dashboard, /news, /earnings, /watchlist, /stocks/[symbol], /analysis, /calls, /insider, /sectors, /macro, /alerts, /billing, /mypage (13개)
+
+**발견 및 수정:**
+
+1. `news/page.tsx`: `searchParams: { page?: string }` → `Promise<{ page?: string }>` + `await searchParams` (다른 모든 페이지와 불일치)
+2. `mypage/page.tsx` L197: `#555555` → `#a6a6a6` (CLAUDE.md: #666666 이하 금지)
+3. `mypage/page.tsx`: CSV 다운로드가 헤더만 출력하던 버그 수정 — Supabase에서 실제 와치리스트 데이터 조회 후 생성, 로딩 상태 추가
+4. `analysis/page.tsx`: `insider_trades` 쿼리 `.limit(200)` 누락 → 추가; `filings` 쿼리 `.limit(100)` 추가
+
+**이상 없음:**
+- `force-dynamic`: /news, /dashboard, /earnings, /watchlist, /stocks/[symbol], /analysis, /calls, /insider, /sectors, /macro, /billing 모두 설정됨
+  - /alerts, /mypage 은 클라이언트 컴포넌트 기반이라 불필요
+- 면책 문구 (`DashboardDisclaimer`): 전 페이지 포함 확인
+- Pro 게이팅 (`ProGate`): /analysis, /calls, /insider, /sectors, /alerts 정상 적용
+- PostgREST 1000행 제한: 피드 페이지 모두 `.range()` 페이지네이션 적용됨
+
+---
+
 ## 2026-06-29 · 세션 61
 
 ### 기업동향 TOP30 자동 선정 + 텔레그램 발송 + 랜딩 TOP10
