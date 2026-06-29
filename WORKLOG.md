@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-06-29 · 세션 55
+
+### 어드민 기업 동향 (내부용) 섹션 시각적 구분
+
+- `src/app/admin/page.tsx`: wrapper div 스타일 변경
+  - `border-white/[0.08] bg-[#111111]` → `border-red-500/60 bg-red-500/[0.03] shadow-[0_0_20px_rgba(239,68,68,0.25)]`
+  - 타이틀 `text-white` → `text-red-400`
+- 작업 2(어드민 slice 30), 작업 3(와치리스트 slice 30)은 세션 53·54에서 기완료
+
+---
+
 ## 2026-06-29 · 세션 54
 
 ### 와치리스트 TrendingCarousel 노출 종목 수 변경

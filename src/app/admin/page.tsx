@@ -373,9 +373,9 @@ export default async function AdminPage() {
       </div>
 
       {/* 기업 동향 (내부용) */}
-      <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+      <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
         <div className="mb-4">
-          <h2 className="text-sm font-medium text-white">기업 동향 (내부용)</h2>
+          <h2 className="text-sm font-medium text-red-400">기업 동향 (내부용)</h2>
           <p className="mt-1 text-xs text-[#a6a6a6]">
             공시×2 + 뉴스×1 + 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6 + 52주 수익률(20%↑+4 / 10%↑+2)
           </p>
