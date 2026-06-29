@@ -129,9 +129,10 @@ async function NewsFeedList({ page }: { page: number }) {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }) {
-  const page = Math.max(1, parseInt(searchParams?.page ?? "1") || 1);
+  const { page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
 
   // ── 차트용 집계 데이터 ──────────────────────────────────────────────────────
   const supabase = await createClient();

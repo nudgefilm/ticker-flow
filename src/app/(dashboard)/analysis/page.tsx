@@ -110,7 +110,8 @@ export default async function AnalysisPage({
         .select("id, filed_at, form_type, event_type, summary_kr, url")
         .eq("ticker", symbol)
         .gte("filed_at", d30)
-        .order("filed_at", { ascending: false }),
+        .order("filed_at", { ascending: false })
+        .limit(100),
       supabase
         .from("news")
         .select("id, headline, source, published_at, url, summary_kr")
@@ -123,7 +124,8 @@ export default async function AnalysisPage({
         .select("id, name, title, transaction_type, shares, price, value, transaction_date")
         .eq("ticker", symbol)
         .gte("transaction_date", d180)
-        .order("transaction_date", { ascending: false }),
+        .order("transaction_date", { ascending: false })
+        .limit(200),
       supabase
         .from("earnings")
         .select("id, report_date, eps_estimate, actual_eps")

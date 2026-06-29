@@ -49,6 +49,7 @@ export default function MyPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [contactSubject, setContactSubject] = useState<string | null>(null);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -87,17 +88,45 @@ export default function MyPage() {
     }
   }
 
-  function handleCsvDownload() {
-    const csv = "티커,회사명,추가일\n";
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "tickerflow-watchlist.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  async function handleCsvDownload() {
+    if (downloadingCsv) return;
+    setDownloadingCsv(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      type WlRow = {
+        ticker: string;
+        added_at: string;
+        tickers: { name_kr: string | null; name_en: string | null } | null;
+      };
+      const { data } = await supabase
+        .from("watchlist")
+        .select("ticker, added_at, tickers(name_kr, name_en)")
+        .eq("user_id", user.id)
+        .order("added_at", { ascending: false });
+
+      const rows = (data ?? []) as unknown as WlRow[];
+      const lines = ["티커,회사명,추가일"];
+      for (const row of rows) {
+        const name = row.tickers?.name_kr ?? row.tickers?.name_en ?? "";
+        const date = row.added_at?.slice(0, 10) ?? "";
+        lines.push(`${row.ticker},"${name}",${date}`);
+      }
+
+      const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "tickerflow-watchlist.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingCsv(false);
+    }
   }
 
   if (!profile) return null;
@@ -181,10 +210,11 @@ export default function MyPage() {
             <button
               type="button"
               onClick={handleCsvDownload}
-              className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#cccccc] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+              disabled={downloadingCsv}
+              className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#cccccc] transition-colors hover:bg-[#1a1a1a] hover:text-white disabled:opacity-50"
             >
               <IconDownload size={14} stroke={1.5} />
-              다운로드
+              {downloadingCsv ? "준비 중..." : "다운로드"}
             </button>
           </div>
         </SectionCard>
@@ -194,7 +224,7 @@ export default function MyPage() {
           <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
             <IconReceipt size={32} stroke={1} className="text-[#2a2a2a]" />
             <p className="text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
-            <p className="text-xs text-[#555555]">Polar.sh 연동 후 결제 내역이 표시됩니다.</p>
+            <p className="text-xs text-[#a6a6a6]">Polar.sh 연동 후 결제 내역이 표시됩니다.</p>
           </div>
         </SectionCard>
 
