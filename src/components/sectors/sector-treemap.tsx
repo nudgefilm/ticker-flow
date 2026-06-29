@@ -6,7 +6,7 @@ import { SECTOR_COLORS, hexToRgba } from "@/lib/sectors";
 
 const W = 800;
 const H = 400;
-const MIN_PCT = 0.03; // 전체 면적의 3% 최솟값 보장
+const MIN_PCT = 0.02;
 const PAD = 2;
 
 // ─── Squarified Treemap ───────────────────────────────────────────────────────
@@ -88,42 +88,6 @@ function squarify(
   return rects;
 }
 
-// ─── 활동 구간별 글래스모피즘 스타일 ─────────────────────────────────────────
-
-interface TileStyle {
-  fill: string;
-  border: string;
-  isTop: boolean;
-}
-
-function getTileStyle(
-  tier: "top" | "mid" | "bot",
-  hex: string,
-  isHovered: boolean
-): TileStyle {
-  switch (tier) {
-    case "top":
-      return {
-        fill:   hexToRgba(hex, 0.22),
-        border: isHovered ? hexToRgba(hex, 0.85) : hexToRgba(hex, 0.55),
-        isTop:  true,
-      };
-    case "mid":
-      return {
-        fill:   hexToRgba(hex, 0.12),
-        border: isHovered ? hexToRgba(hex, 0.50) : hexToRgba(hex, 0.28),
-        isTop:  false,
-      };
-    case "bot":
-    default:
-      return {
-        fill:   isHovered ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.05)",
-        border: isHovered ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)",
-        isTop:  false,
-      };
-  }
-}
-
 // ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
@@ -145,38 +109,37 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
     effective: s.activityScore > 0 ? s.activityScore : s.tickerCount * 0.5,
   }));
 
-  // 2. 로그 스케일 변환 — 크기 편차 완화
-  const withLog = withEffective.map((s) => ({
-    ...s,
-    logScore: Math.log1p(s.effective),
-  }));
-
-  // 3. 최솟값 3% 보정
-  const rawTotal = withLog.reduce((sum, s) => sum + s.logScore, 0) || 1;
+  // 2. 최솟값 2% 보정
+  const rawTotal = withEffective.reduce((sum, s) => sum + s.effective, 0) || 1;
   const minVal = rawTotal * MIN_PCT;
-  const floored = withLog.map((s) => ({
+  const floored = withEffective.map((s) => ({
     ...s,
-    logScore: Math.max(s.logScore, minVal),
+    effective: Math.max(s.effective, minVal),
   }));
 
-  // 4. 원본 activityScore 내림차순 정렬
+  // 3. activityScore 내림차순 정렬
   const sorted = [...floored].sort((a, b) => b.effective - a.effective);
 
-  // 5. 활동 3구간 경계
+  // 4. 섹터별 고유 색상 + 활동량 기준 명도
   const n = sorted.length;
   const topCut = Math.ceil(n / 3);
   const midCut = Math.ceil((2 * n) / 3);
+  const colors = sorted.map((s, i) => {
+    const hex = SECTOR_COLORS[s.sector] ?? SECTOR_COLORS[s.sectorKr] ?? "#6b7280";
+    const opacity = i < topCut ? 0.4 : i < midCut ? 0.25 : 0.12;
+    return hexToRgba(hex, opacity);
+  });
 
-  // 6. 면적 정규화 (로그 스케일 기반)
-  const totalVal = sorted.reduce((sum, s) => sum + s.logScore, 0);
-  const normalized = sorted.map((s) => (s.logScore / totalVal) * W * H);
+  // 5. 면적 정규화
+  const totalVal = sorted.reduce((sum, s) => sum + s.effective, 0);
+  const normalized = sorted.map((s) => (s.effective / totalVal) * W * H);
 
-  // 7. 트리맵 레이아웃
+  // 6. 레이아웃
   const rects = squarify(normalized, 0, 0, W, H);
 
   const hoveredSector = hovered !== null ? sorted[hovered] : null;
 
-  // 툴팁 위치 보정
+  // 툴팁 위치 보정: 하단 120px 이내면 위로 반전
   const TOOLTIP_H = 120;
   const containerH = containerRef.current?.offsetHeight ?? H;
   const tipTop =
@@ -201,7 +164,6 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
                 y={r.y + PAD}
                 width={Math.max(0, r.w - PAD * 2)}
                 height={Math.max(0, r.h - PAD * 2)}
-                rx={6}
               />
             </clipPath>
           ))}
@@ -212,42 +174,39 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
           if (!r || r.w < 1 || r.h < 1) return null;
 
           const isHovered = hovered === i;
-          const rx = r.x + PAD;
-          const ry = r.y + PAD;
-          const rw = Math.max(0, r.w - PAD * 2);
-          const rh = Math.max(0, r.h - PAD * 2);
           const cx = r.x + r.w / 2;
-          const hasRoom   = r.h > 50;
+          const hasRoom = r.h > 50;
           const showDetails = r.w > 100 && r.h > 70;
           const textBaseY = r.y + r.h / 2 - (showDetails ? 14 : hasRoom ? 8 : 0);
 
-          const hex  = SECTOR_COLORS[s.sector] ?? SECTOR_COLORS[s.sectorKr] ?? "#6b7280";
-          const tier = i < topCut ? "top" : i < midCut ? "mid" : "bot";
-          const tile = getTileStyle(tier, hex, isHovered);
-
           return (
-            <g key={s.sector} style={{ cursor: "default" }}>
-              {/* ── 글래스모피즘 배경 (foreignObject → div) ── */}
-              <foreignObject x={rx} y={ry} width={rw} height={rh}>
-                <div
-                  style={{
-                    width:               "100%",
-                    height:              "100%",
-                    pointerEvents:       "none",
-                    overflow:            "hidden",
-                    backdropFilter:      tile.isTop ? "blur(6px) saturate(1.3)" : undefined,
-                    backgroundColor:     tile.fill,
-                    border:              `1px solid ${tile.border}`,
-                    borderRadius:        "6px",
-                    boxSizing:           "border-box",
-                    transition:          "border-color 0.15s, background-color 0.15s",
-                  }}
-                />
-              </foreignObject>
-
-              {/* ── 텍스트 레이블 ── */}
-              {rw > 40 && rh > 28 && (
-                <g clipPath={`url(#clip-sector-${i})`} style={{ pointerEvents: "none" }}>
+            <g
+              key={s.sector}
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => {
+                setHovered(null);
+                setMousePos(null);
+              }}
+              onMouseMove={(e) => {
+                if (containerRef.current) {
+                  const rect = containerRef.current.getBoundingClientRect();
+                  setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                }
+              }}
+              style={{ cursor: "default" }}
+            >
+              <rect
+                x={r.x + PAD}
+                y={r.y + PAD}
+                width={Math.max(0, r.w - PAD * 2)}
+                height={Math.max(0, r.h - PAD * 2)}
+                fill={colors[i]}
+                stroke={isHovered ? "rgba(96,165,250,0.6)" : "rgba(255,255,255,0.06)"}
+                strokeWidth={isHovered ? 1.5 : 1}
+                rx={4}
+              />
+              {r.w > 40 && r.h > 28 && (
+                <g clipPath={`url(#clip-sector-${i})`}>
                   <text
                     x={cx}
                     y={textBaseY}
@@ -285,34 +244,12 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
                   )}
                 </g>
               )}
-
-              {/* ── 마우스 이벤트 수신용 투명 hit 영역 ── */}
-              <rect
-                x={rx}
-                y={ry}
-                width={rw}
-                height={rh}
-                fill="transparent"
-                stroke="none"
-                rx={6}
-                onMouseEnter={() => setHovered(i)}
-                onMouseLeave={() => {
-                  setHovered(null);
-                  setMousePos(null);
-                }}
-                onMouseMove={(e) => {
-                  if (containerRef.current) {
-                    const bound = containerRef.current.getBoundingClientRect();
-                    setMousePos({ x: e.clientX - bound.left, y: e.clientY - bound.top });
-                  }
-                }}
-              />
             </g>
           );
         })}
       </svg>
 
-      {/* ── 커스텀 툴팁 ── */}
+      {/* 커스텀 툴팁 */}
       {hoveredSector && mousePos && (
         <div
           className="pointer-events-none absolute z-50 rounded-[6px] border border-white/[0.12] bg-[#1a1a1a] px-3 py-2 text-sm shadow-lg"
