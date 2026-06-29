@@ -71,6 +71,14 @@
     {
       "path": "/api/collect/price-targets",
       "schedule": "55 1 * * 1"
+    },
+    {
+      "path": "/api/collect/top30",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/collect/telegram",
+      "schedule": "10 21 * * *"
     }
   ]
 }

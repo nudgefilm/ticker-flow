@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-06-29 · 세션 61
+
+### 기업동향 TOP30 자동 선정 + 텔레그램 발송 + 랜딩 TOP10
+
+- `src/lib/collect/scoring.ts` 신규 — `computeScores(): Promise<ScoredTicker[]>` 공통 함수
+  - 어드민 스코어링 로직 전면 분리 (Phase 1 병렬 쿼리 9개, Phase 2 주가 페이지네이션, 섹터 다양성 포함)
+  - `ScoredTicker`, `ScoredMetadata`, `TAG_LABELS_KR` export
+- `src/app/admin/page.tsx` 리팩토링
+  - 스코어링 인라인 로직 제거, `computeScores()` import 사용으로 대폭 간소화
+  - 표시용 `TAG_LABELS`, `tagStyle` 유지 (어드민 배지용 축약형)
+- `src/lib/collect/top30.ts` 신규 — `runTop30Select()`
+  - `computeScores()` 호출 → 상위 30개 → `top30_daily` upsert
+- `src/lib/notify/telegram.ts` 신규 — `sendTelegramTop10()` + `runTelegramNotify()`
+  - top30_daily 오늘 rank 1~10 조회 → 회사명 조회 → TAG_LABELS_KR 변환 → 텔레그램 발송
+  - 면책 문구 포함
+- `src/app/api/collect/top30/route.ts` 신규 — thin wrapper (maxDuration 300)
+- `src/app/api/collect/telegram/route.ts` 신규 — thin wrapper (maxDuration 60)
+- `src/components/landing-top10.tsx` 신규 — 서버 컴포넌트
+  - top30_daily 오늘 rank 1~10 조회 → TAG_LABELS_KR 변환 → 랜딩 페이지 표시
+  - 데이터 없으면 null 반환 (graceful fallback)
+  - 면책 문구 포함, HSL 토큰 사용
+- `src/app/page.tsx`: HERO 섹션 다음에 `<LandingTop10 />` 삽입
+- COLLECT_JOBS에 "top30", "telegram" 추가
+- COLLECT_MAP에 "top30": runTop30Select, "telegram": runTelegramNotify 추가
+- vercel.json: "0 21 * * *" → /api/collect/top30, "10 21 * * *" → /api/collect/telegram 추가
+- 트리거 페이지: "TOP30 선정", "텔레그램 발송" 버튼 + 크론 테이블 항목 추가
+
+환경변수 추가 필요 (.env.local + Vercel):
+- TELEGRAM_BOT_TOKEN=
+- TELEGRAM_CHAT_ID=
+
+---
+
 ## 2026-06-29 · 세션 60
 
 ### Price Target 수집 파이프라인

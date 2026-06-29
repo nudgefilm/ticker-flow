@@ -137,6 +137,16 @@ const TRIGGERS: Trigger[] = [
     label: "Price Target 수집 (FMP)",
     desc: "와치리스트 + 최근 7일 공시 종목의 애널리스트 목표주가를 FMP에서 수집합니다. 최근 90일 이내 데이터만 저장. 최대 30종목, 300ms 딜레이.",
   },
+  {
+    id: "top30",
+    label: "TOP30 선정",
+    desc: "스코어링 엔진을 실행해 오늘의 기업 동향 TOP30를 선정하고 top30_daily 테이블에 저장합니다. 섹터 다양성 적용.",
+  },
+  {
+    id: "telegram",
+    label: "텔레그램 발송",
+    desc: "오늘의 TOP10 기업 동향을 텔레그램 채널에 발송합니다. TOP30 선정 먼저 실행 필요.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -378,6 +388,8 @@ export default function TriggerPage() {
             { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
+            { name: "TOP30 선정",         schedule: "매일 21:00 UTC (익일 06:00 KST)", path: "/api/collect/top30"             },
+            { name: "텔레그램 발송",       schedule: "매일 21:10 UTC (익일 06:10 KST)", path: "/api/collect/telegram"          },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

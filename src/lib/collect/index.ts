@@ -16,3 +16,5 @@ export * from "./digest";
 export * from "./classify-filings";
 export * from "./short-interest";
 export * from "./price-targets";
+export * from "./scoring";
+export * from "./top30";
