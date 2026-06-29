@@ -23,6 +23,7 @@ export const COLLECT_JOBS = [
   "translate",
   "digest",
   "classify-filings",
+  "short-interest",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

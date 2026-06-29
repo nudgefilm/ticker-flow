@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-29 · 세션 59
+
+### Short Interest 수집 파이프라인
+
+- `src/lib/collect/short-interest.ts` 신규 — `runShortInterestCollect()` 구현
+  - FMP `/stable/short-float?symbol={ticker}` 호출 (AbortSignal.timeout 8초)
+  - 와치리스트 + 최근 7일 공시 종목 합집합, 최대 30종목, 300ms 딜레이
+  - `short_interest` 테이블 upsert (onConflict: "ticker,collected_at")
+  - 반환: `{ ok, total, updated, skipped, errors }`
+- `src/lib/collect/types.ts`: COLLECT_JOBS에 "short-interest" 추가
+- `src/lib/collect/index.ts`: `runShortInterestCollect` export 추가
+- `src/app/api/collect/short-interest/route.ts` 신규 — thin wrapper (GET, requireCollectAuth, maxDuration 300)
+- `src/app/api/admin/run/route.ts`: import + COLLECT_MAP에 "short-interest" 추가
+- `vercel.json`: cron "50 1 * * 1" → /api/collect/short-interest (매주 월요일) 추가
+- `src/app/admin/system/trigger/page.tsx`: "Short Interest 수집 (FMP)" 트리거 버튼 + 크론 테이블 항목 추가
+- `src/app/admin/page.tsx` Smart Money Score 개선:
+  - Phase 1 병렬 쿼리에 `short_interest` 추가 (`(admin as any).from(...)`)
+  - `shortInterestByTicker` Map 전처리 (ticker별 최신 2개 records, collected_at DESC)
+  - short_float 직전 대비 감소 시: smartRaw +4, "short_decrease" 태그, meta.shortDecrease = true
+  - ReasonTag에 "short_decrease" 추가 · TAG_LABELS: "공매도↓" · tagStyle: cyan
+
+---
+
 ## 2026-06-29 · 세션 58
 
 ### earnings_calls guidance_direction + management_tone 반영

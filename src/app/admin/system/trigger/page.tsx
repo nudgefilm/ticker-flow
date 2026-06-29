@@ -127,6 +127,11 @@ const TRIGGERS: Trigger[] = [
     label: "공시 이벤트 자동 분류 (Haiku)",
     desc: "event_type이 미분류된 8-K 공시를 Claude Haiku로 분류합니다. ceo_change / buyback / ma / guidance 등 11개 카테고리. 최대 50건, 건당 200ms 딜레이.",
   },
+  {
+    id: "short-interest",
+    label: "Short Interest 수집 (FMP)",
+    desc: "와치리스트 + 최근 7일 공시 종목의 공매도 비율(Short Float·Short Ratio)을 FMP에서 수집합니다. 최대 30종목, 300ms 딜레이.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -366,6 +371,7 @@ export default function TriggerPage() {
             { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
             { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"              },
             { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
+            { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

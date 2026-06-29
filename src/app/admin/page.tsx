@@ -20,7 +20,8 @@ type ReasonTag =
   | "buyback" | "ma" | "guidance" | "ceo_change" | "cfo_change" | "contract"
   | "insider_buy" | "insider_buy_large" | "13f_new" | "13f_increase"
   | "eps_beat" | "revenue_beat" | "both_beat" | "guidance_up"
-  | "price_up_20" | "price_up_10" | "volume_spike" | "volatility_spike";
+  | "price_up_20" | "price_up_10" | "volume_spike" | "volatility_spike"
+  | "short_decrease";
 
 type Metadata = {
   event: number;
@@ -47,6 +48,7 @@ const TAG_LABELS: Record<ReasonTag, string> = {
   eps_beat: "EPS상회", revenue_beat: "매출상회", both_beat: "실적상회",
   guidance_up: "가이던스Up", price_up_20: "30일+20%", price_up_10: "30일+10%",
   volume_spike: "거래량급증", volatility_spike: "변동성급증",
+  short_decrease: "공매도↓",
 };
 
 const ET_WEIGHTS: Record<string, number> = {
@@ -70,7 +72,7 @@ function tagStyle(tag: ReasonTag): string {
       return "bg-green-500/10 text-green-400 border border-green-500/20";
     case "guidance": case "guidance_up":
       return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-    case "volume_spike": case "volatility_spike":
+    case "volume_spike": case "volatility_spike": case "short_decrease":
       return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
     default:
       return "bg-white/[0.06] text-[#a6a6a6] border border-white/[0.08]";
@@ -134,7 +136,7 @@ async function AdminWatchSection() {
   })();
 
   // Phase 1 — 병렬 쿼리
-  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes, callsRes] =
+  const [filingsRes, newsRes, insiderRes, holdingsRes, earningsRes, tickersRes, callsRes, shortInterestRes] =
     await Promise.all([
       admin.from("filings")
         .select("ticker, form_type, event_type, filed_at")
@@ -166,6 +168,11 @@ async function AdminWatchSection() {
       (admin as any).from("earnings_calls")
         .select("ticker, guidance_direction, management_tone")
         .limit(1000),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (admin as any).from("short_interest")
+        .select("ticker, short_float, collected_at")
+        .order("collected_at", { ascending: false })
+        .limit(2000),
     ]);
 
   // ── 전처리 ────────────────────────────────────────────────────────────────
@@ -225,6 +232,17 @@ async function AdminWatchSection() {
     if (!earningsCallsByTicker.has(c.ticker)) earningsCallsByTicker.set(c.ticker, c);
   }
 
+  // short_interest: ticker별 최신 2개 (collected_at DESC 정렬 결과)
+  type ShortInterestRow = { ticker: string; short_float: number | null; collected_at: string };
+  const shortInterestByTicker = new Map<string, ShortInterestRow[]>();
+  for (const s of (shortInterestRes.data ?? []) as ShortInterestRow[]) {
+    const arr = shortInterestByTicker.get(s.ticker) ?? [];
+    if (arr.length < 2) {
+      arr.push(s);
+      shortInterestByTicker.set(s.ticker, arr);
+    }
+  }
+
   // 후보 풀
   const allCandidates = new Set([
     ...filingsByTicker.keys(),
@@ -282,6 +300,7 @@ async function AdminWatchSection() {
     const prevHold  = holdingsPrev.get(ticker)         ?? new Map<string, InstData>();
     const earnData  = earningsByTicker.get(ticker);
     const callData  = earningsCallsByTicker.get(ticker);
+    const siRows    = shortInterestByTicker.get(ticker) ?? [];
     const prices    = pricesByTicker.get(ticker)       ?? [];
     const sector    = sectorByTicker.get(ticker)       ?? null;
     const tags      = new Set<ReasonTag>();
@@ -366,6 +385,12 @@ async function AdminWatchSection() {
     }
     if (has13fInc) { smartRaw += 3; tags.add("13f_increase"); }
 
+    // Short Interest 감소: 직전 대비 short_float 감소 시 공매도 포지션 축소
+    const shortDecrease = siRows.length >= 2 &&
+      siRows[0].short_float != null && siRows[1].short_float != null &&
+      siRows[0].short_float < siRows[1].short_float;
+    if (shortDecrease) { smartRaw += 4; tags.add("short_decrease"); }
+
     const smartScore = smartRaw;
 
     // ── Earnings Score ───────────────────────────────────────────────────────
@@ -428,7 +453,7 @@ async function AdminWatchSection() {
         newsCount: newsItems.length, dedupNewsCount: uniqueNews.length,
         decayAvg: totalDecayN > 0 ? totalDecaySum / totalDecayN : 0,
         sectorPenalty: false,
-        insiderAmount, guidanceDirection: null, shortDecrease: false, targetUp: false,
+        insiderAmount, guidanceDirection: null, shortDecrease, targetUp: false,
       },
       filings: filings.length,
       news: newsItems.length,
