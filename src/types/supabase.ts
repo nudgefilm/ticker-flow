@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -152,10 +152,80 @@ export type Database = {
         }
         Relationships: []
       }
+      contacts: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          created_at: string | null
+          email: string
+          id: string
+          message: string
+          status: string | null
+          subject: string
+          user_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          created_at?: string | null
+          email: string
+          id?: string
+          message: string
+          status?: string | null
+          subject: string
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string
+          status?: string | null
+          subject?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      dividends: {
+        Row: {
+          collected_at: string | null
+          dividend: number | null
+          ex_date: string | null
+          id: string
+          payment_date: string | null
+          record_date: string | null
+          ticker: string
+          yield: number | null
+        }
+        Insert: {
+          collected_at?: string | null
+          dividend?: number | null
+          ex_date?: string | null
+          id?: string
+          payment_date?: string | null
+          record_date?: string | null
+          ticker: string
+          yield?: number | null
+        }
+        Update: {
+          collected_at?: string | null
+          dividend?: number | null
+          ex_date?: string | null
+          id?: string
+          payment_date?: string | null
+          record_date?: string | null
+          ticker?: string
+          yield?: number | null
+        }
+        Relationships: []
+      }
       earnings: {
         Row: {
           actual_eps: number | null
           actual_revenue: number | null
+          collected_at: string | null
           eps_estimate: number | null
           id: string
           report_date: string
@@ -166,6 +236,7 @@ export type Database = {
         Insert: {
           actual_eps?: number | null
           actual_revenue?: number | null
+          collected_at?: string | null
           eps_estimate?: number | null
           id?: string
           report_date: string
@@ -176,6 +247,7 @@ export type Database = {
         Update: {
           actual_eps?: number | null
           actual_revenue?: number | null
+          collected_at?: string | null
           eps_estimate?: number | null
           id?: string
           report_date?: string
@@ -488,6 +560,36 @@ export type Database = {
           },
         ]
       }
+      notices: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean
+          link_text: string | null
+          link_url: string | null
+          message: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          link_text?: string | null
+          link_url?: string | null
+          message: string
+          type?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean
+          link_text?: string | null
+          link_url?: string | null
+          message?: string
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -513,6 +615,7 @@ export type Database = {
         Row: {
           change_pct: number | null
           close: number
+          collected_at: string | null
           date: string
           ticker: string
           volume: number | null
@@ -520,6 +623,7 @@ export type Database = {
         Insert: {
           change_pct?: number | null
           close: number
+          collected_at?: string | null
           date: string
           ticker: string
           volume?: number | null
@@ -527,6 +631,7 @@ export type Database = {
         Update: {
           change_pct?: number | null
           close?: number
+          collected_at?: string | null
           date?: string
           ticker?: string
           volume?: number | null
@@ -540,6 +645,33 @@ export type Database = {
             referencedColumns: ["ticker"]
           },
         ]
+      }
+      stock_splits: {
+        Row: {
+          collected_at: string | null
+          denominator: number | null
+          id: string
+          numerator: number | null
+          split_date: string | null
+          ticker: string
+        }
+        Insert: {
+          collected_at?: string | null
+          denominator?: number | null
+          id?: string
+          numerator?: number | null
+          split_date?: string | null
+          ticker: string
+        }
+        Update: {
+          collected_at?: string | null
+          denominator?: number | null
+          id?: string
+          numerator?: number | null
+          split_date?: string | null
+          ticker?: string
+        }
+        Relationships: []
       }
       tickers: {
         Row: {
