@@ -31,7 +31,8 @@ function tagStyle(tag: SignalTag): string {
 
 async function AdminWatchSection() {
   const admin = createAdminClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const sevenDaysAgo  = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const threeDaysAgo  = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
   const currentQuarter = (() => {
     const now = new Date();
@@ -43,7 +44,7 @@ async function AdminWatchSection() {
     admin.from("insider_trades")
       .select("ticker")
       .eq("transaction_type", "buy")
-      .gte("transaction_date", sevenDaysAgo.slice(0, 10))
+      .gte("transaction_date", threeDaysAgo.slice(0, 10))
       .limit(300),
     admin.from("filings")
       .select("ticker")
@@ -377,7 +378,7 @@ export default async function AdminPage() {
         <div className="mb-4">
           <h2 className="text-sm font-medium text-red-400">기업 동향 (내부용)</h2>
           <p className="mt-1 text-xs text-[#a6a6a6]">
-            공시×2 + 뉴스×1 + 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6 + 52주 수익률(20%↑+4 / 10%↑+2)
+            공시×2 + 뉴스×1 + 3일내 내부자 매수+5 + Strong Buy 5+개+8 + Buy 5+개+5 + 기관 편입+5 + 어닝서프라이즈+6 + 가이던스+6 + 52주 수익률(20%↑+4 / 10%↑+2)
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
