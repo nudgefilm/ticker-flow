@@ -18,6 +18,7 @@ import {
   IconChevronRight,
 } from "@tabler/icons-react";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
+import ContactModal from "@/components/dashboard/contact-modal";
 import { useProfile } from "@/lib/hooks/use-profile";
 import { createClient } from "@/lib/supabase/client";
 
@@ -47,6 +48,7 @@ export default function MyPage() {
   const [createdAt, setCreatedAt] = useState("—");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [contactSubject, setContactSubject] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -202,32 +204,32 @@ export default function MyPage() {
             문의 및 피드백
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <a
-              href="mailto:support@tickerflow.net"
-              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 transition-colors hover:bg-blue-500/[0.22]"
+            <button
+              type="button"
+              onClick={() => setContactSubject("")}
+              className="flex w-full items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 text-left transition-colors hover:bg-blue-500/[0.22]"
             >
               <IconMail size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
               <div>
                 <p className="text-sm font-medium text-white">문의하기</p>
                 <p className="mt-1 text-xs leading-relaxed text-[#a6a6a6]">
-                  서비스 이용 관련 문의사항을 이메일로 보내주세요.
+                  서비스 이용 관련 문의사항을 남겨주세요.
                 </p>
-                <p className="mt-2 text-xs text-[#555555]">support@tickerflow.net</p>
               </div>
-            </a>
-            <a
-              href="mailto:support@tickerflow.net?subject=피드백 — 기능 제안/버그 신고"
-              className="flex items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 transition-colors hover:bg-blue-500/[0.22]"
+            </button>
+            <button
+              type="button"
+              onClick={() => setContactSubject("피드백 — 기능 제안/버그 신고")}
+              className="flex w-full items-start gap-3 rounded-[6px] border border-white/[0.08] bg-blue-500/[0.15] p-5 text-left transition-colors hover:bg-blue-500/[0.22]"
             >
               <IconMessageCircle size={20} stroke={1.5} className="mt-0.5 shrink-0 text-[#a6a6a6]" />
               <div>
                 <p className="text-sm font-medium text-white">피드백</p>
                 <p className="mt-1 text-xs leading-relaxed text-[#a6a6a6]">
-                  기능 제안이나 버그 신고를 이메일로 보내주세요.
+                  기능 제안이나 버그 신고를 남겨주세요.
                 </p>
-                <p className="mt-2 text-xs text-[#555555]">support@tickerflow.net</p>
               </div>
-            </a>
+            </button>
           </div>
         </div>
 
@@ -298,6 +300,15 @@ export default function MyPage() {
         <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
         <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
       </footer>
+
+      {/* 문의 모달 */}
+      {contactSubject !== null && profile && (
+        <ContactModal
+          email={profile.email}
+          defaultSubject={contactSubject}
+          onClose={() => setContactSubject(null)}
+        />
+      )}
 
       {/* 회원 탈퇴 확인 모달 */}
       {showDeleteModal && (

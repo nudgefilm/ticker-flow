@@ -218,6 +218,76 @@ export function dailyDigestEmail(
   `)
 }
 
+export function contactAdminNotifEmail(email: string, subject: string, message: string): string {
+  return shell(`
+    <div class="header">
+      <h1>새 문의가 접수되었습니다</h1>
+    </div>
+    <div class="body">
+      <table cellpadding="0" cellspacing="0" style="width:100%">
+        <tr>
+          <td style="padding:12px;background:#1a1a1a;border-radius:8px">
+            <p style="margin:0 0 4px;font-size:12px;color:#a6a6a6">발신자</p>
+            <p style="margin:0;font-size:14px;color:#ffffff">${escapeHtml(email)}</p>
+          </td>
+        </tr>
+        <tr><td style="height:8px"></td></tr>
+        <tr>
+          <td style="padding:12px;background:#1a1a1a;border-radius:8px">
+            <p style="margin:0 0 4px;font-size:12px;color:#a6a6a6">제목</p>
+            <p style="margin:0;font-size:14px;color:#ffffff">${escapeHtml(subject)}</p>
+          </td>
+        </tr>
+        <tr><td style="height:8px"></td></tr>
+        <tr>
+          <td style="padding:12px;background:#1a1a1a;border-radius:8px">
+            <p style="margin:0 0 4px;font-size:12px;color:#a6a6a6">내용</p>
+            <p style="margin:0;font-size:13px;color:#cccccc;white-space:pre-wrap;line-height:1.7">${escapeHtml(message)}</p>
+          </td>
+        </tr>
+      </table>
+      <div style="height:20px"></div>
+      <a href="https://tickerflow.net/admin/ops/reports" class="cta">관리자 페이지에서 답변하기</a>
+    </div>
+    <div class="footer">
+      ${COPYRIGHT}
+    </div>
+  `)
+}
+
+export function contactAnswerEmail(email: string, subject: string, answer: string): string {
+  return shell(`
+    <div class="header">
+      <h1>문의 답변이 도착했습니다</h1>
+    </div>
+    <div class="body">
+      <p style="color:#cccccc">안녕하세요, TickerFlow 고객지원팀입니다.</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%">
+        <tr>
+          <td style="padding:12px;background:#1a1a1a;border-radius:8px">
+            <p style="margin:0 0 4px;font-size:12px;color:#a6a6a6">문의 제목</p>
+            <p style="margin:0;font-size:14px;color:#ffffff">${escapeHtml(subject)}</p>
+          </td>
+        </tr>
+        <tr><td style="height:8px"></td></tr>
+        <tr>
+          <td style="padding:12px;background:#1a1a1a;border-radius:8px">
+            <p style="margin:0 0 4px;font-size:12px;color:#a6a6a6">답변 내용</p>
+            <p style="margin:0;font-size:13px;color:#cccccc;white-space:pre-wrap;line-height:1.7">${escapeHtml(answer)}</p>
+          </td>
+        </tr>
+      </table>
+      <div style="height:20px"></div>
+      <p>추가 문의사항이 있으시면 마이페이지 문의하기를 통해 다시 연락해 주세요.</p>
+      <a href="https://tickerflow.net/mypage" class="cta">마이페이지 바로가기</a>
+    </div>
+    <div class="footer">
+      ${DISCLAIMER}
+      ${COPYRIGHT}
+    </div>
+  `)
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
