@@ -338,10 +338,10 @@ export default async function HomePage() {
                   { icon: IconFileText,    title: "공시 인사이트",   desc: "최근 공시와 기업 변화를 빠르게 확인",     pro: true },
                   { icon: IconMicrophone,  title: "어닝콜 요약",     desc: "긴 컨퍼런스콜을 핵심만 한국어로",         pro: true },
                   { icon: IconUsers,       title: "내부자 거래",     desc: "경영진의 실제 매수·매도 내역 확인",       pro: true },
-                  { icon: IconBookmark,    title: "와치리스트",      desc: "관심 종목의 변화를 자동으로 추적",         pro: true },
+                  { icon: IconGridDots,    title: "섹터 히트맵",     desc: "최근 활동이 많은 섹터를 한눈에",           pro: true },
+                  { icon: IconBookmark,    title: "와치리스트",      desc: "관심 종목의 변화를 자동으로 추적",         pro: false },
                   { icon: IconLayoutBoard, title: "종목 스냅샷",     desc: "기업 정보를 한 페이지에서 확인",           pro: false },
                   { icon: IconChartLine,   title: "경제지표",        desc: "미국 거시경제 흐름 모니터링",              pro: false },
-                  { icon: IconGridDots,    title: "섹터 히트맵",     desc: "최근 활동이 많은 섹터를 한눈에",           pro: false },
                 ].map(({ icon: Icon, title, desc, pro }) => (
                   <div
                     key={title}

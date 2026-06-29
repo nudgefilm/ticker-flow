@@ -51,7 +51,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "인사이트",
+    label: "분석",
     items: [
       { href: "/stocks", label: "종목 스냅샷", icon: IconBuilding },
       { href: "/analysis", label: "공시 인사이트", icon: IconBulb, pro: true },
@@ -61,7 +61,7 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "매크로",
+    label: "시장",
     items: [
       { href: "/macro", label: "경제지표", icon: IconChartBar },
     ],

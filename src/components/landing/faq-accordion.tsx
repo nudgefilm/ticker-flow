@@ -13,7 +13,7 @@ function PlanBreakdown() {
           Free
         </Link>
         <ul className="flex flex-col gap-2">
-          {["공시 피드", "뉴스 피드", "경제지표", "섹터 히트맵", "종목 스냅샷"].map((f) => (
+          {["공시 피드", "뉴스 피드", "실적 캘린더", "경제지표", "종목 스냅샷"].map((f) => (
             <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
               <IconCheck size={12} stroke={2} className="shrink-0" />
               {f}
@@ -27,7 +27,7 @@ function PlanBreakdown() {
           Pro
         </Link>
         <ul className="flex flex-col gap-2">
-          {["Free의 모든 기능", "어닝콜 한국어 요약", "공시 인사이트", "내부자 거래", "와치리스트"].map((f) => (
+          {["Free 기능 전체 포함", "어닝콜 한국어 요약", "공시 인사이트", "내부자 거래", "섹터 히트맵", "알림 설정"].map((f) => (
             <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
               <IconCheck size={12} stroke={2} className="shrink-0 text-amber-400" />
               {f}
@@ -42,7 +42,7 @@ function PlanBreakdown() {
 const FAQS: { q: string; a: string; extra?: React.ReactNode }[] = [
   {
     q: "무료로 사용할 수 있나요?",
-    a: "네. 공시 피드, 뉴스 피드, 경제지표, 섹터 히트맵, 종목 스냅샷은 무료로 이용하실 수 있습니다. 어닝콜 한국어 요약, 공시 인사이트, 내부자 거래, 와치리스트 등 고급 기능은 Pro 플랜에서 제공합니다.",
+    a: "네. 공시 피드, 뉴스 피드, 실적 캘린더, 경제지표, 종목 스냅샷은 무료로 이용하실 수 있습니다. 어닝콜 한국어 요약, 공시 인사이트, 내부자 거래, 섹터 히트맵, 알림 설정 등 고급 기능은 Pro 플랜에서 제공합니다.",
     extra: <PlanBreakdown />,
   },
   {
