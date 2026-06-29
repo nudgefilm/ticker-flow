@@ -165,7 +165,7 @@ async function AdminWatchSection() {
       return { ticker, tags, filings: fc, news: nc, score };
     })
     .sort((a, b) => b.score - a.score)
-    .slice(0, 10);
+    .slice(0, 30);
 
   if (candidates.length === 0) {
     return (
