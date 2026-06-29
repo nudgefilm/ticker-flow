@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-06-29 · 세션 56
+
+### 어드민 기업동향 스코어링 엔진 전면 개편
+
+- `src/app/admin/page.tsx`: `AdminWatchSection` 전면 재작성
+- 4영역 가중치 스코어링: Event×0.4 + SmartMoney×0.3 + Earnings×0.2 + Market×0.1
+- **쿼리**: filings(14일)·news(14일)·insider(7일)·institutional_holdings(2개분기)·earnings·stock_prices(30일)·tickers 병렬 조회
+- **Decay**: 오늘1.0·1일전0.8·2일전0.6·3일전0.4·4일+0.2
+- **Event Score**: event_type/form_type 가중치·decay·중복감산(1건100%·2건70%·3건+40%), 뉴스 중복제거+surge보너스
+- **Smart Money**: 3일내 내부자취득+6(100만↑+3추가), 13F신규+5·기존증가+3
+- **Earnings Score**: EPS+Revenue둘다+8·EPS만+5·Revenue만+4, 5일모멘텀+3
+- **Market Score**: 30일수익률(20%+3·10%+2), 거래량급증+4, 변동성급증+2
+- **섹터다양성**: 동일섹터 5개 초과 시 30% 감산 후 재정렬
+- **reason_tags 18종**: 색상별 태그(보라·amber·초록·파랑·cyan)
+- **metadata**: E/S/P/M 세부점수 카드 내 표시
+- 기존 단순합산 스코어링(analyst_ratings 포함) 제거
+
+---
+
 ## 2026-06-29 · 세션 55
 
 ### 어드민 기업 동향 (내부용) 섹션 시각적 구분
