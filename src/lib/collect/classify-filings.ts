@@ -56,6 +56,7 @@ export async function runClassifyFilings(): Promise<CollectResult> {
     .select("id, title, summary_kr")
     .is("event_type", null)
     .eq("form_type", "8-K")
+    .not("summary_kr", "is", null)
     .order("filed_at", { ascending: false })
     .limit(BATCH_LIMIT);
 

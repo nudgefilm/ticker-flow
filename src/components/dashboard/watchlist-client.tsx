@@ -83,7 +83,7 @@ export default function WatchlistClient({
       <div className="mt-6 flex items-center justify-between gap-4">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-white">
-            {isPro ? `${stocks.length}종목` : `${stocks.length} / ${FREE_LIMIT} 종목`}
+            {isPro ? `내 등록 종목 (${stocks.length}종목)` : `내 등록 종목 (${stocks.length} / ${FREE_LIMIT})`}
           </span>
           {!isPro && (
             <span className="text-sm text-[#a6a6a6]">
