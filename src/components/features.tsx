@@ -116,7 +116,7 @@ function FeatureRow({ title, description, mockup, reverse = false }: FeatureRowP
 
 const features: FeatureRowProps[] = [
   {
-    title: "기업의 중요한 변화, 15분 안에 확인",
+    title: "기업의 중요한 변화, 매일 확인",
     description:
       "실적 발표\n대규모 계약\nCEO 교체\n내부자 거래\n\n미국 기업의 주요 변화를 빠르게 정리합니다.",
     mockup: (

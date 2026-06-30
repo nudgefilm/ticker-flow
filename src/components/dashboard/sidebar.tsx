@@ -16,6 +16,7 @@ import {
   IconBell,
   IconCreditCard,
   IconLogout,
+  IconBrandTelegram,
 } from "@tabler/icons-react";
 import TickerSearch from "@/components/dashboard/ticker-search";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -69,7 +70,7 @@ const navGroups: NavGroup[] = [
   {
     label: "설정",
     items: [
-      { href: "/alerts", label: "알림 설정", icon: IconBell, pro: true },
+      { href: "/alerts", label: "알림 설정", icon: IconBell },
       { href: "/billing", label: "구독 관리", icon: IconCreditCard },
       { href: "/mypage", label: "마이페이지", icon: IconUser },
     ],
@@ -144,6 +145,19 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* 텔레그램 채널 */}
+      <div className="flex-none px-3 pb-1">
+        <a
+          href="https://t.me/+c2UG4CGmAy1jMWQ9"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-white"
+        >
+          <IconBrandTelegram size={18} stroke={1.5} />
+          <span>텔레그램 채널</span>
+        </a>
+      </div>
 
       {/* 사용자 섹션 */}
       <div className="flex-none border-t border-white/[0.06] px-3 py-3">
