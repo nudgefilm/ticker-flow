@@ -2,6 +2,47 @@
 
 ---
 
+## 2026-07-01 · 세션 71
+
+### 종목 스냅샷 BRIEF 섹션 + 와치리스트 Pro 30개 한도
+
+**DB**
+- `stock_briefs` 테이블 신규 생성 (ticker UNIQUE, content, source_period_start/end, generated_at, trigger_reason)
+- RLS 정책: `profiles.plan = 'pro'` 유저만 SELECT 허용
+- `pnpm gen:types` 재생성, 첫 줄 `export type Json =` 확인
+
+**`src/lib/collect/brief.ts` (신규)**
+- `isTickerInProWatchlist(ticker)`: Pro 유저 와치리스트에 ticker 포함 여부 2쿼리로 확인
+- `runStockBriefCollect(ticker, triggerReason)`: 최근 7일 공시·뉴스·내부자거래·실적 집계 → Claude Haiku 사실 나열형 종합 (200~300자, plain text) → `stock_briefs` upsert
+- CLAUDE.md 6항 금지 표현 후처리 필터 적용
+
+**collect 트리거 연결**
+- `filings.ts`: 신규 공시 ticker Set(최대 20개) → `Promise.allSettled` 병렬 BRIEF 갱신
+- `news.ts`: 동일 패턴, null ticker 제외
+- `insider.ts`: `inserted > 0`이면 fire-and-forget
+- `earnings.ts`: `res.saved > 0`이면 fire-and-forget
+
+**`src/components/dashboard/snapshot/stock-brief.tsx` (신규)**
+- `{ticker} BRIEF` + Pro 뱃지 헤더
+- `generated_at` 기준 "오늘 / N일 전" 상대 표시
+- 본문 + 투자 판단 근거 사용 금지 주석
+
+**`src/app/(dashboard)/stocks/[symbol]/page.tsx`**
+- 인증 → Pro 여부 → 와치리스트 등록 여부 순차 확인
+- 조건 충족 시 `<StockBrief>` SnapshotHeader 바로 아래 렌더링
+- `createClient()` + RLS 기반 조회 (adminClient 불필요)
+
+**`src/app/api/watchlist/route.ts`**
+- 서버사이드 한도 체크 추가: Free 5개, Pro 30개
+- 초과 시 403 + 안내 문구 반환
+
+**`src/components/dashboard/watchlist-client.tsx`**
+- `PRO_LIMIT = 30` 추가, Pro 유저도 `(현재 / 30)` 카운터 표시
+- Pro 30개 도달 시 한도 안내 문구 표시
+- 업그레이드 배너 "최대 30종목" 문구로 수정
+
+---
+
 ## 2026-07-01 · 세션 70
 
 ### 데이터 출처 박스 7개 페이지 일괄 표준화
