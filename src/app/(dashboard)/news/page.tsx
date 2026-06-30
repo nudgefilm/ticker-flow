@@ -214,12 +214,14 @@ export default async function NewsPage({
       {/* 시각화 섹션 */}
       <section className="mt-6 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {/* 좌측: 출처 분포 + 최근 7일 추이 위아래 */}
-        <div className="flex flex-col gap-4">
+        <div className="flex h-full flex-col gap-4">
           <NewsSourceChart sources={sourceData} total={totalNews} />
           <NewsTrendChart trend={trendData} />
         </div>
-        {/* 우측: 섹터별 활동 */}
-        <NewsSectorChart sectors={sectorData} />
+        {/* 우측: 섹터별 활동 — flex 래퍼로 차트 루트의 flex-1이 grid 셀 높이를 채우도록 */}
+        <div className="flex h-full flex-col">
+          <NewsSectorChart sectors={sectorData} />
+        </div>
       </section>
 
       <div className="mt-6">
