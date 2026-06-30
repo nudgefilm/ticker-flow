@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { summarizeFilings } from "./summarize";
+import { runStockBriefCollect } from "./brief";
 import type { CollectResult } from "./types";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
@@ -120,6 +121,7 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
     let skipTickerErr = 0;
     let skipFilingErr = 0;
     let firstError: string | undefined;
+    const briefTickers = new Set<string>();
 
     for (const hit of hits) {
       const { _id: accessionId, _source: src } = hit;
@@ -171,6 +173,7 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
         skipFilingErr++;
       } else {
         inserted++;
+        if (briefTickers.size < 20) briefTickers.add(ticker);
       }
     }
 
@@ -188,6 +191,13 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
       const s = await summarizeFilings(adminClient);
       summarized = s.done;
       summarizeFailed = s.failed;
+
+      // 신규 공시가 있는 종목의 BRIEF 갱신 (실패해도 collect 결과에 영향 없음)
+      if (briefTickers.size > 0) {
+        await Promise.allSettled(
+          [...briefTickers].map((t) => runStockBriefCollect(t, "filing"))
+        );
+      }
     }
 
     return {

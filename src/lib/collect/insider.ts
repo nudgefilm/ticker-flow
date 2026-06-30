@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runStockBriefCollect } from "./brief";
 import type { CollectResult } from "./types";
 
 // ─── Finnhub 응답 타입 ─────────────────────────────────────────────────────────
@@ -123,6 +124,12 @@ export async function runInsiderCollect(
     );
     totalInserted += inserted;
     totalSkipped += skipped;
+
+    // 신규 내부자 거래가 있는 종목의 BRIEF 갱신
+    if (inserted > 0 && process.env.ANTHROPIC_API_KEY) {
+      runStockBriefCollect(ticker, "insider").catch(() => {});
+    }
+
     if (tickers.length > 1) await new Promise((r) => setTimeout(r, 200));
   }
 

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runStockBriefCollect } from "./brief";
 import type { CollectResult } from "./types";
 
 // ── earnings calendar (upcoming) ──────────────────────────────────────────────
@@ -244,6 +245,11 @@ export async function runEarningsActualCollect(
       saved += res.saved;
       skipped += res.skipped;
       if (res.error && !firstError) firstError = res.error;
+
+      // 신규 실적 데이터가 있는 종목의 BRIEF 갱신
+      if (res.saved > 0 && process.env.ANTHROPIC_API_KEY) {
+        runStockBriefCollect(ticker, "earnings").catch(() => {});
+      }
     } catch (err) {
       skipped++;
       if (!firstError) firstError = err instanceof Error ? err.message : String(err);

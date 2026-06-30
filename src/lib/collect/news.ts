@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { summarizeNews } from "./summarize";
+import { runStockBriefCollect } from "./brief";
 import type { CollectResult } from "./types";
 
 interface FinnhubNewsItem {
@@ -44,6 +45,7 @@ export async function runNewsCollect(): Promise<CollectResult> {
     let inserted = 0;
     let skipped = 0;
     let firstError: string | undefined;
+    const briefTickers = new Set<string>();
 
     for (const item of items) {
       if (!item.url || !item.headline) { skipped++; continue; }
@@ -77,6 +79,7 @@ export async function runNewsCollect(): Promise<CollectResult> {
         skipped++;
       } else {
         inserted++;
+        if (ticker && briefTickers.size < 20) briefTickers.add(ticker);
       }
     }
 
@@ -86,6 +89,13 @@ export async function runNewsCollect(): Promise<CollectResult> {
       const s = await summarizeNews(adminClient);
       summarized = s.done;
       summarizeFailed = s.failed;
+
+      // 신규 뉴스가 있는 종목의 BRIEF 갱신 (실패해도 collect 결과에 영향 없음)
+      if (briefTickers.size > 0) {
+        await Promise.allSettled(
+          [...briefTickers].map((t) => runStockBriefCollect(t, "news"))
+        );
+      }
     }
 
     return {

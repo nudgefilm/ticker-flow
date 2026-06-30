@@ -671,6 +671,36 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_briefs: {
+        Row: {
+          content: string
+          generated_at: string
+          id: string
+          source_period_end: string | null
+          source_period_start: string | null
+          ticker: string
+          trigger_reason: string | null
+        }
+        Insert: {
+          content: string
+          generated_at?: string
+          id?: string
+          source_period_end?: string | null
+          source_period_start?: string | null
+          ticker: string
+          trigger_reason?: string | null
+        }
+        Update: {
+          content?: string
+          generated_at?: string
+          id?: string
+          source_period_end?: string | null
+          source_period_start?: string | null
+          ticker?: string
+          trigger_reason?: string | null
+        }
+        Relationships: []
+      }
       stock_prices: {
         Row: {
           change_pct: number | null

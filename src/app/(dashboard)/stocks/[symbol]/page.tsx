@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
+import { StockBrief } from "@/components/dashboard/snapshot/stock-brief";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
 import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filings";
@@ -51,6 +52,39 @@ export default async function StockPage({
   const today = new Date().toISOString().slice(0, 10);
   const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+
+  // ── 인증 + BRIEF ─────────────────────────────────────────────────────────────
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let briefContent: string | null = null;
+  let briefGeneratedAt: string | null = null;
+
+  if (user) {
+    const [profileRes, watchlistRes] = await Promise.all([
+      supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle(),
+      supabase
+        .from("watchlist")
+        .select("ticker")
+        .eq("user_id", user.id)
+        .eq("ticker", ticker)
+        .maybeSingle(),
+    ]);
+
+    const isPro = profileRes.data?.plan === "pro";
+    const inWatchlist = watchlistRes.data !== null;
+
+    if (isPro && inWatchlist) {
+      const { data: brief } = await supabase
+        .from("stock_briefs")
+        .select("content, generated_at")
+        .eq("ticker", ticker)
+        .maybeSingle();
+      if (brief) {
+        briefContent = brief.content as string;
+        briefGeneratedAt = brief.generated_at as string;
+      }
+    }
+  }
 
   const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings, nextEarningsRes, splitsRes] =
     await Promise.all([
@@ -213,6 +247,14 @@ export default async function StockPage({
         industry={info?.industry ?? null}
         updatedAt={updatedAt}
       />
+
+      {briefContent && briefGeneratedAt && (
+        <StockBrief
+          ticker={ticker}
+          content={briefContent}
+          generatedAt={briefGeneratedAt}
+        />
+      )}
 
       <PriceCard quote={quote} />
 
