@@ -7,7 +7,6 @@ import type { ReactNode } from "react";
 import {
   IconBell,
   IconDownload,
-  IconReceipt,
   IconMail,
   IconMessageCircle,
   IconLogout,
@@ -220,15 +219,7 @@ export default function MyPage() {
           </div>
         </SectionCard>
 
-        {/* 5. 결제 내역 */}
-        <SectionCard label="결제 내역">
-          <div className="flex flex-col items-center gap-2 px-5 py-8 text-center">
-            <IconReceipt size={32} stroke={1} className="text-[#2a2a2a]" />
-            <p className="text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
-          </div>
-        </SectionCard>
-
-        {/* 6. 문의 및 피드백 */}
+        {/* 5. 문의 및 피드백 */}
         <div>
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
             문의 및 피드백

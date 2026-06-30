@@ -5,6 +5,7 @@ import type { MacroGroup } from "@/lib/macro";
 import IndicatorCard from "@/components/macro/indicator-card";
 
 const ALL = "전체";
+const FEATURED_SERIES = "FEDFUNDS"; // 기준금리
 
 export default function MacroBoard({
   groups,
@@ -27,6 +28,17 @@ export default function MacroBoard({
   const tabKeys = [ALL, ...groups.map((g) => g.label)];
   const displayed =
     activeTab === ALL ? groups : groups.filter((g) => g.label === activeTab);
+
+  // 기준금리 히어로 레이아웃: 전체 탭 or 금리 탭
+  const rateGroup = groups.find((g) => g.key === "금리");
+  const featuredInd = rateGroup?.indicators.find((i) => i.seriesId === FEATURED_SERIES);
+  const showHero = (activeTab === ALL || activeTab === "금리") && !!featuredInd;
+  const heroCompanions = rateGroup?.indicators.filter((i) => i.seriesId !== FEATURED_SERIES) ?? [];
+
+  // 히어로 섹션에서 금리 그룹은 별도 렌더링하므로 나머지 그룹만 그리드에 표시
+  const gridGroups = showHero
+    ? displayed.filter((g) => g.key !== "금리")
+    : displayed;
 
   return (
     <div className="space-y-6">
@@ -53,8 +65,41 @@ export default function MacroBoard({
         </div>
       </div>
 
-      {/* 그룹별 카드 그리드 */}
-      {displayed.map((group) => (
+      {/* 기준금리 히어로 섹션 */}
+      {showHero && featuredInd && (
+        <section>
+          <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
+            금리
+          </p>
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            {/* 좌측: 기준금리 히어로 */}
+            <div className="h-full">
+              <IndicatorCard ind={featuredInd} hero />
+            </div>
+            {/* 우측: 나머지 금리 지표 */}
+            {heroCompanions.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {heroCompanions.map((ind, i) => {
+                  const isLastOdd =
+                    i === heroCompanions.length - 1 &&
+                    heroCompanions.length % 2 !== 0;
+                  return (
+                    <div
+                      key={ind.seriesId}
+                      className={`h-full${isLastOdd ? " md:col-span-2" : ""}`}
+                    >
+                      <IndicatorCard ind={ind} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 나머지 그룹 */}
+      {gridGroups.map((group) => (
         <section key={group.key}>
           <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
             {group.label}

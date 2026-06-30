@@ -7,7 +7,13 @@ function fmtDate(iso: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
+export default function IndicatorCard({
+  ind,
+  hero = false,
+}: {
+  ind: MacroIndicator;
+  hero?: boolean;
+}) {
   const mainVal = formatMainValue(ind);
   const prevVal = formatPrevValue(ind);
   const groupColor = GROUP_COLORS[ind.group] ?? "#a6a6a6";
@@ -20,10 +26,10 @@ export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
 
   return (
     <div
-      className="flex h-full w-full flex-col gap-4 overflow-hidden rounded-[8px] border border-white/[0.08] bg-[#1a1a1a]"
+      className="flex h-full w-full flex-col overflow-hidden rounded-[8px] border border-white/[0.08] bg-[#1a1a1a]"
       style={{ borderTop: `2px solid ${groupColor}` }}
     >
-      <div className="flex flex-col gap-4 p-5">
+      <div className={`flex flex-col gap-4 p-5 ${hero ? "gap-5" : "gap-4"}`}>
         {/* 헤더 */}
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -31,6 +37,14 @@ export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
               <span className="text-xs font-semibold text-[#cccccc]">{ind.nameEn}</span>
               <span className="text-[10px] text-[#555555]">·</span>
               <span className="text-xs text-[#a6a6a6]">{ind.name}</span>
+              {hero && (
+                <span
+                  className="rounded-[3px] px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ background: `${groupColor}22`, color: groupColor }}
+                >
+                  핵심지표
+                </span>
+              )}
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-[#888888]">{ind.desc}</p>
           </div>
@@ -44,13 +58,13 @@ export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
         {/* 현재값 */}
         <div className="flex items-baseline gap-2">
           <span
-            className="text-2xl font-semibold tabular-nums leading-none"
+            className={`${hero ? "text-5xl" : "text-2xl"} font-bold tabular-nums leading-none`}
             style={{ color: groupColor }}
           >
             {mainVal}
           </span>
           {direction && (
-            <span className="text-sm text-[#888888]">{direction}</span>
+            <span className={`${hero ? "text-lg" : "text-sm"} text-[#888888]`}>{direction}</span>
           )}
           {ind.valueType === "pct_change" && (
             <span className="text-[10px] text-[#888888]">전월비</span>
@@ -71,10 +85,10 @@ export default function IndicatorCard({ ind }: { ind: MacroIndicator }) {
             data={ind.history}
             color={groupColor}
             chartId={ind.seriesId}
-            height={48}
+            height={hero ? 72 : 48}
           />
         ) : (
-          <div className="h-12 bg-white/[0.02]" />
+          <div className={`bg-white/[0.02] ${hero ? "h-[72px]" : "h-12"}`} />
         )}
       </div>
     </div>

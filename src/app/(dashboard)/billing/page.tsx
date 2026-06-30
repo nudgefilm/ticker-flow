@@ -1,7 +1,7 @@
 import DashboardHeader from "@/components/dashboard/dashboard-header"
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer"
 import BillingPlansClient from "@/components/dashboard/billing-plans-client"
-import { IconCircleCheck } from "@tabler/icons-react"
+import { IconCircleCheck, IconReceipt } from "@tabler/icons-react"
 import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
@@ -64,6 +64,17 @@ export default async function BillingPage({
               </span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 결제 내역 */}
+      <div className="mt-6 overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
+        <div className="border-b border-white/[0.06] bg-[#242424] px-6 py-4">
+          <p className="text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">결제 내역</p>
+        </div>
+        <div className="flex flex-col items-center gap-2 px-6 py-8 text-center">
+          <IconReceipt size={32} stroke={1} className="text-[#2a2a2a]" />
+          <p className="text-sm text-[#a6a6a6]">결제 내역이 없습니다.</p>
         </div>
       </div>
 

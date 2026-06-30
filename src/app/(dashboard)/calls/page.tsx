@@ -83,6 +83,7 @@ export default async function CallsPage() {
     .select(
       "id, ticker, fiscal_quarter, fiscal_year, call_date, summary_kr, key_points, processed_at, source_url, transcript_url, tone_change, tickers(name_kr, name_en)"
     )
+    .order("call_date", { ascending: false, nullsFirst: false })
     .order("processed_at", { ascending: false })
     .limit(50);
 

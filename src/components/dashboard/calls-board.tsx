@@ -45,13 +45,15 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
   }
 
   const filtered = useMemo(() => {
-    return calls.filter((c) => {
-      if (period === "1m" && daysSince(c.call_date) > 31) return false
-      if (period === "3m" && daysSince(c.call_date) > 92) return false
-      if (guidance !== "all" && c.guidance_direction !== guidance) return false
-      if (watchlistOnly && !c.in_watchlist) return false
-      return true
-    })
+    return calls
+      .filter((c) => {
+        if (period === "1m" && daysSince(c.call_date) > 31) return false
+        if (period === "3m" && daysSince(c.call_date) > 92) return false
+        if (guidance !== "all" && c.guidance_direction !== guidance) return false
+        if (watchlistOnly && !c.in_watchlist) return false
+        return true
+      })
+      .sort((a, b) => (b.call_date ?? "").localeCompare(a.call_date ?? ""))
   }, [calls, period, guidance, watchlistOnly])
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
