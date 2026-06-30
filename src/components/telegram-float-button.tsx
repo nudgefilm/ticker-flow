@@ -11,7 +11,7 @@ export default function TelegramFloatButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="텔레그램 채널 가입"
-      className="fixed bottom-[4.5rem] right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
+      className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
     >
       <IconBrandTelegram size={18} stroke={1.5} className="text-white" />
     </a>

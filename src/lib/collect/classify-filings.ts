@@ -84,6 +84,12 @@ export async function runClassifyFilings(): Promise<CollectResult> {
     if (!updateErr) {
       distribution[category]++;
       classified++;
+    } else {
+      console.error("[classify-filings] UPDATE failed", {
+        id: row.id,
+        category,
+        error: updateErr.message,
+      });
     }
 
     if (i < rows.length - 1) await delay(DELAY_MS);

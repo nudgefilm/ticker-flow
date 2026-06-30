@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS public.filings (
   url         TEXT,
   summary_kr  TEXT,
   -- 주요 변화 분류 (랜딩/대시보드 핵심 기능)
-  event_type  TEXT        CHECK (event_type IN ('ceo_change', 'buyback', 'insider_trade', 'ma', 'guidance')),
+  event_type  TEXT        CHECK (event_type IN ('ceo_change','cfo_change','buyback','ma','guidance','contract','dividend','offering','lawsuit','earnings','other')),
   -- 동일 공시 중복 삽입 방지 (SEC URL은 공시별 고유)
   UNIQUE (url)
 );

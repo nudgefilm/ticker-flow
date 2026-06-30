@@ -19,6 +19,7 @@ import type {
   NewsItem,
   StockInsight,
 } from "@/lib/insights/types";
+import { fetchPastEarnings } from "@/lib/insights/earnings";
 
 export const dynamic = "force-dynamic";
 
@@ -36,14 +37,6 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   restructuring: "구조조정",
   insider_trade: "내부자 거래",
 };
-
-function deriveQuarter(reportDate: string): string {
-  const parts = reportDate.slice(0, 10).split("-");
-  const year = parseInt(parts[0]);
-  const month = parseInt(parts[1]);
-  const q = Math.ceil(month / 3);
-  return `${String(year).slice(2)}.Q${q}`;
-}
 
 function fmtVolume(total: number): string {
   if (total >= 1_000_000_000) return `$${(total / 1_000_000_000).toFixed(1)}B`;
@@ -88,11 +81,12 @@ export default async function AnalysisPage({
   const symbol = symbolParam || watchlistRows[0]?.ticker || "AAPL";
 
   const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const d30  = new Date(now.getTime() - 30  * 86_400_000).toISOString();
   const d90  = new Date(now.getTime() - 90  * 86_400_000).toISOString();
   const d180 = new Date(now.getTime() - 180 * 86_400_000).toISOString().slice(0, 10);
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -126,12 +120,7 @@ export default async function AnalysisPage({
         .gte("transaction_date", d180)
         .order("transaction_date", { ascending: false })
         .limit(200),
-      supabase
-        .from("earnings")
-        .select("id, report_date, eps_estimate, actual_eps")
-        .eq("ticker", symbol)
-        .order("report_date", { ascending: false })
-        .limit(4),
+      fetchPastEarnings(supabase, symbol, today),
     ]);
 
   function dedupeById<T extends { id: string | number }>(rows: T[]): T[] {
@@ -149,7 +138,6 @@ export default async function AnalysisPage({
   const filingRows   = dedupeById(filingsRes.data  ?? []);
   const newsRows     = dedupeById(newsRes.data     ?? []);
   const insiderRows  = dedupeById(insiderRes.data  ?? []);
-  const earningsRows = dedupeById(earningsRes.data ?? []);
 
   // ── filings ───────────────────────────────────────────────────────────────
   const filings: Filing[] = filingRows.map((f) => {
@@ -192,15 +180,6 @@ export default async function AnalysisPage({
     trades: insiderTrades,
   };
 
-  // ── earnings ──────────────────────────────────────────────────────────────
-  const earnings: EarningsRow[] = earningsRows.map((e) => ({
-    id: e.id,
-    quarter: deriveQuarter(e.report_date),
-    epsEstimate: e.eps_estimate,
-    epsActual: e.actual_eps,
-    reportDate: e.report_date,
-  }));
-
   // ── news ──────────────────────────────────────────────────────────────────
   const news: NewsItem[] = newsRows.map((n) => ({
     id: n.id,
@@ -239,12 +218,12 @@ export default async function AnalysisPage({
       title: "내부자 거래",
       description: `${t.name ?? "—"} ${t.transaction_type === "buy" ? "매수" : "매도"}`,
     })),
-    ...earningsRows.map((e) => ({
+    ...earnings.map((e) => ({
       id: `e-${e.id}`,
       kind: "earnings" as const,
-      date: e.report_date,
+      date: e.reportDate,
       title: "실적 발표",
-      description: `${deriveQuarter(e.report_date)} EPS ${e.actual_eps ?? "—"}`,
+      description: `${e.quarter} EPS ${e.epsActual ?? "—"}`,
     })),
   ].sort((a, b) => b.date.localeCompare(a.date));
 
@@ -272,7 +251,7 @@ export default async function AnalysisPage({
       keyEvents: filingRows.filter((f) => f.event_type !== null).length,
       insiderTrades: insiderRows.length,
       news: newsRows.length,
-      earnings: earningsRows.length,
+      earnings: earnings.length,
     },
     filings,
     timeline,

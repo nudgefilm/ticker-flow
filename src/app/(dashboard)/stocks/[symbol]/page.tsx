@@ -19,6 +19,8 @@ import type {
   InsiderTrade,
   EarningsRow,
 } from "@/lib/insights/types";
+import { fetchPastEarnings } from "@/lib/insights/earnings";
+
 export const dynamic = "force-dynamic";
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
@@ -36,14 +38,6 @@ function daysUntil(isoStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 }
 
-function deriveQuarter(reportDate: string): string {
-  const parts = reportDate.slice(0, 10).split("-");
-  const year = parseInt(parts[0]);
-  const month = parseInt(parts[1]);
-  const q = Math.ceil(month / 3);
-  return `${String(year).slice(2)}.Q${q}`;
-}
-
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
 export default async function StockPage({
@@ -58,7 +52,7 @@ export default async function StockPage({
   const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earningsRes, nextEarningsRes, splitsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings, nextEarningsRes, splitsRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -91,13 +85,7 @@ export default async function StockPage({
         .eq("ticker", ticker)
         .order("transaction_date", { ascending: false })
         .limit(10),
-      supabase
-        .from("earnings")
-        .select("id, report_date, eps_estimate, actual_eps")
-        .eq("ticker", ticker)
-        .lte("report_date", today)
-        .order("report_date", { ascending: false })
-        .limit(4),
+      fetchPastEarnings(supabase, ticker, today),
       supabase
         .from("earnings")
         .select("report_date, eps_estimate, time_of_day")
@@ -118,7 +106,6 @@ export default async function StockPage({
   const filingRows      = filingsRes.data ?? [];
   const newsRows        = newsRes.data ?? [];
   const insiderRows     = insiderRes.data ?? [];
-  const earningsRows    = earningsRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
   const splitRows       = splitsRes.data ?? [];
 
@@ -205,18 +192,6 @@ export default async function StockPage({
     value: t.value,
     date: t.transaction_date ?? "—",
   }));
-
-  // ── Earnings ──────────────────────────────────────────────────────────────
-  // Chart requires oldest-first (left→right = past→present); table reverses internally.
-  const earnings: EarningsRow[] = earningsRows
-    .map((e) => ({
-      id: e.id,
-      quarter: deriveQuarter(e.report_date),
-      epsEstimate: e.eps_estimate,
-      epsActual: e.actual_eps,
-      reportDate: e.report_date,
-    }))
-    .sort((a, b) => a.reportDate.localeCompare(b.reportDate));
 
   const companyName = info?.name_kr ?? info?.name_en ?? ticker;
   const updatedAt = quote?.dataDate
