@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-07-01 · 세션 72
+
+### Google OAuth 브랜딩, BRIEF 버그 수정, top30_daily 권한 수정
+
+**Google OAuth 브랜딩 인증 대응**
+- `src/app/layout.tsx`: `title`을 `{ default, template }` 형식으로 변경 ("TickerFlow | 미국 주식 모니터링 대시보드")
+- OG/Twitter 태그에 `title`, `description`, `siteName` 명시 추가
+- `src/components/hero.tsx`: TickerFlow 서비스 목적 및 투자 자문 비제공 안내 문단 추가
+
+**BRIEF 버그 수정 — 데이터 윈도우 7일→30일**
+- 원인: `!hasData` 조기 반환. 7일 윈도우에선 공시·번역된 뉴스가 없어 5종목 모두 조기 종료됨
+- `src/lib/collect/brief.ts`: 데이터 조회 윈도우 `since7d` → `since30d`로 확장
+- `callHaiku`: API 오류 시 상태코드·본문 `console.error` 로깅 추가
+- `runBriefBackfill` 루프: `ok:false` 응답도 `failed++` 카운터에 반영, 개별 로그 추가
+- `src/components/dashboard/snapshot/stock-brief.tsx`: 면책 문구 "최근 7일" → "최근 30일"
+
+**BRIEF 백필 "실패 5건" 진단**
+- 원인: `stock_briefs` 테이블에 `service_role` GRANT 누락 (SQL 에디터 생성 테이블 공통 문제)
+- 동일 패턴: `top30_daily`도 같은 이유로 `permission denied` 발생
+- 수정 방법: `GRANT ALL ON TABLE public.stock_briefs TO service_role;` (사용자가 Supabase SQL 에디터에서 직접 실행)
+
+**BRIEF 백필 트리거 버튼 미표시 이슈 확인**
+- 원인: 스크린샷(2026-06-30)이 버튼 추가 커밋(2026-07-01 03:30) 이전 시점이었음
+- 코드·배포 모두 정상. 추가 수정 불필요
+
+**top30_daily GRANT 수정 (SQL 제공)**
+- `permission denied for table top30_daily` 에러 원인 확인
+- 코드는 `createAdminClient()`로 정상 사용 중
+- `GRANT ALL ON TABLE public.top30_daily TO service_role;` 제공 (사용자 직접 실행)
+
+**와치리스트 "새 뉴스" 건수 진단**
+- 집계 기간 로직 정상 (7일 필터 `sevenDaysAgo` 정확히 적용)
+- NVDA 387건은 Finnhub 일반 뉴스 API의 multi-source 특성으로 설명 가능 (코드 버그 아님)
+- 중복 확인용 SQL 제공
+
+---
+
 ## 2026-07-01 · 세션 71
 
 ### 종목 스냅샷 BRIEF 섹션 + 와치리스트 Pro 30개 한도
