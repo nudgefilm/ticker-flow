@@ -82,7 +82,8 @@ export function StatsSection({
   weeklyCollection,
 }: StatsSectionProps) {
   const featured: DisplayStat = {
-    ...toDisplayStat(tickerCount, 8_000),
+    value: tickerCount,
+    suffix: "",
     label: "실시간 모니터링 기업",
     icon: Building2,
   }
