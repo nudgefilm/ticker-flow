@@ -271,7 +271,7 @@ export default function MyPage() {
                 { name: "공시 정보",   desc: "미국 증권거래위원회(SEC EDGAR) 공식 데이터베이스" },
                 { name: "어닝콜",      desc: "기업 공식 실적 발표 컨퍼런스콜 기반 한국어 요약" },
                 { name: "뉴스",        desc: "공개된 뉴스 매체 정보를 기반으로 제공됩니다." },
-                { name: "실적 캘린더", desc: "나스닥·NYSE 상장 기업의 실적 발표 일정을 기반으로 제공됩니다." },
+                { name: "실적 캘린더", desc: "나스닥(NASDAQ)·뉴욕증권거래소(NYSE) 상장 기업의 실적 발표 일정을 기반으로 제공됩니다." },
                 { name: "내부자 거래", desc: "미국 증권거래위원회(SEC EDGAR) Form 4 공시 기반 임원·대주주 거래 내역" },
                 { name: "경제지표",    desc: "미국 연방준비제도(FRED) 데이터베이스 (GDP, CPI(소비자물가지수), 금리 등)" },
               ].map((item) => (

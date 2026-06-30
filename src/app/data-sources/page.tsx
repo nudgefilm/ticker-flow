@@ -6,28 +6,12 @@ export const metadata = {
 };
 
 const SOURCES = [
-  {
-    title: "공시 정보",
-    content: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스",
-  },
-  {
-    title: "뉴스",
-    content:
-      "Finnhub (글로벌 금융 데이터 플랫폼, Reuters·CNBC·Bloomberg 등 주요 매체 제휴)",
-  },
-  {
-    title: "실적 캘린더",
-    content: "Finnhub (나스닥·NYSE 상장 기업 실적 발표 일정)",
-  },
-  {
-    title: "경제지표",
-    content:
-      "미국 연방준비제도(Federal Reserve) FRED 데이터베이스 (GDP, CPI, 금리 등 공식 통계)",
-  },
-  {
-    title: "내부자 거래",
-    content: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)",
-  },
+  { title: "공시 정보",   content: "미국 증권거래위원회(SEC EDGAR) 공식 데이터베이스" },
+  { title: "어닝콜",      content: "기업 공식 실적 발표 컨퍼런스콜 기반 한국어 요약" },
+  { title: "뉴스",        content: "공개된 뉴스 매체 정보를 기반으로 제공됩니다." },
+  { title: "실적 캘린더", content: "나스닥(NASDAQ)·뉴욕증권거래소(NYSE) 상장 기업의 실적 발표 일정을 기반으로 제공됩니다." },
+  { title: "내부자 거래", content: "미국 증권거래위원회(SEC EDGAR) Form 4 공시 기반 임원·대주주 거래 내역" },
+  { title: "경제지표",    content: "미국 연방준비제도(FRED) 데이터베이스 (GDP, CPI(소비자물가지수), 금리 등)" },
 ];
 
 export default function DataSourcesPage() {
