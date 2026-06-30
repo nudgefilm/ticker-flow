@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-06-30 · 세션 67
+
+### Pro 일간 다이제스트 이메일 전면 재구성 (TOP30 기반)
+
+**`src/lib/collect/digest.ts` — 완전 재작성**
+- 기존: watchlist 기반 공시 5건 + 뉴스 5건 단순 나열
+- 변경: top30_daily 데이터 직접 조회, 구성안 6개 섹션 완성
+- 가장 최근 top30_daily 날짜 자동 조회 → 01:00 UTC cron 타이밍 문제 없음
+- 전일 대비 신규 진입 / 빠진 기업 계산 (오늘 vs 전날 top30 비교)
+- reason_tags → TAG_TO_DESC 한국어 문장으로 변환 (원본 태그/점수 미노출)
+- Claude Haiku로 2~3문장 시장 요약 자동 생성 (규제 준수 프롬프트 적용)
+- 이메일 제목: "오늘의 기업동향 TOP10 | TickerFlow"
+
+**`src/lib/email/templates.ts` — dailyDigestEmail() 전면 교체**
+- 새 타입 4개 추가: `Top30Item`, `MarketStats`, `NewEntrantItem`, `DigestData`
+- 이메일 섹션 구성:
+  - ① 기업동향 TOP10 (티커 링크 + 한국어 bullet 2개)
+  - ② 오늘 시장 변화 (집계 통계 + 해석 한 줄)
+  - ③ TOP3 상세 (카드 스타일, bullet 3개)
+  - ④ 오늘 시장 요약 (Haiku 생성)
+  - ⑤ 오늘 처음 TOP30 진입 (티커 링크 + 첫 번째 사유)
+  - ⑥ 어제 대비 변화 (새로 진입 / 빠진 기업 링크)
+- HTML 어디에도 score, weight, decay, reason_tags 원본 미노출 확인
+
+**외부 노출 차단 확인**
+- Haiku 프롬프트: 건수 집계된 한국어 팩트 문장만 전달 (원본 태그 미포함)
+- HTML: MarketStats 타입에 score/weight 필드 없음 → 구조적으로 노출 불가
+
+---
+
 ## 2026-06-30 · 세션 65
 
 ### 텔레그램 채널 연동 + EPS 차트 버그 수정
