@@ -61,7 +61,7 @@ export async function runProfileCollect(limit = 20): Promise<CollectResult> {
   if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
-  const clampedLimit = Math.min(Math.max(1, isNaN(limit) ? 20 : limit), 50);
+  const clampedLimit = Math.min(Math.max(1, isNaN(limit) ? 20 : limit), 200);
 
   const { data: tickerRows, error: fetchErr } = await adminClient
     .from("tickers")
