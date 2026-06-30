@@ -51,6 +51,10 @@ const TERMS_SECTIONS = [
     content: `본 약관은 서비스 개선을 위해 변경될 수 있습니다. 변경 시 서비스 내 공지를 통해 안내합니다.`,
   },
   {
+    title: "데이터 출처",
+    content: `본 서비스는 공개된 데이터와 제휴 데이터 제공업체의 정보를 활용합니다. 주요 데이터 출처는 다음과 같습니다.\n· 미국 증권거래위원회(SEC EDGAR)\n· 미국 연방준비제도(FRED)\n· Finnhub\n· Financial Modeling Prep(FMP)`,
+  },
+  {
     title: "문의",
     content: `서비스 이용 관련 문의사항은 아래로 연락해 주세요.\n· 운영사: 언폴드랩\n· 이메일: support@tickerflow.net`,
   },

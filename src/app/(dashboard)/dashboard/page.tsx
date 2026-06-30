@@ -4,6 +4,7 @@ import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer
 import FilingFilterBar from "@/components/dashboard/filing-filter-bar";
 import FilingFeedCard, { type Filing } from "@/components/dashboard/filing-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import { FeedScrollAnchor } from "@/components/dashboard/feed-scroll-anchor";
 import DisclosureTypeChart from "@/components/dashboard/disclosure-type-chart";
 import DisclosureTrendChart from "@/components/dashboard/disclosure-trend-chart";
 import SectorActivityChart from "@/components/dashboard/sector-activity-chart";
@@ -117,6 +118,7 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
 
   return (
     <>
+      <FeedScrollAnchor />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filings.map((filing, i) => (
           <FilingFeedCard

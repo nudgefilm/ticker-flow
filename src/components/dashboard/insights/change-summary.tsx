@@ -1,85 +1,72 @@
-"use client";
-
-import { useState } from "react";
-import { CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import type { TimelineEvent } from "@/lib/insights/types";
+import type { InsiderSummary, EarningsRow } from "@/lib/insights/types";
 import { SectionCard } from "./ui";
 
-const LIMIT = 5;
-
-const KIND_LABEL: Record<TimelineEvent["kind"], string> = {
-  filing: "공시",
-  news: "뉴스",
-  insider: "내부자 거래",
-  earnings: "실적",
-};
-
-const KIND_COLOR: Record<TimelineEvent["kind"], string> = {
-  filing: "#60a5fa",
-  news: "#fbbf24",
-  insider: "#34d399",
-  earnings: "#c084fc",
-};
-
-function fmtDate(iso: string): string {
-  if (!iso) return "—";
-  const [, m, d] = iso.slice(0, 10).split("-");
-  return `${parseInt(m)}/${parseInt(d)}`;
+function fmtEps(n: number): string {
+  if (n < 0) return `-$${Math.abs(n).toFixed(2)}`;
+  return `$${n.toFixed(2)}`;
 }
 
-export default function ChangeSummary({ events }: { events: TimelineEvent[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const sorted = [...events].sort((a, b) => b.date.localeCompare(a.date));
-  const displayed = expanded ? sorted : sorted.slice(0, LIMIT);
-  const hasMore = sorted.length > LIMIT;
+interface Summary {
+  filings: number;
+  keyEvents: number;
+  insiderTrades: number;
+  news: number;
+  earnings: number;
+}
+
+interface Props {
+  summary: Summary;
+  insider: InsiderSummary;
+  latestEarnings?: EarningsRow;
+}
+
+export default function ChangeSummary({ summary, insider, latestEarnings }: Props) {
+  const bullets: string[] = [];
+
+  if (summary.filings > 0) {
+    bullets.push(`최근 30일 공시 ${summary.filings}건이 접수되었습니다.`);
+    if (summary.keyEvents > 0) {
+      bullets.push(`이 중 주요 변화 관련 공시 ${summary.keyEvents}건이 포함되었습니다.`);
+    }
+  } else {
+    bullets.push("최근 30일 접수된 공시가 없습니다.");
+  }
+
+  if (insider.buyCount > 0 || insider.sellCount > 0) {
+    bullets.push(
+      `최근 180일 내부자 매수 ${insider.buyCount}건, 매도 ${insider.sellCount}건으로 집계되었습니다.`
+    );
+    bullets.push(`총 거래 규모 ${insider.totalVolume}이 기록되었습니다.`);
+  } else {
+    bullets.push("최근 180일 내부자 거래 내역이 없습니다.");
+  }
+
+  if (summary.news > 0) {
+    bullets.push(`최근 90일 관련 뉴스 ${summary.news}건이 수집되었습니다.`);
+  } else {
+    bullets.push("최근 90일 수집된 관련 뉴스가 없습니다.");
+  }
+
+  if (latestEarnings && latestEarnings.epsActual !== null) {
+    const eps = fmtEps(latestEarnings.epsActual);
+    const est =
+      latestEarnings.epsEstimate !== null ? fmtEps(latestEarnings.epsEstimate) : "—";
+    bullets.push(`${latestEarnings.quarter} EPS ${eps} (예상치 ${est})로 집계되었습니다.`);
+  }
 
   return (
-    <SectionCard title="주요 변화 요약" description="최근 발생한 주요 변화 목록">
-      {sorted.length === 0 ? (
-        <p className="py-4 text-center text-sm text-[#a6a6a6]">최근 변화 내역이 없습니다.</p>
-      ) : (
-        <>
-          <ul className="space-y-3">
-            {displayed.map((ev) => (
-              <li key={ev.id} className="flex items-start gap-3">
-                <CheckCircle2
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                  style={{ color: KIND_COLOR[ev.kind] }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-[11px] font-semibold"
-                      style={{ color: KIND_COLOR[ev.kind] }}
-                    >
-                      {KIND_LABEL[ev.kind]}
-                    </span>
-                    <time className="text-[11px] text-[#a6a6a6]">{fmtDate(ev.date)}</time>
-                  </div>
-                  <p className="mt-0.5 line-clamp-1 text-sm text-white">{ev.title}</p>
-                  {ev.description && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-[#a6a6a6]">{ev.description}</p>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              {expanded ? (
-                <><ChevronUp className="h-3.5 w-3.5" /> 접기</>
-              ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /> {sorted.length - LIMIT}개 더 보기</>
-              )}
-            </button>
-          )}
-        </>
-      )}
+    <SectionCard
+      title="최근 주요 변화"
+      description="30일 공시 · 90일 뉴스 · 180일 내부자 거래 집계"
+    >
+      <ul className="space-y-3">
+        {bullets.map((b, i) => (
+          <li key={i} className="flex items-start gap-2.5">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#60a5fa]" />
+            <p className="text-sm leading-relaxed text-[#cccccc]">{b}</p>
+          </li>
+        ))}
+      </ul>
     </SectionCard>
   );
 }

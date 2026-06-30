@@ -1,19 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { NewsItem } from "@/lib/insights/types";
 import { SectionCard, relativeDate } from "./ui";
+import { SectionPager } from "./section-pager";
 
-const LIMIT = 5;
+const PAGE_SIZE = 5;
 
 export default function RelatedNews({ news }: { news: NewsItem[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const displayed = expanded ? news : news.slice(0, LIMIT);
-  const hasMore = news.length > LIMIT;
+  const [page, setPage] = useState(1);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const totalPages = Math.ceil(news.length / PAGE_SIZE);
+  const displayed = news.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
+    <div ref={sectionRef}>
     <SectionCard title="관련 뉴스" description="최근 90일">
       {news.length === 0 ? (
         <p className="py-4 text-center text-sm text-[#a6a6a6]">
@@ -54,21 +63,10 @@ export default function RelatedNews({ news }: { news: NewsItem[] }) {
             ))}
           </ul>
 
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              {expanded ? (
-                <><ChevronUp className="h-3.5 w-3.5" /> 접기</>
-              ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /> {news.length - LIMIT}개 더 보기</>
-              )}
-            </button>
-          )}
+          <SectionPager page={page} totalPages={totalPages} onPageChange={handlePageChange} />
         </>
       )}
     </SectionCard>
+    </div>
   );
 }

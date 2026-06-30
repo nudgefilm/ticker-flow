@@ -4,6 +4,7 @@ import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer
 import NewsFilterBar from "@/components/dashboard/news-filter-bar";
 import NewsFeedCard, { type NewsItem } from "@/components/dashboard/news-feed-card";
 import FeedPagination from "@/components/dashboard/feed-pagination";
+import { FeedScrollAnchor } from "@/components/dashboard/feed-scroll-anchor";
 import NewsSourceChart from "@/components/dashboard/news-source-chart";
 import NewsTrendChart from "@/components/dashboard/news-trend-chart";
 import NewsSectorChart from "@/components/dashboard/news-sector-chart";
@@ -106,6 +107,7 @@ async function NewsFeedList({ page }: { page: number }) {
 
   return (
     <>
+      <FeedScrollAnchor />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {items.map((item, i) => (
           <NewsFeedCard

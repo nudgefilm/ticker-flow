@@ -98,7 +98,7 @@ export default async function MacroPage() {
 
       <p className="text-sm text-[#a6a6a6]">
         미국 주요 경제지표를 한눈에 확인합니다.
-        출처: FRED(미국 연방준비제도). 데이터는 매일 오전 갱신됩니다.
+        출처: 미국 연방준비제도(FRED). 데이터는 매일 오전 갱신됩니다.
       </p>
 
       <MacroBoard groups={groups} referenceDate={referenceDate} />

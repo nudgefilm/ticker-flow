@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRef, useState } from "react";
 import type { InsiderSummary } from "@/lib/insights/types";
 import { SectionCard } from "./ui";
+import { SectionPager } from "./section-pager";
 
-const LIMIT = 5;
+const PAGE_SIZE = 5;
 
 function fmtAmount(n: number | null): string {
   if (n == null) return "—";
@@ -30,12 +30,20 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
 }
 
 export default function InsiderTrading({ insider }: { insider: InsiderSummary }) {
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(1);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const { buyCount, sellCount, totalVolume, trades } = insider;
-  const displayed = expanded ? trades : trades.slice(0, LIMIT);
-  const hasMore = trades.length > LIMIT;
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const totalPages = Math.ceil(trades.length / PAGE_SIZE);
+  const displayed = trades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
+    <div ref={sectionRef}>
     <SectionCard title="내부자 거래" description="최근 180일 · 임원·이사·10% 이상 대주주">
       <div className="mb-5 grid grid-cols-3 gap-3">
         <StatCard label="매수 건수" value={buyCount} color="#34d399" />
@@ -89,23 +97,12 @@ export default function InsiderTrading({ insider }: { insider: InsiderSummary })
             </table>
           </div>
 
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              {expanded ? (
-                <><ChevronUp className="h-3.5 w-3.5" /> 접기</>
-              ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /> {trades.length - LIMIT}개 더 보기</>
-              )}
-            </button>
-          )}
+          <SectionPager page={page} totalPages={totalPages} onPageChange={handlePageChange} />
         </>
       )}
 
       <p className="mt-3 text-[10px] text-[#a6a6a6]">출처: SEC Form 4 공시</p>
     </SectionCard>
+    </div>
   );
 }

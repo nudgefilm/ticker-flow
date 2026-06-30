@@ -5,6 +5,8 @@ import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer
 import EarningsFilterBar from "@/components/dashboard/earnings-filter-bar";
 import EarningsRow, { type Earnings } from "@/components/dashboard/earnings-row";
 import { IconInfoCircle, IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import { FeedScrollAnchor } from "@/components/dashboard/feed-scroll-anchor";
+import { EarningsPagination } from "@/components/dashboard/earnings-pagination";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -253,13 +255,14 @@ async function EarningsList({ page }: { page: number }) {
 
   return (
     <>
+      <FeedScrollAnchor />
       <div className="flex flex-col gap-3">
         {rows.map((row) => (
           <EarningsRow key={`${row.ticker}-${row.report_date}`} earnings={mapRow(row)} />
         ))}
       </div>
       {totalPages > 1 && (
-        <Pagination currentPage={page} totalPages={totalPages} prefix="?" />
+        <EarningsPagination currentPage={page} totalPages={totalPages} prefix="?" />
       )}
     </>
   );
@@ -355,7 +358,7 @@ async function DividendsList({ page }: { page: number }) {
         </table>
       </div>
       {totalPages > 1 && (
-        <Pagination currentPage={page} totalPages={totalPages} prefix="?tab=dividends&" />
+        <EarningsPagination currentPage={page} totalPages={totalPages} prefix="?tab=dividends&" />
       )}
       <p className="mt-2 text-right text-[11px] text-[#a6a6a6]">
         수익률은 추후 제공 예정입니다.

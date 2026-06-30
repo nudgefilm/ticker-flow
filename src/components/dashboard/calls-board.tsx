@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import type { EarningsCall, GuidanceDirection } from "@/lib/earnings-calls"
 import EarningsCallCard from "@/components/dashboard/earnings-call-card"
 
@@ -37,6 +37,12 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
   const [guidance, setGuidance] = useState<GuidanceFilter>("all")
   const [watchlistOnly, setWatchlistOnly] = useState(false)
   const [page, setPage] = useState(1)
+  const sectionRef = useRef<HTMLDivElement>(null)
+
+  function changePage(p: number) {
+    setPage(p)
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
   const filtered = useMemo(() => {
     return calls.filter((c) => {
@@ -59,7 +65,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
   const hasWatchlist = calls.some((c) => c.in_watchlist)
 
   return (
-    <div>
+    <div ref={sectionRef}>
       {/* 필터 바 */}
       <div className="sticky top-0 z-10 mb-6 flex flex-wrap items-center gap-4 rounded-[8px] border border-white/[0.06] bg-[#0a0a0a]/90 px-4 py-3 backdrop-blur">
         {/* 기간 */}
@@ -141,7 +147,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
       {totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-2">
           <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => changePage(Math.max(1, page - 1))}
             disabled={page === 1}
             className="rounded-[4px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#a6a6a6] transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-30"
           >
@@ -150,7 +156,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
-              onClick={() => setPage(n)}
+              onClick={() => changePage(n)}
               className={`rounded-[4px] border px-3 py-1.5 text-xs transition-colors ${
                 n === page
                   ? "border-[#3b82f6] bg-[#3b82f6]/10 text-[#60a5fa]"
@@ -161,7 +167,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
             </button>
           ))}
           <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => changePage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
             className="rounded-[4px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#a6a6a6] transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-30"
           >
@@ -170,17 +176,11 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
         </div>
       )}
 
-      {/* 데이터 출처 카드 */}
+      {/* 데이터 출처 */}
       <div className="mt-10 rounded-[8px] border border-white/[0.06] bg-[#1a1a1a] p-5">
-        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
-          데이터 출처
+        <p className="text-xs text-[#a6a6a6]">
+          데이터 출처: 공개된 SEC 공시 및 시장 데이터를 기반으로 제공합니다.
         </p>
-        <ul className="flex flex-col gap-1.5 text-xs text-[#7a7a7a]">
-          <li>· SEC EDGAR — 공시 원문</li>
-          <li>· Earnings Call Transcript — 컨퍼런스콜 스크립트</li>
-          <li>· Finnhub — 실적 수치 (EPS, 매출)</li>
-          <li>· TickerFlow 요약 — 한국어 구조화 요약</li>
-        </ul>
       </div>
     </div>
   )

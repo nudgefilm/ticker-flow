@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { markFeedScroll } from "./feed-scroll-anchor";
 
 type PageEntry = number | "…";
 
@@ -44,7 +47,9 @@ export default function FeedPagination({
     <div className="flex items-center justify-center gap-1">
       <Link
         href={pageHref(Math.max(1, page - 1), type)}
+        scroll={false}
         aria-disabled={page === 1}
+        onClick={markFeedScroll}
         className={cn(
           "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",
           page === 1 && "pointer-events-none opacity-30"
@@ -62,6 +67,8 @@ export default function FeedPagination({
           <Link
             key={p}
             href={pageHref(p, type)}
+            scroll={false}
+            onClick={markFeedScroll}
             className={cn(
               "min-w-8 rounded-[6px] px-2 py-1.5 text-center text-sm transition-colors",
               p === page
@@ -76,7 +83,9 @@ export default function FeedPagination({
 
       <Link
         href={pageHref(Math.min(lastPage, page + 1), type)}
+        scroll={false}
         aria-disabled={page === lastPage}
+        onClick={markFeedScroll}
         className={cn(
           "rounded-[6px] px-3 py-1.5 text-sm text-[#a6a6a6] transition-colors hover:bg-[#1a1a1a] hover:text-[#cccccc]",
           page === lastPage && "pointer-events-none opacity-30"

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronUp, FileText, Newspaper, UserRound, TrendingUp } from "lucide-react";
+import { useRef, useState } from "react";
+import { FileText, Newspaper, UserRound, TrendingUp } from "lucide-react";
 import type { TimelineEvent } from "@/lib/insights/types";
 import { SectionCard } from "./ui";
+import { SectionPager } from "./section-pager";
 
 const KIND_CONFIG = {
   filing:   { color: "#60a5fa", bg: "bg-[#60a5fa]/15", Icon: FileText,   label: "공시"   },
@@ -12,7 +13,7 @@ const KIND_CONFIG = {
   earnings: { color: "#c084fc", bg: "bg-[#c084fc]/15", Icon: TrendingUp,  label: "실적"   },
 } as const;
 
-const LIMIT = 10; // 5행 × 2열
+const PAGE_SIZE = 10; // 5행 × 2열
 
 function fmtDate(iso: string): string {
   if (!iso) return "—";
@@ -21,11 +22,19 @@ function fmtDate(iso: string): string {
 }
 
 export default function ChangeTimeline({ events }: { events: TimelineEvent[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const displayed = expanded ? events : events.slice(0, LIMIT);
-  const hasMore = events.length > LIMIT;
+  const [page, setPage] = useState(1);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const totalPages = Math.ceil(events.length / PAGE_SIZE);
+  const displayed = events.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
+    <div ref={sectionRef}>
     <SectionCard
       title="변화 타임라인"
       description="최근 90일 이벤트 통합 (공시·뉴스·내부자·실적)"
@@ -69,21 +78,10 @@ export default function ChangeTimeline({ events }: { events: TimelineEvent[] }) 
             })}
           </div>
 
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              {expanded ? (
-                <><ChevronUp className="h-3.5 w-3.5" /> 접기</>
-              ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /> {events.length - LIMIT}개 더 보기</>
-              )}
-            </button>
-          )}
+          <SectionPager page={page} totalPages={totalPages} onPageChange={handlePageChange} />
         </>
       )}
     </SectionCard>
+    </div>
   );
 }

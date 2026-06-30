@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Filing } from "@/lib/insights/types";
 import { SectionCard } from "./ui";
+import { SectionPager } from "./section-pager";
 
 const FILTERS = ["전체", "8-K", "10-Q", "10-K", "Insider", "기타"] as const;
 type Filter = (typeof FILTERS)[number];
-const LIMIT = 5;
+const PAGE_SIZE = 5;
 
 function matchesFilter(formType: string, filter: Filter): boolean {
   if (filter === "전체") return true;
@@ -29,17 +30,24 @@ function fmtDate(iso: string): string {
 
 export default function RecentFilings({ filings }: { filings: Filing[] }) {
   const [filter, setFilter] = useState<Filter>("전체");
-  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(1);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  function handlePageChange(p: number) {
+    setPage(p);
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   const rows = useMemo(
     () => filings.filter((f) => matchesFilter(f.formType, filter)),
     [filings, filter]
   );
 
-  const displayed = expanded ? rows : rows.slice(0, LIMIT);
-  const hasMore = rows.length > LIMIT;
+  const totalPages = Math.ceil(rows.length / PAGE_SIZE);
+  const displayed = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
+    <div ref={sectionRef}>
     <SectionCard
       title="최근 공시"
       description="최근 30일 공시 목록"
@@ -49,7 +57,7 @@ export default function RecentFilings({ filings }: { filings: Filing[] }) {
             <button
               key={f}
               type="button"
-              onClick={() => { setFilter(f); setExpanded(false); }}
+              onClick={() => { setFilter(f); setPage(1); }}
               className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
                 filter === f
                   ? "bg-[#60a5fa] text-[#0a0a0a]"
@@ -107,21 +115,10 @@ export default function RecentFilings({ filings }: { filings: Filing[] }) {
             ))}
           </ul>
 
-          {hasMore && (
-            <button
-              type="button"
-              onClick={() => setExpanded(!expanded)}
-              className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/[0.06] py-2 text-xs text-[#a6a6a6] transition-colors hover:text-white"
-            >
-              {expanded ? (
-                <><ChevronUp className="h-3.5 w-3.5" /> 접기</>
-              ) : (
-                <><ChevronDown className="h-3.5 w-3.5" /> {rows.length - LIMIT}개 더 보기</>
-              )}
-            </button>
-          )}
+          <SectionPager page={page} totalPages={totalPages} onPageChange={handlePageChange} />
         </>
       )}
     </SectionCard>
+    </div>
   );
 }

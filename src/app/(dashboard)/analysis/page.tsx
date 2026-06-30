@@ -298,8 +298,12 @@ export default async function AnalysisPage({
             {/* 관련 뉴스 */}
             <RelatedNews news={insight.news} />
 
-            {/* 주요 변화 요약 */}
-            <ChangeSummary events={insight.timeline} />
+            {/* 최근 주요 변화 */}
+            <ChangeSummary
+              summary={insight.summary}
+              insider={insight.insider}
+              latestEarnings={insight.earnings[0]}
+            />
 
             {/* 데이터 출처 */}
             <DataSources updatedAt={insight.updatedAt} />
