@@ -14,7 +14,7 @@ import { useCountUp } from "./use-count-up"
 type WeeklyItem = { day: string; value: number }
 
 export type StatsSectionProps = {
-  tickerCount: number
+  featured: number
   filingCount: number
   newsCount: number
   macroCount: number
@@ -31,7 +31,6 @@ type DisplayStat = {
   icon: React.ComponentType<{ className?: string }>
 }
 
-// 실수 count → 카운트업 정수 + 한국식 단위 접미사
 function toDisplayStat(n: number, floor = 0): { value: number; suffix: string } {
   const actual = Math.max(n, floor)
   if (actual >= 100_000) return { value: Math.floor(actual / 10_000), suffix: "만+" }
@@ -39,15 +38,14 @@ function toDisplayStat(n: number, floor = 0): { value: number; suffix: string } 
   return { value: actual, suffix: "+" }
 }
 
-function FeaturedCounter({ stat }: { stat: DisplayStat }) {
-  const { ref, value } = useCountUp(stat.value)
+function FeaturedCounter({ count }: { count: number }) {
+  const { ref, value } = useCountUp(count)
   return (
     <div ref={ref}>
       <div className="font-mono text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
         {value.toLocaleString("ko-KR")}
-        <span>{stat.suffix}</span>
       </div>
-      <p className="mt-2 text-sm font-medium text-muted-foreground">{stat.label}</p>
+      <p className="mt-2 text-sm font-medium text-muted-foreground">실시간 모니터링 기업</p>
     </div>
   )
 }
@@ -72,7 +70,7 @@ function StatItem({ stat }: { stat: DisplayStat }) {
 }
 
 export function StatsSection({
-  tickerCount,
+  featured,
   filingCount,
   newsCount,
   macroCount,
@@ -81,13 +79,6 @@ export function StatsSection({
   earningsCount,
   weeklyCollection,
 }: StatsSectionProps) {
-  const featured: DisplayStat = {
-    value: tickerCount,
-    suffix: "",
-    label: "실시간 모니터링 기업",
-    icon: Building2,
-  }
-
   const stats: DisplayStat[] = [
     { ...toDisplayStat(filingCount, 150_000), label: "수집 공시",   icon: FileText },
     { ...toDisplayStat(newsCount, 320_000),   label: "수집 뉴스",   icon: Newspaper },
@@ -123,7 +114,7 @@ export function StatsSection({
                 매일 수집하고 정리합니다
               </h2>
               <div className="mt-8">
-                <FeaturedCounter stat={featured} />
+                <FeaturedCounter count={featured} />
               </div>
             </div>
 

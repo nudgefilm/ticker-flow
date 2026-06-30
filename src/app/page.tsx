@@ -92,7 +92,7 @@ export default async function HomePage() {
 
   // ── 통계 ────────────────────────────────────────────────────────────────────
   const counts = await Promise.allSettled([
-    admin.from("tickers").select("id", { count: "exact", head: true }),
+    admin.from("tickers").select("ticker", { count: "exact", head: true }),
     admin.from("filings").select("id", { count: "exact", head: true }),
     admin.from("news").select("id", { count: "exact", head: true }),
     (admin as any).from("macro_indicators").select("id", { count: "exact", head: true }),
@@ -445,7 +445,7 @@ export default async function HomePage() {
               8. 운영 규모·신뢰 수치
           ══════════════════════════════════════════════ */}
           <StatsSection
-            tickerCount={tc}
+            featured={tc}
             filingCount={fc}
             newsCount={nc}
             macroCount={mc}
