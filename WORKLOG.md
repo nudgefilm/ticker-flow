@@ -2,6 +2,42 @@
 
 ---
 
+## 2026-06-30 · 세션 65
+
+### 텔레그램 채널 연동 + EPS 차트 버그 수정
+
+**텔레그램 플로팅 버튼 신규 (`src/components/telegram-float-button.tsx`)**
+- 우측 하단 `bottom-[4.5rem] right-6` 상시 노출, 위로가기 버튼 바로 위 세로 배치
+- `src/app/layout.tsx` 에 삽입 → 랜딩·대시보드 전체 페이지 공통 적용
+
+**사이드바 텔레그램 채널 링크 추가 (`src/components/dashboard/sidebar.tsx`)**
+- 네비게이션 하단, 사용자 섹션 위에 텔레그램 채널 링크 추가
+- 알림 설정 항목 Pro 라벨 제거 (무료 공개 채널로 전환)
+
+**랜딩 features.tsx 문구 수정**
+- "기업의 중요한 변화, 15분 안에 확인" → "기업의 중요한 변화, 매일 확인"
+
+**`/alerts` 페이지 재구성 (`src/app/(dashboard)/alerts/page.tsx`)**
+- ProGate + 정적 mock UI 전면 제거
+- 텔레그램 채널 안내 카드(상단), 알림 내용 안내 카드, 이메일 다이제스트 카드(Pro 배지) 3카드 구조
+
+**텔레그램 일간 공시 알림 발송 로직 신규 구현**
+- `src/lib/notify/telegram-digest.ts`: event_type 기반 주요 공시 필터 + 발송 후 notified_telegram=true 업데이트
+- `src/app/api/collect/telegram-digest/route.ts`: API route (maxDuration 60)
+- `vercel.json`: Cron 추가 `30 2 * * *` (02:30 UTC = 11:30 KST, classify-filings 02:00 이후)
+- 대상 event_type: ceo_change, cfo_change, buyback, ma, guidance, contract, offering, dividend
+
+**Supabase 마이그레이션**
+- `filings` 테이블에 `notified_telegram boolean NOT NULL DEFAULT false` 컬럼 추가
+- `pnpm gen:types` 재생성 및 `src/types/supabase.ts` 반영
+
+**EPS 차트 실제값 표시 버그 수정 (`src/app/(dashboard)/stocks/[symbol]/page.tsx`)**
+- 원인: earnings 쿼리에 날짜 필터 없어 미래 분기(actual_eps=null)가 최신 4건에 포함
+  → estimatePts 4점(전체 폭) vs actualPts 3점(75% 폭)으로 실제값 라인이 짧게 끊김
+- 해결: `.lte("report_date", today)` 추가 — 과거 발표 분기만 조회. nextEarnings 미래 쿼리는 별도 유지
+
+---
+
 ## 2026-06-30 · 세션 64
 
 ### 랜딩 통계 섹션 / 대시보드 레이아웃 / 섹터 버그 수정
