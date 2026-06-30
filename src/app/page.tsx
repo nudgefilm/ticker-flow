@@ -97,18 +97,24 @@ export default async function HomePage() {
     admin.from("tickers").select("id", { count: "exact", head: true }),
     admin.from("filings").select("id", { count: "exact", head: true }),
     admin.from("news").select("id", { count: "exact", head: true }),
+    (admin as any).from("macro_indicators").select("id", { count: "exact", head: true }),
+    (admin as any).from("insider_trades").select("id", { count: "exact", head: true }),
     (admin as any).from("earnings_calls").select("id", { count: "exact", head: true }),
+    (admin as any).from("earnings").select("id", { count: "exact", head: true }),
   ]);
 
-  const [tc, fc, nc, ec] = counts.map((r) =>
+  const [tc, fc, nc, mc, ic, ec, ear] = counts.map((r) =>
     r.status === "fulfilled" ? (r.value.count ?? 0) : 0
   );
 
   const STATS = [
     { label: "모니터링 기업", value: fmtCount(Math.max(tc, 8000)) },
-    { label: "수집 공시", value: fmtCount(Math.max(fc, 150000)) },
-    { label: "뉴스", value: fmtCount(Math.max(nc, 320000)) },
-    { label: "어닝콜", value: fmtCount(Math.max(ec, 5000)) },
+    { label: "수집 공시",    value: fmtCount(Math.max(fc, 150000)) },
+    { label: "수집 뉴스",    value: fmtCount(Math.max(nc, 320000)) },
+    { label: "경제지표",      value: fmtCount(mc) },
+    { label: "내부자 거래",  value: fmtCount(ic) },
+    { label: "어닝콜 분석",  value: fmtCount(Math.max(ec, 5000)) },
+    { label: "실적 발표",    value: fmtCount(ear) },
   ];
 
   return (
@@ -434,9 +440,9 @@ export default async function HomePage() {
                 <div className="mb-8 text-center">
                   <h2 className="text-xl font-semibold text-foreground">매일 수집하고 정리합니다</h2>
                 </div>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:grid-cols-7 lg:gap-0 lg:divide-x lg:divide-border">
                   {STATS.map(({ label, value }) => (
-                    <div key={label} className="text-center">
+                    <div key={label} className="text-center lg:px-4">
                       <p className="text-3xl font-bold tabular-nums text-foreground md:text-4xl">{value}</p>
                       <p className="mt-2 text-sm text-muted-foreground">{label}</p>
                     </div>
