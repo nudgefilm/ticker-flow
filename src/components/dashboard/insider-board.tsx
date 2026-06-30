@@ -222,6 +222,8 @@ export default function InsiderBoard({
             onChange={(v) => { setFilterType(v as FilterType); setPage(1); }}
           />
 
+          <span className="h-4 w-px self-center bg-white/[0.12]" />
+
           <SegmentButtons
             options={[
               { label: "7일", value: "7" },
@@ -232,6 +234,8 @@ export default function InsiderBoard({
             onChange={(v) => { setFilterPeriod(v as FilterPeriod); setPage(1); }}
           />
 
+          <span className="h-4 w-px self-center bg-white/[0.12]" />
+
           <SegmentButtons
             options={[
               { label: "전체 금액", value: "all" },
@@ -241,6 +245,8 @@ export default function InsiderBoard({
             value={filterAmount}
             onChange={(v) => { setFilterAmount(v as FilterAmount); setPage(1); }}
           />
+
+          <span className="h-4 w-px self-center bg-white/[0.12]" />
 
           <ToggleSwitch
             checked={watchlistOnly}
