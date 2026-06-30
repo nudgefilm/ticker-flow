@@ -13,7 +13,10 @@ type Category = typeof CATEGORIES[number];
 
 async function callHaiku(prompt: string): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.error("[callHaiku] ANTHROPIC_API_KEY 없음");
+    return null;
+  }
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -28,10 +31,17 @@ async function callHaiku(prompt: string): Promise<string | null> {
         messages:   [{ role: "user", content: prompt }],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text();
+      console.error("[callHaiku] API error", { status: res.status, body });
+      return null;
+    }
     const data = await res.json();
-    return (data?.content?.[0]?.text as string | undefined)?.trim().toLowerCase() ?? null;
-  } catch {
+    const raw = (data?.content?.[0]?.text as string | undefined)?.trim().toLowerCase() ?? null;
+    console.log("[callHaiku] raw response:", raw);
+    return raw;
+  } catch (err) {
+    console.error("[callHaiku] fetch exception", err);
     return null;
   }
 }
