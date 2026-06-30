@@ -1,3 +1,23 @@
+export function StockBriefPending({ ticker }: { ticker: string }) {
+  return (
+    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-[#1a1a1a] px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">
+            {ticker} BRIEF
+          </p>
+          <span className="rounded-[3px] bg-[#3b82f6]/20 px-1.5 py-0.5 text-[10px] font-medium text-[#60a5fa]">
+            Pro
+          </span>
+        </div>
+      </div>
+      <div className="px-5 py-4">
+        <p className="text-sm text-[#666666]">BRIEF 생성 준비 중입니다. 잠시 후 다시 방문하시면 확인할 수 있습니다.</p>
+      </div>
+    </div>
+  );
+}
+
 interface StockBriefProps {
   ticker: string;
   content: string;

@@ -1,8 +1,9 @@
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
-import { StockBrief } from "@/components/dashboard/snapshot/stock-brief";
+import { StockBrief, StockBriefPending } from "@/components/dashboard/snapshot/stock-brief";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
 import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filings";
@@ -58,6 +59,7 @@ export default async function StockPage({
 
   let briefContent: string | null = null;
   let briefGeneratedAt: string | null = null;
+  let briefEligible = false;
 
   if (user) {
     const [profileRes, watchlistRes] = await Promise.all([
@@ -74,6 +76,7 @@ export default async function StockPage({
     const inWatchlist = watchlistRes.data !== null;
 
     if (isPro && inWatchlist) {
+      briefEligible = true;
       const { data: brief } = await supabase
         .from("stock_briefs")
         .select("content, generated_at")
@@ -82,6 +85,12 @@ export default async function StockPage({
       if (brief) {
         briefContent = brief.content as string;
         briefGeneratedAt = brief.generated_at as string;
+      } else {
+        // BRIEF 미생성 → 응답 전송 후 백그라운드에서 1회 생성 (다음 방문 시 표시)
+        after(async () => {
+          const { runStockBriefCollect } = await import("@/lib/collect/brief");
+          await runStockBriefCollect(ticker, "snapshot_view").catch(() => {});
+        });
       }
     }
   }
@@ -248,13 +257,15 @@ export default async function StockPage({
         updatedAt={updatedAt}
       />
 
-      {briefContent && briefGeneratedAt && (
+      {briefContent && briefGeneratedAt ? (
         <StockBrief
           ticker={ticker}
           content={briefContent}
           generatedAt={briefGeneratedAt}
         />
-      )}
+      ) : briefEligible ? (
+        <StockBriefPending ticker={ticker} />
+      ) : null}
 
       <PriceCard quote={quote} />
 

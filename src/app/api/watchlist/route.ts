@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { runStockBriefCollect } from "@/lib/collect/brief";
 
 const FREE_LIMIT = 5;
 const PRO_LIMIT = 30;
@@ -54,6 +55,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "이미 등록된 종목입니다" }, { status: 409 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Pro 유저 등록 직후 — stock_briefs 미생성 시 즉시 1회 생성 (fire-and-forget)
+  if (isPro && process.env.ANTHROPIC_API_KEY) {
+    const { count: briefCount } = await supabase
+      .from("stock_briefs")
+      .select("*", { count: "exact", head: true })
+      .eq("ticker", ticker);
+
+    if ((briefCount ?? 0) === 0) {
+      runStockBriefCollect(ticker, "watchlist_add").catch(() => {});
+    }
   }
 
   return NextResponse.json({ ok: true });

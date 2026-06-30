@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./brief";
 export * from "./profile";
 export * from "./news";
 export * from "./filings";

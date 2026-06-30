@@ -99,7 +99,7 @@ export async function isTickerInProWatchlist(ticker: string): Promise<boolean> {
  */
 export async function runStockBriefCollect(
   ticker: string,
-  triggerReason: "filing" | "news" | "insider" | "earnings" = "filing"
+  triggerReason: "filing" | "news" | "insider" | "earnings" | "watchlist_add" | "backfill" | "snapshot_view" = "filing"
 ): Promise<CollectResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, error: "ANTHROPIC_API_KEY not set", retryable: false };
@@ -269,4 +269,73 @@ ${inputData}
   }
 
   return { ok: true, skipped: 0, generated: 1 };
+}
+
+/**
+ * Pro 유저 와치리스트 전체 중 stock_briefs 미생성 종목을 일괄 생성.
+ * 관리자 트리거 페이지에서 1회성으로 실행.
+ */
+export async function runBriefBackfill(): Promise<CollectResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, error: "ANTHROPIC_API_KEY not set", retryable: false };
+  }
+
+  const adminClient = createAdminClient();
+
+  // Pro 유저 전체 와치리스트 distinct ticker
+  const { data: proProfiles } = await adminClient
+    .from("profiles")
+    .select("id")
+    .eq("plan", "pro");
+
+  if (!proProfiles?.length) {
+    return { ok: true, processed: 0, generated: 0, skipped: 0 };
+  }
+
+  const proIds = proProfiles.map((p) => p.id);
+
+  const { data: watchlistRows } = await adminClient
+    .from("watchlist")
+    .select("ticker")
+    .in("user_id", proIds);
+
+  if (!watchlistRows?.length) {
+    return { ok: true, processed: 0, generated: 0, skipped: 0 };
+  }
+
+  const distinctTickers = [...new Set(watchlistRows.map((r) => r.ticker))];
+
+  // 이미 생성된 ticker 제외
+  const { data: existing } = await adminClient
+    .from("stock_briefs")
+    .select("ticker");
+
+  const existingSet = new Set((existing ?? []).map((b) => b.ticker));
+  const missing = distinctTickers.filter((t) => !existingSet.has(t));
+
+  if (missing.length === 0) {
+    return { ok: true, processed: distinctTickers.length, generated: 0, skipped: distinctTickers.length };
+  }
+
+  let generated = 0;
+  let failed = 0;
+
+  for (const ticker of missing) {
+    try {
+      const result = await runStockBriefCollect(ticker, "backfill");
+      if (result.ok && result.generated) generated++;
+    } catch {
+      failed++;
+    }
+    // Haiku rate limit 방어: 건당 500ms 딜레이
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  return {
+    ok: true,
+    processed: missing.length,
+    generated,
+    skipped: distinctTickers.length - missing.length,
+    ...(failed > 0 ? { failed } : {}),
+  };
 }

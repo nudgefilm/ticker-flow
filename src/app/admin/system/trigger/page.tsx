@@ -32,6 +32,8 @@ interface TriggerResult {
   news?: number;
   summarized?: number;
   classified?: number;
+  generated?: number;
+  failed?: number;
   otherRate?: string;
   distribution?: Record<string, number>;
   warning?: string;
@@ -152,6 +154,11 @@ const TRIGGERS: Trigger[] = [
     label: "텔레그램 일간 공시 알림",
     desc: "notified_telegram=false인 주요 공시(CEO 교체·자사주매입·M&A·가이던스 등)를 텔레그램 채널에 발송합니다. 발송 후 해당 공시를 notified_telegram=true로 업데이트합니다.",
   },
+  {
+    id: "brief-backfill",
+    label: "BRIEF 백필 (Pro 와치리스트 전체)",
+    desc: "Pro 유저 와치리스트 전체 종목 중 stock_briefs가 없는 종목에 대해 BRIEF를 일괄 생성합니다. 최초 1회 또는 누락 종목 보충 시 실행하세요. 건당 500ms 딜레이 포함.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -168,6 +175,8 @@ function resultSummary(result: TriggerResult): string {
   if (result.news       !== undefined) parts.push(`뉴스 ${result.news}건`);
   if (result.summarized  !== undefined) parts.push(`요약 ${result.summarized}건`);
   if (result.classified  !== undefined) parts.push(`분류 ${result.classified}건`);
+  if (result.generated   !== undefined) parts.push(`생성 ${result.generated}건`);
+  if (result.failed      !== undefined && result.failed > 0) parts.push(`실패 ${result.failed}건`);
   if (result.otherRate   !== undefined) parts.push(`other ${result.otherRate}`);
   if (result.nextOffset  !== undefined) parts.push(`오프셋 ${result.offset ?? 0}→${result.nextOffset}`);
   const summary = parts.join(" · ") || "완료";
