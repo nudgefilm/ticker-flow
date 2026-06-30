@@ -58,7 +58,7 @@ export default function IndicatorCard({
         {/* 현재값 */}
         <div className="flex items-baseline gap-2">
           <span
-            className={`${hero ? "text-5xl" : "text-2xl"} font-bold tabular-nums leading-none`}
+            className={`${hero ? "text-3xl md:text-5xl" : "text-2xl"} font-bold tabular-nums leading-none`}
             style={{ color: groupColor }}
           >
             {mainVal}

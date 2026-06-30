@@ -7,8 +7,10 @@ import {
   IconBrandTelegram,
   IconMail,
   IconChevronRight,
+  IconMenu2,
 } from "@tabler/icons-react";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useSidebar } from "@/lib/sidebar-context";
 
 interface DashboardHeaderProps {
   title: string;
@@ -18,6 +20,7 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ title, badge = false }: DashboardHeaderProps) {
   const profile = useProfile();
   const isPro = profile?.plan === "pro";
+  const { open: openSidebar } = useSidebar();
 
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -42,6 +45,15 @@ export default function DashboardHeader({ title, badge = false }: DashboardHeade
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
+        {/* 모바일 햄버거 버튼 */}
+        <button
+          type="button"
+          onClick={openSidebar}
+          className="mr-1 flex h-8 w-8 items-center justify-center rounded-[6px] text-[#a6a6a6] transition-colors hover:text-white md:hidden"
+          aria-label="메뉴 열기"
+        >
+          <IconMenu2 size={20} stroke={1.5} />
+        </button>
         <h1 className="text-xl font-medium text-white">{title}</h1>
         {badge && (
           <span className="rounded-[4px] bg-[#3b82f6] px-1.5 py-0.5 text-[10px] font-medium text-white">

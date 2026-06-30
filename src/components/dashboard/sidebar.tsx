@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -22,6 +23,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { useSidebar } from "@/lib/sidebar-context";
 
 type NavItem = {
   href: string;
@@ -80,6 +82,32 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const profile = useProfile();
+  const { isOpen, open, close } = useSidebar();
+
+  // 스와이프 제스처: 좌측 끝에서 오른쪽 스와이프 → 열기 / 왼쪽 스와이프 → 닫기
+  const touchStartX = useRef(0);
+  useEffect(() => {
+    function onTouchStart(e: TouchEvent) {
+      touchStartX.current = e.touches[0].clientX;
+    }
+    function onTouchEnd(e: TouchEvent) {
+      const delta = e.changedTouches[0].clientX - touchStartX.current;
+      // 좌측 엣지(30px 이내)에서 60px 이상 오른쪽으로 스와이프 → 열기
+      if (!isOpen && touchStartX.current < 30 && delta > 60) {
+        open();
+      }
+      // 60px 이상 왼쪽으로 스와이프 → 닫기
+      if (isOpen && delta < -60) {
+        close();
+      }
+    }
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isOpen, open, close]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -88,87 +116,108 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[0.08] bg-[#0f0f0f]">
-      {/* 로고 */}
-      <div className="flex-none px-4 py-4">
-        <Link href="/">
-          <span className="text-[19px] font-semibold tracking-tight text-white">TickerFlow</span>
-        </Link>
-      </div>
+    <>
+      {/* 모바일 오버레이 — 사이드바 열릴 때만 표시 */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* 검색 */}
-      <div className="flex-none px-3 pb-3">
-        <TickerSearch />
-      </div>
-
-      {/* 네비게이션 */}
-      <nav className="no-scrollbar flex-1 overflow-y-auto px-3 pb-2">
-        {navGroups.map((group, gi) => (
-          <div key={group.label}>
-            {gi > 0 && (
-              <div className="my-2 border-t border-white/[0.06]" />
-            )}
-            <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-[#a6a6a6]">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "relative flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-[#252525] text-white"
-                        : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-white"
-                    )}
-                  >
-                    {isActive && (
-                      <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-sm bg-white" />
-                    )}
-                    <item.icon size={18} stroke={1.5} />
-                    <span>{item.label}</span>
-                    {item.pro && (
-                      <span className="ml-auto rounded-[4px] bg-[#3b82f6] px-1.5 py-0.5 text-[10px] font-medium text-white">
-                        Pro
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* 사용자 섹션 */}
-      <div className="flex-none border-t border-white/[0.06] px-3 py-3">
-        <div className="flex items-center gap-2.5">
-          <Avatar className="h-8 w-8 flex-none">
-            <AvatarFallback className="bg-[#1a1a1a] text-xs text-white">
-              {profile?.initial ?? "—"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-white">{profile?.email ?? "—"}</p>
-            <p className="truncate text-xs text-[#a6a6a6]">
-              {profile?.plan === "pro" ? "Pro 플랜" : "Free 플랜"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex-none text-[#a6a6a6] transition-colors hover:text-white"
-            aria-label="로그아웃"
-          >
-            <IconLogout size={16} stroke={1.5} />
-          </button>
+      {/* 사이드바 본체 */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-white/[0.08] bg-[#0f0f0f]",
+          // 모바일: isOpen 여부로 슬라이드 in/out
+          // 데스크톱(md+): 항상 표시
+          "transition-transform duration-300 ease-in-out",
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        )}
+      >
+        {/* 로고 */}
+        <div className="flex-none px-4 py-4">
+          <Link href="/">
+            <span className="text-[19px] font-semibold tracking-tight text-white">TickerFlow</span>
+          </Link>
         </div>
-      </div>
-    </aside>
+
+        {/* 검색 */}
+        <div className="flex-none px-3 pb-3">
+          <TickerSearch />
+        </div>
+
+        {/* 네비게이션 */}
+        <nav className="no-scrollbar flex-1 overflow-y-auto px-3 pb-2">
+          {navGroups.map((group, gi) => (
+            <div key={group.label}>
+              {gi > 0 && (
+                <div className="my-2 border-t border-white/[0.06]" />
+              )}
+              <p className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wider text-[#a6a6a6]">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/");
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={close}
+                      className={cn(
+                        "relative flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm transition-colors",
+                        isActive
+                          ? "bg-[#252525] text-white"
+                          : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-white"
+                      )}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-sm bg-white" />
+                      )}
+                      <item.icon size={18} stroke={1.5} />
+                      <span>{item.label}</span>
+                      {item.pro && (
+                        <span className="ml-auto rounded-[4px] bg-[#3b82f6] px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          Pro
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* 사용자 섹션 */}
+        <div className="flex-none border-t border-white/[0.06] px-3 py-3">
+          <div className="flex items-center gap-2.5">
+            <Avatar className="h-8 w-8 flex-none">
+              <AvatarFallback className="bg-[#1a1a1a] text-xs text-white">
+                {profile?.initial ?? "—"}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-white">{profile?.email ?? "—"}</p>
+              <p className="truncate text-xs text-[#a6a6a6]">
+                {profile?.plan === "pro" ? "Pro 플랜" : "Free 플랜"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex-none text-[#a6a6a6] transition-colors hover:text-white"
+              aria-label="로그아웃"
+            >
+              <IconLogout size={16} stroke={1.5} />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

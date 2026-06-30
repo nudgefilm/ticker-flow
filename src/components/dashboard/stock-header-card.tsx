@@ -43,7 +43,7 @@ export default function StockHeaderCard({
             </span>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <span className="text-3xl font-semibold tabular-nums text-white">{price}</span>
+            <span className="text-2xl font-semibold tabular-nums text-white md:text-3xl">{price}</span>
             <span
               className={cn(
                 "rounded-[4px] border px-1.5 py-0.5 text-sm font-medium",
