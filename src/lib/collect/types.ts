@@ -27,6 +27,7 @@ export const COLLECT_JOBS = [
   "price-targets",
   "top30",
   "telegram",
+  "telegram-digest",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

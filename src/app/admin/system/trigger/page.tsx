@@ -147,6 +147,11 @@ const TRIGGERS: Trigger[] = [
     label: "텔레그램 발송",
     desc: "오늘의 TOP10 기업 동향을 텔레그램 채널에 발송합니다. TOP30 선정 먼저 실행 필요.",
   },
+  {
+    id: "telegram-digest",
+    label: "텔레그램 일간 공시 알림",
+    desc: "notified_telegram=false인 주요 공시(CEO 교체·자사주매입·M&A·가이던스 등)를 텔레그램 채널에 발송합니다. 발송 후 해당 공시를 notified_telegram=true로 업데이트합니다.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -390,6 +395,7 @@ export default function TriggerPage() {
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
             { name: "TOP30 선정",         schedule: "매일 21:00 UTC (익일 06:00 KST)", path: "/api/collect/top30"             },
             { name: "텔레그램 발송",       schedule: "매일 21:10 UTC (익일 06:10 KST)", path: "/api/collect/telegram"          },
+            { name: "텔레그램 공시 알림",  schedule: "매일 02:30 UTC (11:30 KST)",    path: "/api/collect/telegram-digest"   },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>
