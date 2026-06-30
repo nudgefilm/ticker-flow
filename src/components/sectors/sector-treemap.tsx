@@ -181,9 +181,22 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
 
           const isHovered = hovered === i;
           const cx = r.x + r.w / 2;
-          const hasRoom = r.h > 50;
-          const showDetails = r.w > 100 && r.h > 70;
-          const textBaseY = r.y + r.h / 2 - (showDetails ? 14 : hasRoom ? 8 : 0);
+
+          // 박스 너비 기준 한 줄 최대 글자 수 (한글 한 글자 ≈ 13px @ fontSize 14)
+          const innerW = r.w - PAD * 4;
+          const name = s.sectorKr;
+          const charsPerLine = Math.floor(innerW / 13);
+          const wrapName = charsPerLine >= 2 && name.length > charsPerLine && r.h > 55;
+          const mid = Math.ceil(name.length / 2);
+          const nameLines = wrapName ? [name.slice(0, mid), name.slice(mid)] : [name];
+          const nameLineCount = nameLines.length;
+
+          const lineH = 16;
+          const hasRoom = r.h > (nameLineCount === 2 ? 64 : 50);
+          const showDetails = r.w > 100 && r.h > (nameLineCount === 2 ? 82 : 70);
+          const totalLines = nameLineCount + (hasRoom ? 1 : 0) + (showDetails ? 1 : 0);
+          const blockH = totalLines * lineH;
+          const baseY = r.y + r.h / 2 - blockH / 2 + lineH / 2;
 
           return (
             <g
@@ -213,25 +226,29 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
               />
               {r.w > 40 && r.h > 28 && (
                 <g clipPath={`url(#clip-sector-${i})`}>
-                  <text
-                    x={cx}
-                    y={textBaseY}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize="14"
-                    fontWeight="600"
-                    fill="white"
-                  >
-                    {s.sectorKr}
-                  </text>
+                  {nameLines.map((line, li) => (
+                    <text
+                      key={li}
+                      x={cx}
+                      y={baseY + li * lineH}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fontSize="14"
+                      fontWeight="700"
+                      fill="white"
+                    >
+                      {line}
+                    </text>
+                  ))}
                   {hasRoom && (
                     <text
                       x={cx}
-                      y={textBaseY + 18}
+                      y={baseY + nameLineCount * lineH}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fontSize="11"
-                      fill="#a6a6a6"
+                      fontWeight="600"
+                      fill="#cccccc"
                     >
                       {s.tickerCount}종목
                     </text>
@@ -239,11 +256,12 @@ export default function SectorTreemap({ sectors }: { sectors: SectorStat[] }) {
                   {showDetails && (
                     <text
                       x={cx}
-                      y={textBaseY + 34}
+                      y={baseY + (nameLineCount + (hasRoom ? 1 : 0)) * lineH}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fontSize="11"
-                      fill="#a6a6a6"
+                      fontWeight="500"
+                      fill="#cccccc"
                     >
                       {`공시 ${s.filingCount}건 · 뉴스 ${s.newsCount}건`}
                     </text>
