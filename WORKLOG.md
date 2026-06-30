@@ -2,6 +2,36 @@
 
 ---
 
+## 2026-06-30 · 세션 64
+
+### 랜딩 통계 섹션 / 대시보드 레이아웃 / 섹터 버그 수정
+
+**랜딩 '매일 수집하고 정리합니다' 통계 항목 확장 (`src/app/page.tsx`)**
+- 원인: `stats.tsx` 컴포넌트는 랜딩 페이지에 마운트되지 않음. `page.tsx` 내 인라인 STATS 배열이 독립적으로 4항목만 유지하고 있었음
+- 해결: `page.tsx` 직접 수정 — 쿼리 4개→7개, STATS 7항목, grid `lg:grid-cols-7`
+- 추가 항목: 경제지표(macro_indicators), 내부자 거래(insider_trades), 실적 발표(earnings)
+
+**대시보드/뉴스 피드 레이아웃 재배치 (`dashboard/page.tsx`, `news/page.tsx`)**
+- 최근 7일 트렌드 카드를 우측에서 좌측(도넛 하단)으로 이동, 섹터 차트 단독 우측 배치
+
+**차트 기간 레이블 추가**
+- `disclosure-type-chart.tsx`, `news-source-chart.tsx`: "최근 30일"
+- `sector-activity-chart.tsx`, `news-sector-chart.tsx`: "최근 7일"
+
+**좌우 컬럼 높이 동기화**
+- `items-stretch` + `flex flex-col` 래퍼(h-full 없음) 패턴 적용
+- `h-full` on grid children → CSS Grid 순환 참조 버그 확인, 제거
+
+**섹터 이름 중복 버그 수정 (`src/lib/sectors.ts`)**
+- 원인: Finnhub("Consumer Discretionary")와 FMP("Consumer Cyclical") 둘 다 DB에 기록되어 동일 한글 섹터가 2행으로 분리
+- 해결: `normalizeSector()` 추가, dashboard/news page 및 sectors API에 적용
+
+**수집 범위 확장**
+- `runProfileCollect` 한도 50→200 (`src/lib/collect/profile.ts`)
+- 섹터 백필 스크립트 신규 생성 (`scripts/backfill-sector.ts`, Finnhub 기반, npx tsx)
+
+---
+
 ## 2026-06-29 · 세션 63
 
 ### 사이트 표기 불일치 수정
