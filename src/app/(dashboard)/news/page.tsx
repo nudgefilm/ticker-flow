@@ -8,6 +8,7 @@ import NewsSourceChart from "@/components/dashboard/news-source-chart";
 import NewsTrendChart from "@/components/dashboard/news-trend-chart";
 import NewsSectorChart from "@/components/dashboard/news-sector-chart";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeSector } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
 
@@ -190,8 +191,11 @@ export default async function NewsPage({
 
   const sectorCounts: Record<string, number> = {};
   for (const row of newsSectorRows) {
-    const sector = row.tickers?.sector;
-    if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+    const raw = row.tickers?.sector;
+    if (raw) {
+      const sector = normalizeSector(raw);
+      sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+    }
   }
   // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 전체 11개 표시
   const activeSectors = Object.entries(sectorCounts)

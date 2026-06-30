@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SECTOR_KR, SECTOR_KEYWORDS } from "@/lib/sectors";
+import { SECTOR_KR, SECTOR_KEYWORDS, normalizeSector } from "@/lib/sectors";
 import type { SectorStat, SectorPeriod } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
@@ -28,17 +28,18 @@ export async function GET(request: Request) {
   const filingRows = filingRes.data ?? [];
   const newsRows = newsRes.data ?? [];
 
-  // ticker → sector 매핑
+  // ticker → sector 매핑 (정규화 적용)
   const tickerSectorMap: Record<string, string> = {};
   tickerRows.forEach((r) => {
-    if (r.sector) tickerSectorMap[r.ticker] = r.sector;
+    if (r.sector) tickerSectorMap[r.ticker] = normalizeSector(r.sector);
   });
 
   // 섹터별 종목 수
   const sectorTickerCount: Record<string, number> = {};
   tickerRows.forEach((r) => {
     if (!r.sector) return;
-    sectorTickerCount[r.sector] = (sectorTickerCount[r.sector] ?? 0) + 1;
+    const sector = normalizeSector(r.sector);
+    sectorTickerCount[sector] = (sectorTickerCount[sector] ?? 0) + 1;
   });
 
   // 섹터별 공시 건수

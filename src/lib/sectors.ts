@@ -12,6 +12,18 @@ export interface SectorStat {
   keywords: string[];    // 섹터별 대표 키워드
 }
 
+// Finnhub INDUSTRY_TO_SECTOR 와 FMP direct sector 표기가 달라 DB에 두 표기가 혼재.
+// 집계·저장 전 반드시 이 함수를 거쳐 정규화.
+const SECTOR_NORMALIZE: Record<string, string> = {
+  "Financials":             "Financial Services",
+  "Consumer Discretionary": "Consumer Cyclical",
+  "Consumer Staples":       "Consumer Defensive",
+};
+
+export function normalizeSector(sector: string): string {
+  return SECTOR_NORMALIZE[sector] ?? sector;
+}
+
 export const SECTOR_KR: Record<string, string> = {
   "Technology": "기술",
   "Healthcare": "헬스케어",

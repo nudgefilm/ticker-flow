@@ -8,6 +8,7 @@ import DisclosureTypeChart from "@/components/dashboard/disclosure-type-chart";
 import DisclosureTrendChart from "@/components/dashboard/disclosure-trend-chart";
 import SectorActivityChart from "@/components/dashboard/sector-activity-chart";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeSector } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
 
@@ -208,8 +209,11 @@ export default async function DashboardPage({
 
   const sectorCounts: Record<string, number> = {};
   for (const f of sectorFilings) {
-    const sector = f.tickers?.sector;
-    if (sector) sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+    const raw = f.tickers?.sector;
+    if (raw) {
+      const sector = normalizeSector(raw);
+      sectorCounts[sector] = (sectorCounts[sector] ?? 0) + 1;
+    }
   }
 
   // 데이터 있는 섹터 먼저, 없는 섹터는 0으로 채워 전체 11개 표시
