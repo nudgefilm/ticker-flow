@@ -124,6 +124,10 @@ export default async function Hero() {
             미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
           </p>
 
+          <p className="mt-3 max-w-xl text-sm text-muted-foreground/70">
+            TickerFlow는 SEC 공시, 뉴스, 실적 일정 등 공개된 정보를 수집·정리하여 미국 기업의 중요한 변화를 빠르게 파악할 수 있도록 돕는 모니터링 서비스입니다. 투자 자문이나 투자 권유를 제공하지 않습니다.
+          </p>
+
           {/* 공시 샘플 카드 */}
           <div className="mt-16 grid w-full max-w-2xl gap-4 text-left md:grid-cols-2">
             {showRealData ? (

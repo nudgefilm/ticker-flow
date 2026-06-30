@@ -10,18 +10,29 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TickerFlow",
-  description: "나스닥 모니터링 대시보드",
+  title: {
+    default: "TickerFlow | 미국 주식 모니터링 대시보드",
+    template: "%s | TickerFlow",
+  },
+  description:
+    "TickerFlow는 SEC 공시, 뉴스, 실적 일정 등 공개된 정보를 정리해 미국 기업의 주요 변화를 모니터링할 수 있도록 돕는 정보 서비스입니다. 투자 자문이나 투자 권유를 제공하지 않습니다.",
   icons: {
     icon: "/icon.png",
     shortcut: "/favicon.ico",
     apple: "/icon.png",
   },
   openGraph: {
+    title: "TickerFlow | 미국 주식 모니터링 대시보드",
+    description:
+      "SEC 공시, 뉴스, 실적 일정 등 공개된 정보를 정리해 미국 기업의 주요 변화를 모니터링할 수 있도록 돕는 정보 서비스입니다.",
+    siteName: "TickerFlow",
     images: [{ url: "/og-image.jpeg", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
+    title: "TickerFlow | 미국 주식 모니터링 대시보드",
+    description:
+      "SEC 공시, 뉴스, 실적 일정 등 공개된 정보를 정리해 미국 기업의 주요 변화를 모니터링할 수 있도록 돕는 정보 서비스입니다.",
     images: ["/og-image.jpeg"],
   },
 };
