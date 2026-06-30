@@ -8,6 +8,7 @@ import ProGate from "@/components/dashboard/pro-gate";
 import InsiderBoard, {
   type InsiderTrade,
 } from "@/components/dashboard/insider-board";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -217,6 +218,14 @@ export default async function InsiderPage() {
       }));
   }
 
+  function fmtDate(iso: string): string {
+    const d = new Date(iso);
+    return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+  }
+  const dataUpdatedAt = trades.length > 0 && trades[0].transaction_date
+    ? fmtDate(trades[0].transaction_date)
+    : null;
+
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="내부자 거래" badge />
@@ -236,6 +245,12 @@ export default async function InsiderPage() {
         </ProGate>
       </div>
 
+      <div className="mt-6">
+        <DataSources
+          description="미국 증권거래위원회(SEC) Form 4 공시를 기반으로 제공됩니다."
+          updatedAt={dataUpdatedAt}
+        />
+      </div>
       <DashboardDisclaimer />
     </div>
   );

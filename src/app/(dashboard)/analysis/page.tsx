@@ -237,6 +237,14 @@ export default async function AnalysisPage({
       })()
     : null;
 
+  const latestFilingAt = filingRows[0]?.filed_at ?? null;
+  const dataUpdatedAt = latestFilingAt
+    ? (() => {
+        const d = new Date(latestFilingAt);
+        return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+      })()
+    : updatedAt;
+
   const insight: StockInsight = {
     ticker: symbol,
     name: tickerRow?.name_kr ?? tickerRow?.name_en ?? symbol,
@@ -306,7 +314,10 @@ export default async function AnalysisPage({
             />
 
             {/* 데이터 출처 */}
-            <DataSources updatedAt={insight.updatedAt} />
+            <DataSources
+              description="미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터를 기반으로 제공됩니다."
+              updatedAt={dataUpdatedAt}
+            />
           </div>
         </ProGate>
       </div>

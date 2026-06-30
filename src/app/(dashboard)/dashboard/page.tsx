@@ -10,6 +10,7 @@ import DisclosureTrendChart from "@/components/dashboard/disclosure-trend-chart"
 import SectorActivityChart from "@/components/dashboard/sector-activity-chart";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSector } from "@/lib/sectors";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,11 @@ const TYPE_COLORS: Record<string, string> = {
   "Form 4": "#c084fc",
   "기타": "#6b7280",
 };
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+}
 
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
@@ -155,7 +161,7 @@ export default async function DashboardPage({
 
   // filings: 유형분포·트렌드용(타입 포함) + 섹터용(tickers join)을 병렬 요청
   // 섹터 쿼리는 tickers!inner join으로 DB에서 직접 매핑 → JS 두 테이블 join 방식의 1000행 제한 우회
-  const [filingsRaw, sectorRaw] = await Promise.all([
+  const [filingsRaw, sectorRaw, latestFilingRes] = await Promise.all([
     supabase
       .from("filings")
       .select("form_type, filed_at, ticker")
@@ -164,7 +170,17 @@ export default async function DashboardPage({
       .from("filings")
       .select("tickers!inner(sector)")
       .gte("filed_at", thirtyDaysAgo),
+    supabase
+      .from("filings")
+      .select("filed_at")
+      .order("filed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  const dataUpdatedAt = latestFilingRes.data?.filed_at
+    ? fmtDate(latestFilingRes.data.filed_at)
+    : null;
 
   const allFilings = filingsRaw.data ?? [];
 
@@ -253,6 +269,13 @@ export default async function DashboardPage({
         <Suspense fallback={<FilingFeedSkeleton />}>
           <FilingFeedList page={page} type={type} />
         </Suspense>
+      </div>
+
+      <div className="mt-6">
+        <DataSources
+          description="미국 증권거래위원회(SEC EDGAR) 공시 데이터를 기반으로 제공됩니다."
+          updatedAt={dataUpdatedAt}
+        />
       </div>
 
       <DashboardDisclaimer />

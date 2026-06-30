@@ -8,6 +8,7 @@ import {
   type MacroIndicator,
   type MacroGroup,
 } from "@/lib/macro";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,13 @@ export default async function MacroPage() {
       })
     : "—";
 
+  const dataUpdatedAt = latestAt
+    ? (() => {
+        const d = new Date(latestAt);
+        return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+      })()
+    : null;
+
   return (
     <div className="flex h-full flex-col gap-6">
       <DashboardHeader title="경제지표" />
@@ -98,11 +106,14 @@ export default async function MacroPage() {
 
       <p className="text-sm text-[#a6a6a6]">
         미국 주요 경제지표를 한눈에 확인합니다.
-        출처: 미국 연방준비제도(FRED). 데이터는 매일 오전 갱신됩니다.
       </p>
 
       <MacroBoard groups={groups} referenceDate={referenceDate} />
 
+      <DataSources
+        description="미국 연방준비제도(FRED) 데이터를 기반으로 제공됩니다."
+        updatedAt={dataUpdatedAt}
+      />
       <DashboardDisclaimer />
     </div>
   );

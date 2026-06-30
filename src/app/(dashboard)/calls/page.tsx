@@ -5,6 +5,7 @@ import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer
 import ProGate from "@/components/dashboard/pro-gate";
 import CallsBoard from "@/components/dashboard/calls-board";
 import type { EarningsCall, GuidanceDirection, KeyStatement, QaPair, KeywordChange } from "@/lib/earnings-calls";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,12 @@ export default async function CallsPage() {
 
   const rows = (data ?? []) as unknown as EarningsCallRow[];
 
+  function fmtDate(iso: string): string {
+    const d = new Date(iso);
+    return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+  }
+  const dataUpdatedAt = rows[0]?.processed_at ? fmtDate(rows[0].processed_at) : null;
+
   const calls: EarningsCall[] = rows.map((row) => {
     const kp = (row.key_points ?? {}) as Record<string, unknown>;
 
@@ -139,6 +146,12 @@ export default async function CallsPage() {
         >
           <CallsBoard calls={calls} isPro={isPro} />
         </ProGate>
+      </div>
+      <div className="mt-6">
+        <DataSources
+          description="미국 증권거래위원회(SEC EDGAR) 공시 데이터를 기반으로 제공됩니다."
+          updatedAt={dataUpdatedAt}
+        />
       </div>
       <DashboardDisclaimer />
     </div>

@@ -9,11 +9,12 @@ import { LegalModal } from "@/components/legal-modal";
 type ModalType = "privacy" | "terms" | "data-sources" | null;
 
 const DATA_SOURCES_SECTIONS = [
-  { title: "공시 정보",   content: "미국 증권거래위원회(SEC) EDGAR 공식 데이터베이스" },
-  { title: "뉴스",        content: "Finnhub (Reuters·CNBC·Bloomberg 등 주요 매체 제휴)" },
-  { title: "실적 캘린더", content: "Finnhub (나스닥·NYSE 상장 기업 실적 발표 일정)" },
-  { title: "경제지표",    content: "미국 연방준비제도(Fed) FRED 데이터베이스 (GDP, CPI, 금리 등)" },
-  { title: "내부자 거래", content: "Finnhub (SEC Form 4 공시 기반 임원·대주주 거래 내역)" },
+  { title: "공시 정보",   content: "미국 증권거래위원회(SEC EDGAR) 공식 데이터베이스" },
+  { title: "어닝콜",      content: "기업 공식 실적 발표 컨퍼런스콜 기반 한국어 요약" },
+  { title: "뉴스",        content: "공개된 뉴스 매체 정보를 기반으로 제공됩니다." },
+  { title: "실적 캘린더", content: "나스닥·NYSE 상장 기업의 실적 발표 일정을 기반으로 제공됩니다." },
+  { title: "내부자 거래", content: "미국 증권거래위원회(SEC EDGAR) Form 4 공시 기반 임원·대주주 거래 내역" },
+  { title: "경제지표",    content: "미국 연방준비제도(FRED) 데이터베이스 (GDP, CPI(소비자물가지수), 금리 등)" },
 ];
 
 function DataSourcesModal({ onClose }: { onClose: () => void }) {

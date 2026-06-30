@@ -10,6 +10,7 @@ import NewsTrendChart from "@/components/dashboard/news-trend-chart";
 import NewsSectorChart from "@/components/dashboard/news-sector-chart";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSector } from "@/lib/sectors";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,11 @@ const CANONICAL_SECTORS = [
   "Consumer Cyclical", "Consumer Defensive", "Industrials",
   "Communication Services", "Energy", "Utilities", "Real Estate", "Materials",
 ];
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+}
 
 // ─── 스켈레톤 ──────────────────────────────────────────────────────────────────
 
@@ -143,7 +149,7 @@ export default async function NewsPage({
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // 섹터 쿼리는 tickers!inner join으로 DB에서 직접 매핑 → JS 두 테이블 join 방식의 1000행 제한 우회
-  const [sourceRaw, trendRaw, sectorNewsRaw] = await Promise.all([
+  const [sourceRaw, trendRaw, sectorNewsRaw, latestNewsRes] = await Promise.all([
     // 쿼리 1: 출처 분포 (최근 30일)
     supabase.from("news").select("source").gte("published_at", thirtyDaysAgo),
     // 쿼리 2: 7일 추이
@@ -153,7 +159,18 @@ export default async function NewsPage({
       .from("news")
       .select("tickers!inner(sector)")
       .gte("published_at", sevenDaysAgo),
+    // 쿼리 4: 최신 뉴스 날짜
+    supabase
+      .from("news")
+      .select("published_at")
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  const dataUpdatedAt = latestNewsRes.data?.published_at
+    ? fmtDate(latestNewsRes.data.published_at)
+    : null;
 
   // 1. 출처 분포 집계
   const sourceCounts: Record<string, number> = {};
@@ -234,6 +251,13 @@ export default async function NewsPage({
           <NewsFeedList page={page} />
         </Suspense>
       </div>
+      <div className="mt-6">
+        <DataSources
+          description="공개된 뉴스 데이터를 기반으로 제공됩니다."
+          updatedAt={dataUpdatedAt}
+        />
+      </div>
+
       <DashboardDisclaimer />
     </div>
   );

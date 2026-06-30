@@ -234,7 +234,10 @@ export default async function StockPage({
 
       <EarningsFlow earnings={earnings} />
 
-      <DataSources updatedAt={updatedAt} />
+      <DataSources
+        description="미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터를 기반으로 제공됩니다."
+        updatedAt={updatedAt}
+      />
 
       <DashboardDisclaimer />
     </div>

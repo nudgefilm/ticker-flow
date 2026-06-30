@@ -1,11 +1,30 @@
+import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import ProGate from "@/components/dashboard/pro-gate";
 import SectorsBoard from "@/components/sectors/sectors-board";
+import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
 
-export default function SectorsPage() {
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+}
+
+export default async function SectorsPage() {
+  const supabase = await createClient();
+  const latestFilingRes = await supabase
+    .from("filings")
+    .select("filed_at")
+    .order("filed_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const dataUpdatedAt = latestFilingRes.data?.filed_at
+    ? fmtDate(latestFilingRes.data.filed_at)
+    : null;
+
   return (
     <div className="flex h-full flex-col gap-6">
       <DashboardHeader title="섹터 히트맵" badge />
@@ -18,6 +37,10 @@ export default function SectorsPage() {
           <SectorsBoard />
         </ProGate>
       </div>
+      <DataSources
+        description="공개된 미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터를 기반으로 제공됩니다."
+        updatedAt={dataUpdatedAt}
+      />
       <DashboardDisclaimer />
     </div>
   );

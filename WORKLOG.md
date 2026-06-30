@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-07-01 · 세션 70
+
+### 데이터 출처 박스 7개 페이지 일괄 표준화
+
+**`src/components/dashboard/insights/data-sources.tsx` — 공통 컴포넌트 표준화**
+- `description: string` prop 추가 (페이지별 출처 문구 주입)
+- 기존 하드코딩 본문 제거, `{description}` 렌더링으로 교체
+- "투자 자문이나 투자 권유" 면책 문구 제거 (DashboardDisclaimer와 중복)
+- "마지막 업데이트" → "마지막 업데이트:" 콜론 추가
+
+**7개 페이지 데이터 출처 박스 신규/교체 적용**
+
+| 페이지 | 변경 내용 | 출처 문구 |
+|---|---|---|
+| 공시 피드 | 신규 추가 | 미국 증권거래위원회(SEC EDGAR) 공시 데이터 |
+| 뉴스 피드 | 신규 추가 | 공개된 뉴스 데이터 |
+| 공시 인사이트 | 표준 양식 교체 | 미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터 |
+| 어닝콜 요약 | 신규 추가 | 미국 증권거래위원회(SEC EDGAR) 공시 데이터 |
+| 내부자 거래 | 신규 추가 | 미국 증권거래위원회(SEC) Form 4 공시 |
+| 섹터 히트맵 | 신규 추가 | 공개된 미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터 |
+| 경제지표 | 신규 추가, 상단 출처 문구 하단 박스로 이동 | 미국 연방준비제도(FRED) 데이터 |
+
+**"마지막 업데이트" 날짜 동적 계산**
+- 하드코딩 제거, 각 페이지 핵심 테이블 MAX 날짜 기준 동적 계산
+- 공시 피드: `filings.filed_at MAX` (별도 쿼리)
+- 뉴스 피드: `news.published_at MAX` (별도 쿼리)
+- 공시 인사이트: `filingRows[0].filed_at` (기존 쿼리 재활용) — 버그 수정 (기존: 주가 날짜 오용)
+- 어닝콜 요약: `rows[0].processed_at` (기존 쿼리 재활용)
+- 내부자 거래: `trades[0].transaction_date` (기존 쿼리 재활용)
+- 섹터 히트맵: `filings.filed_at MAX` (신규 쿼리, async 함수로 전환)
+- 경제지표: `latestAt` (기존 `rows[0].released_at` 재활용)
+
+**`src/app/(dashboard)/stocks/[symbol]/page.tsx` — 동반 수정**
+- description prop 누락 수정 (빌드 타입 에러 해결)
+
+---
+
 ## 2026-06-30 · 세션 69
 
 ### 대시보드 헤더 알림 벨 드롭다운 구현
