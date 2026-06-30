@@ -123,7 +123,7 @@ export default function Sidebar() {
                     className={cn(
                       "relative flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm transition-colors",
                       isActive
-                        ? "bg-[#1a1a1a] text-white"
+                        ? "bg-[#252525] text-white"
                         : "text-[#a6a6a6] hover:bg-[#1a1a1a] hover:text-white"
                     )}
                   >
