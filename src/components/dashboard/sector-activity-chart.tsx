@@ -9,9 +9,10 @@ export default function SectorActivityChart({ data }: Props) {
 
   return (
     <div className="flex flex-1 flex-col rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-4">
-      <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
-        섹터별 공시 활동
-      </p>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">섹터별 공시 활동</p>
+        <span className="text-[10px] text-[#a6a6a6]">최근 30일</span>
+      </div>
 
       {data.length === 0 ? (
         <p className="py-6 text-center text-xs text-[#a6a6a6]">데이터 없음</p>

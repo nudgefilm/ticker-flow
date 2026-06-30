@@ -19,9 +19,10 @@ export default function DisclosureTypeChart({ data, total }: Props) {
 
   return (
     <div className="flex h-full flex-col rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5">
-      <p className="mb-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
-        공시 유형 분포
-      </p>
+      <div className="mb-5 flex items-center justify-between">
+        <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">공시 유형 분포</p>
+        <span className="text-[10px] text-[#a6a6a6]">최근 30일</span>
+      </div>
 
       {total === 0 ? (
         <p className="flex flex-1 items-center justify-center text-xs text-[#a6a6a6]">데이터 없음</p>
