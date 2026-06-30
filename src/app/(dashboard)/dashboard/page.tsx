@@ -228,13 +228,13 @@ export default async function DashboardPage({
 
       {/* 시각화 섹션 */}
       <section className="mt-6 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
-        {/* 좌측: 공시 유형 분포 (전체 높이) */}
-        <DisclosureTypeChart data={typeData} total={total} />
-        {/* 우측: 트렌드 + 섹터 위아래 */}
+        {/* 좌측: 공시 유형 분포 + 최근 7일 트렌드 위아래 */}
         <div className="flex flex-col gap-4">
+          <DisclosureTypeChart data={typeData} total={total} />
           <DisclosureTrendChart data={trendData} />
-          <SectorActivityChart data={sectorData} />
         </div>
+        {/* 우측: 섹터별 활동 */}
+        <SectorActivityChart data={sectorData} />
       </section>
 
       {/* 필터 탭 + 피드 */}
