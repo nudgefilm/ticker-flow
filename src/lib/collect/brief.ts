@@ -54,10 +54,15 @@ async function callHaiku(prompt: string, maxTokens = 512): Promise<string | null
         messages: [{ role: "user", content: prompt }],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => "");
+      console.error(`[BRIEF] Haiku API error ${res.status}:`, errBody.slice(0, 300));
+      return null;
+    }
     const data = await res.json();
     return (data?.content?.[0]?.text as string | undefined) ?? null;
-  } catch {
+  } catch (e) {
+    console.error("[BRIEF] Haiku fetch exception:", e);
     return null;
   }
 }
@@ -113,24 +118,24 @@ export async function runStockBriefCollect(
     return { ok: true, skipped: 1, generated: 0 };
   }
 
-  // 2. 최근 7일 데이터 수집
-  const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  // 2. 최근 30일 데이터 수집
+  const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
   const now = new Date().toISOString();
-  const since7dDate = since7d.slice(0, 10);
+  const since30dDate = since30d.slice(0, 10);
 
   const [filingsRes, newsRes, insiderRes, earningsRes, tickerRes] = await Promise.all([
     adminClient
       .from("filings")
       .select("form_type, filed_at, event_type")
       .eq("ticker", ticker)
-      .gte("filed_at", since7d)
+      .gte("filed_at", since30d)
       .order("filed_at", { ascending: false })
       .limit(5),
     adminClient
       .from("news")
       .select("summary_kr, published_at")
       .eq("ticker", ticker)
-      .gte("published_at", since7d)
+      .gte("published_at", since30d)
       .not("summary_kr", "is", null)
       .order("published_at", { ascending: false })
       .limit(5),
@@ -138,7 +143,7 @@ export async function runStockBriefCollect(
       .from("insider_trades")
       .select("transaction_type, value")
       .eq("ticker", ticker)
-      .gte("transaction_date", since7dDate)
+      .gte("transaction_date", since30dDate)
       .order("transaction_date", { ascending: false })
       .limit(20),
     (adminClient as any)
@@ -169,6 +174,7 @@ export async function runStockBriefCollect(
     latestEarnings !== null;
 
   if (!hasData) {
+    console.warn(`[BRIEF] ${ticker}: no data in last 30d (trigger: ${triggerReason})`);
     return { ok: true, skipped: 1, generated: 0 };
   }
 
@@ -230,7 +236,7 @@ export async function runStockBriefCollect(
   const inputData = parts.join("\n");
 
   // 4. Claude Haiku 호출 — 사실 나열형 종합, 투자 표현 배제
-  const prompt = `다음은 ${ticker}(${companyName})의 최근 7일간 주요 정보입니다.
+  const prompt = `다음은 ${ticker}(${companyName})의 최근 30일간 주요 정보입니다.
 이 내용을 200~300자 내외의 한국어 한 문단으로 사실 나열형으로 종합해 주세요.
 
 작성 원칙:
@@ -256,7 +262,7 @@ ${inputData}
     {
       ticker,
       content,
-      source_period_start: since7d,
+      source_period_start: since30d,
       source_period_end: now,
       generated_at: now,
       trigger_reason: triggerReason,
@@ -323,8 +329,16 @@ export async function runBriefBackfill(): Promise<CollectResult> {
   for (const ticker of missing) {
     try {
       const result = await runStockBriefCollect(ticker, "backfill");
-      if (result.ok && result.generated) generated++;
-    } catch {
+      if (result.ok && result.generated) {
+        generated++;
+      } else if (!result.ok) {
+        console.error(`[BRIEF backfill] ${ticker} failed:`, result.error);
+        failed++;
+      } else {
+        console.warn(`[BRIEF backfill] ${ticker} skipped: no data in 30d window`);
+      }
+    } catch (e) {
+      console.error(`[BRIEF backfill] ${ticker} threw:`, e);
       failed++;
     }
     // Haiku rate limit 방어: 건당 500ms 딜레이

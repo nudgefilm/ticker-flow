@@ -54,7 +54,7 @@ export function StockBrief({ ticker, content, generatedAt }: StockBriefProps) {
       <div className="px-5 py-4">
         <p className="text-sm leading-relaxed text-[#cccccc]">{content}</p>
         <p className="mt-3 text-[11px] text-[#555555]">
-          최근 7일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
+          최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
         </p>
       </div>
     </div>
