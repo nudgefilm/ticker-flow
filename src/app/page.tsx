@@ -16,6 +16,7 @@ import Footer from "@/components/footer";
 import FaqAccordion from "@/components/landing/faq-accordion";
 import ScreenTabs from "@/components/landing/screen-tabs";
 import LandingTop10 from "@/components/landing-top10";
+import { StatsSection } from "@/components/stats-section";
 
 export const dynamic = "force-dynamic";
 
@@ -29,12 +30,6 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hrs / 24)}일 전`;
 }
 
-function fmtCount(n: number): string {
-  if (n >= 100000) return `${Math.floor(n / 10000)}만+`;
-  if (n >= 10000) return `${Math.floor(n / 1000) * 10}K+`;
-  if (n >= 1000) return `${Math.floor(n / 100) * 100}+`;
-  return `${n}+`;
-}
 
 function formTypeKr(ft: string): string {
   if (ft.startsWith("8-K")) return "8-K 주요이벤트";
@@ -57,8 +52,9 @@ export default async function HomePage() {
 
   // ── 실시간 피드 데이터 ──────────────────────────────────────────────────────
   const SKIP_FORMS = new Set(["S-1", "S-1/A", "DEF 14A", "424B4", "S-3", "S-3/A"]);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: rawFilings }, { data: newsList }] = await Promise.all([
+  const [{ data: rawFilings }, { data: newsList }, weeklyFilingsRaw, weeklyNewsRaw] = await Promise.all([
     admin
       .from("filings")
       .select("id, ticker, form_type, filed_at")
@@ -70,6 +66,8 @@ export default async function HomePage() {
       .not("summary_kr", "is", null)
       .order("published_at", { ascending: false })
       .limit(5),
+    admin.from("filings").select("filed_at").gte("filed_at", sevenDaysAgo),
+    admin.from("news").select("published_at").gte("published_at", sevenDaysAgo),
   ]);
 
   const priorityFilings = (rawFilings ?? [])
@@ -107,15 +105,27 @@ export default async function HomePage() {
     r.status === "fulfilled" ? (r.value.count ?? 0) : 0
   );
 
-  const STATS = [
-    { label: "모니터링 기업", value: fmtCount(Math.max(tc, 8000)) },
-    { label: "수집 공시",    value: fmtCount(Math.max(fc, 150000)) },
-    { label: "수집 뉴스",    value: fmtCount(Math.max(nc, 320000)) },
-    { label: "경제지표",      value: fmtCount(mc) },
-    { label: "내부자 거래",  value: fmtCount(ic) },
-    { label: "어닝콜 분석",  value: fmtCount(Math.max(ec, 5000)) },
-    { label: "실적 발표",    value: fmtCount(ear) },
-  ];
+  // ── 최근 7일 일별 수집량 (공시+뉴스 합산) ──────────────────────────────────
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const weeklyMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = 0;
+  }
+  for (const f of weeklyFilingsRaw.data ?? []) {
+    const d = new Date(f.filed_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (key in weeklyMap) weeklyMap[key]++;
+  }
+  for (const n of weeklyNewsRaw.data ?? []) {
+    const d = new Date(n.published_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (key in weeklyMap) weeklyMap[key]++;
+  }
+  const weeklyCollection = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+    return { day: dayNames[d.getDay()], value: weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0 };
+  });
 
   return (
     <div id="site-content" className="min-h-screen bg-background">
@@ -434,23 +444,16 @@ export default async function HomePage() {
           {/* ══════════════════════════════════════════════
               8. 운영 규모·신뢰 수치
           ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
-            <div className="mx-auto max-w-7xl px-6">
-              <div className="rounded-[16px] border border-border bg-card px-8 py-12">
-                <div className="mb-8 text-center">
-                  <h2 className="text-xl font-semibold text-foreground">매일 수집하고 정리합니다</h2>
-                </div>
-                <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 lg:grid-cols-7 lg:gap-0 lg:divide-x lg:divide-border">
-                  {STATS.map(({ label, value }) => (
-                    <div key={label} className="text-center lg:px-4">
-                      <p className="text-3xl font-bold tabular-nums text-foreground md:text-4xl">{value}</p>
-                      <p className="mt-2 text-sm text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
+          <StatsSection
+            tickerCount={tc}
+            filingCount={fc}
+            newsCount={nc}
+            macroCount={mc}
+            insiderCount={ic}
+            earningsCallCount={ec}
+            earningsCount={ear}
+            weeklyCollection={weeklyCollection}
+          />
 
           {/* ══════════════════════════════════════════════
               10. FAQ
