@@ -378,6 +378,7 @@ export type Database = {
           filed_at: string
           form_type: string
           id: string
+          notified_telegram: boolean
           summary_kr: string | null
           ticker: string
           title: string | null
@@ -388,6 +389,7 @@ export type Database = {
           filed_at: string
           form_type: string
           id?: string
+          notified_telegram?: boolean
           summary_kr?: string | null
           ticker: string
           title?: string | null
@@ -398,6 +400,7 @@ export type Database = {
           filed_at?: string
           form_type?: string
           id?: string
+          notified_telegram?: boolean
           summary_kr?: string | null
           ticker?: string
           title?: string | null

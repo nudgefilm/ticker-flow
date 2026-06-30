@@ -5,6 +5,7 @@ import {
   IconBell,
   IconFileText,
   IconRefresh,
+  IconMail,
 } from "@tabler/icons-react";
 
 const TELEGRAM_CHANNEL_URL = "https://t.me/+c2UG4CGmAy1jMWQ9";
@@ -75,13 +76,25 @@ export default function AlertsPage() {
             </div>
           </div>
 
-          {/* Pro 혜택 안내 */}
-          <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-5">
-            <p className="text-sm leading-relaxed text-[#a6a6a6]">
-              <span className="mr-2 rounded-[4px] bg-[#3b82f6] px-1.5 py-0.5 text-[10px] font-medium text-white">
+          {/* 이메일 다이제스트 카드 */}
+          <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#3b82f6]/10">
+                  <IconMail size={20} stroke={1.5} className="text-[#3b82f6]" />
+                </div>
+                <div>
+                  <p className="font-medium text-white">이메일 다이제스트</p>
+                  <p className="mt-0.5 text-xs text-[#a6a6a6]">매일 오전 10시 KST</p>
+                </div>
+              </div>
+              <span className="rounded-[4px] bg-[#3b82f6] px-1.5 py-0.5 text-[10px] font-medium text-white">
                 Pro
               </span>
-              Pro 플랜 구독자는 매일 오전 10시 KST, 주요 공시·뉴스 이메일 다이제스트도 함께 수신합니다.
+            </div>
+            <p className="text-sm leading-relaxed text-[#cccccc]">
+              매일 오전 10시, 와치리스트 종목의 주요 공시·뉴스를 요약하여 이메일로 발송합니다.
+              별도 설정 없이 와치리스트 전체 종목이 자동으로 포함됩니다.
             </p>
           </div>
         </div>

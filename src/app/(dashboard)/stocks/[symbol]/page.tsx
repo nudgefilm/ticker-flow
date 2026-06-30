@@ -95,6 +95,7 @@ export default async function StockPage({
         .from("earnings")
         .select("id, report_date, eps_estimate, actual_eps")
         .eq("ticker", ticker)
+        .lte("report_date", today)
         .order("report_date", { ascending: false })
         .limit(4),
       supabase
