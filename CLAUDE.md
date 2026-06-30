@@ -1,7 +1,7 @@
 # TickerFlow — 프로젝트 컨텍스트 (CLAUDE.md)
 
 > Claude Code가 이 파일을 항상 먼저 읽고 작업을 시작합니다.
-> 업데이트: 2026-06-29
+> 업데이트: 2026-07-01
 
 ---
 
@@ -549,3 +549,14 @@ const rows = (data ?? []) as unknown as MyRow[];
 * 형식: 날짜 + 세션 번호 + 작업 항목 목록
 * 버그 수정 시 원인과 해결 방법을 함께 기록한다.
 * 미완료 항목은 "다음 작업 예정" 섹션에 이동한다.
+
+## 자동 아카이브 규칙
+
+WORKLOG.md에 세션이 30개를 초과하면, 가장 오래된 30개 세션을 아카이브한다.
+
+* 아카이브 위치: `docs/worklog-archive/sessions-{시작}-{끝}.md`
+* WORKLOG.md 최상단에 아카이브 파일 링크를 유지한다.
+* 아카이브 파일은 세션 번호 기준 오름차순(구버전→신버전)으로 작성한다.
+* 현재 아카이브:
+  * `docs/worklog-archive/sessions-01-30.md` (세션 1–30)
+  * `docs/worklog-archive/sessions-31-60.md` (세션 31–60)
