@@ -6,7 +6,7 @@ const ITEMS = [
 
 export function DashboardDisclaimer() {
   return (
-    <footer className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
+    <footer className="mt-8 rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
       <ul className="space-y-1.5">
         {ITEMS.map((text) => (
           <li key={text} className="flex items-start gap-2 text-xs leading-relaxed text-[#a6a6a6]">
