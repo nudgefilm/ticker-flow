@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-06-30 · 세션 68
+
+### 페이지네이션 섹션 스크롤 연동 + 공시 인사이트 재구성 + 데이터 출처 표기 통일
+
+**페이지네이션 스크롤 연동 (전체 사이트)**
+- 기존: 페이지 전환 시 전체 최상단으로 이동
+- 변경: 해당 섹션 상단으로만 스크롤 이동 (`window.scrollTo` 방식 완전 제거)
+- 클라이언트 페이지네이션 (인사이트 4섹션, 어닝콜): `useRef + scrollIntoView`
+- URL 기반 페이지네이션 (공시 피드, 뉴스, 실적): `sessionStorage + FeedScrollAnchor`
+  - Suspense 언마운트/리마운트 특성 활용 — `useEffect([])` + 플래그 방식
+  - `scroll={false}` + `onClick={markFeedScroll}` 패턴
+- 신규 컴포넌트: `EarningsPagination`, `FeedScrollAnchor`, `SectionPager`
+
+**공시 인사이트 4개 섹션 페이지네이션 교체**
+- 최근 공시, 변화 타임라인, 내부자 거래, 관련 뉴스
+- 더보기/접기 토글 → 5건(타임라인 10건) 단위 페이지 이동
+- 공유 `SectionPager` 컴포넌트 (말줄임 ellipsis 포함)
+
+**마이페이지 면책 문구 박스 교체**
+- 기존: plain `<footer>` 텍스트
+- 변경: `<DashboardDisclaimer />` 컴포넌트 통일
+
+**최근 주요 변화 섹션 전면 재구성 (`change-summary.tsx`)**
+- 기존: "주요 변화 요약" — 타임라인 이벤트 개별 카드 나열 + 더보기 토글
+- 변경: "최근 주요 변화" — 통계 집계 불릿 문장 방식
+- 서버 컴포넌트 전환 (`"use client"` 제거)
+- props 재설계: `events` 제거 → `summary`, `insider`, `latestEarnings?`
+- 불릿 항목: 30일 공시 건수 / 주요 변화 관련 공시 / 180일 내부자 / 총 거래 규모 / 90일 뉴스 / 최근 EPS
+- 사실 서술체 (`~되었습니다`, `~집계되었습니다`)만 사용
+
+**데이터 출처 표기 규칙 통일**
+- 일반 화면(`data-sources.tsx`, `calls-board.tsx`): "공개된 SEC 공시 및 시장 데이터를 기반으로 제공합니다." 한 줄 통일
+- 경제지표(`macro/page.tsx`): 공식 명칭 순서 `FRED(미국 연방준비제도)` → `미국 연방준비제도(FRED)`
+- 이용약관(`legal-modal.tsx`): "데이터 출처" 섹션 신규 추가 (SEC EDGAR·FRED·Finnhub·FMP)
+- `calls-board.tsx` 텍스트 색상 오류 교정: `#7a7a7a` → `#a6a6a6`
+
+---
+
 ## 2026-06-30 · 세션 67
 
 ### Pro 일간 다이제스트 이메일 전면 재구성 (TOP30 기반)
