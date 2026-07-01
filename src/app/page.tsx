@@ -250,22 +250,27 @@ export default async function HomePage() {
                 </h2>
               </div>
               {feedItems.length > 0 && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {feedItems.map((item, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[12px] border border-border bg-card p-5 transition-colors hover:bg-muted/30"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
-                          {item.ticker}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">{item.category}</span>
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  {feedItems.map((item, i) => {
+                    const isNews = item.category === "뉴스";
+                    return (
+                      <div
+                        key={i}
+                        className={`rounded-[12px] border border-border bg-card p-5 transition-colors hover:bg-muted/30 ${
+                          isNews ? "sm:flex-[2]" : "sm:flex-1"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                            {item.ticker}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{item.category}</span>
+                        </div>
+                        <p className="mt-3 text-sm font-medium text-foreground">{item.label}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
                       </div>
-                      <p className="mt-3 text-sm font-medium text-foreground">{item.label}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               <p className="mt-6 text-center text-sm text-muted-foreground">
