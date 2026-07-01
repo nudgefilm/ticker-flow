@@ -273,7 +273,7 @@ export default async function StockPage({
 
       <KeyMetrics quote={quote} nextEarnings={nextEarnings} />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <CompanyInfo
           exchange={info?.exchange ?? null}
           sector={info?.sector ?? null}
