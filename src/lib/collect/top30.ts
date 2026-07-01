@@ -11,6 +11,7 @@ export async function runTop30Select(): Promise<CollectResult> {
 
   const top30 = scored.slice(0, 30);
   const todayStr = new Date().toISOString().slice(0, 10);
+  const nowIso = new Date().toISOString();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
@@ -26,6 +27,8 @@ export async function runTop30Select(): Promise<CollectResult> {
     reason_tags:    item.reasonTags,
     // news_score/discoveryBonus는 top30_daily에 전용 컬럼이 없어 metadata JSON에 보존
     metadata:       item.metadata,
+    // updated_at은 신규 컬럼 — upsert 시마다 재계산 시각으로 명시 갱신 (DEFAULT는 INSERT에만 적용됨)
+    updated_at:     nowIso,
   }));
 
   const { error } = await admin

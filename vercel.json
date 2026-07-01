@@ -74,7 +74,7 @@
     },
     {
       "path": "/api/collect/top30",
-      "schedule": "0 21 * * *"
+      "schedule": "35 13 * * *"
     },
     {
       "path": "/api/collect/telegram",

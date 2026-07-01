@@ -11,7 +11,6 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
 import AdminTriggerButtons from "./trigger-buttons";
-import { computeScores } from "@/lib/collect/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -65,15 +64,48 @@ function tagStyle(tag: string): string {
 
 // ─── 섹션 ──────────────────────────────────────────────────────────────────────
 
+type ScreenerMetadata = {
+  smart: number;
+  earnings: number;
+  events: number;
+  market: number;
+  news: number;
+  filingCount: number;
+  newsCount: number;
+  sectorPenalty: boolean;
+};
+
+type Top30Row = {
+  ticker: string;
+  rank: number | null;
+  final_score: number | null;
+  reason_tags: string[] | null;
+  metadata: ScreenerMetadata | null;
+};
+
+function todayDateStr(): string {
+  // top30.ts가 저장 시 사용하는 날짜 포맷(UTC 기준)과 동일하게 맞춘다.
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function AdminWatchSection() {
   const admin = createAdminClient();
-  const scored = await computeScores();
 
-  if (scored.length === 0) {
-    return <p className="text-sm text-[#a6a6a6]">최근 14일 내 해당 조건의 종목이 없습니다.</p>;
+  const { data: rows } = await admin
+    .from("top30_daily")
+    .select("ticker, rank, final_score, reason_tags, metadata")
+    .eq("date", todayDateStr())
+    .order("rank", { ascending: true });
+
+  if (!rows || rows.length === 0) {
+    return (
+      <p className="text-sm text-[#a6a6a6]">
+        오늘 스크리너 데이터가 없습니다. 트리거 페이지에서 &apos;TOP30 선정&apos;을 실행해 주세요.
+      </p>
+    );
   }
 
-  const candidates = scored.slice(0, 30);
+  const candidates = rows as unknown as Top30Row[];
 
   const { data: tickerRows } = await admin
     .from("tickers")
@@ -85,51 +117,61 @@ async function AdminWatchSection() {
 
   return (
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-      {candidates.map((item) => (
-        <div
-          key={item.ticker}
-          className={cn(
-            "rounded-[6px] border p-4",
-            item.metadata.sectorPenalty
-              ? "border-white/[0.04] bg-[#0d0d0d] opacity-70"
-              : "border-white/[0.08] bg-[#0f0f0f]"
-          )}
-        >
-          <div className="flex items-start justify-between gap-1">
+      {candidates.map((item) => {
+        const meta = item.metadata;
+        return (
+          <div
+            key={item.ticker}
+            className={cn(
+              "rounded-[6px] border p-4",
+              meta?.sectorPenalty
+                ? "border-white/[0.04] bg-[#0d0d0d] opacity-70"
+                : "border-white/[0.08] bg-[#0f0f0f]"
+            )}
+          >
+            <div className="flex items-start justify-between gap-1">
+              <Link
+                href={`/stocks/${item.ticker}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]"
+              >
+                {item.ticker}
+              </Link>
+              <span className="shrink-0 text-[10px] text-[#a6a6a6]">
+                {(item.final_score ?? 0).toFixed(1)}pt
+              </span>
+            </div>
             <Link
               href={`/stocks/${item.ticker}`}
-              className="inline-block rounded-[4px] bg-[#1a1a1a] px-1.5 py-0.5 text-xs font-medium text-[#cccccc]"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 block truncate text-sm font-medium text-white hover:underline"
             >
-              {item.ticker}
+              {nameMap.get(item.ticker) ?? item.ticker}
             </Link>
-            <span className="shrink-0 text-[10px] text-[#a6a6a6]">
-              {item.finalScore.toFixed(1)}pt
-            </span>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {(item.reason_tags ?? []).slice(0, 4).map((tag) => (
+                <span
+                  key={tag}
+                  className={cn(
+                    "rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium",
+                    tagStyle(tag)
+                  )}
+                >
+                  {TAG_LABELS[tag] ?? tag}
+                </span>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[10px] text-[#d4d4d4]">
+              공시 {meta?.filingCount ?? 0}건 · 뉴스 {meta?.newsCount ?? 0}건
+            </p>
+            <p className="mt-0.5 text-[9px] text-[#999999]">
+              S:{(meta?.smart ?? 0).toFixed(1)} P:{(meta?.earnings ?? 0).toFixed(1)} E:{(meta?.events ?? 0).toFixed(1)} M:{(meta?.market ?? 0).toFixed(1)} N:{(meta?.news ?? 0).toFixed(1)}
+            </p>
           </div>
-          <p className="mt-2 truncate text-sm font-medium text-white">
-            {nameMap.get(item.ticker) ?? item.ticker}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {item.reasonTags.slice(0, 4).map((tag) => (
-              <span
-                key={tag}
-                className={cn(
-                  "rounded-[3px] px-1.5 py-0.5 text-[10px] font-medium",
-                  tagStyle(tag)
-                )}
-              >
-                {TAG_LABELS[tag] ?? tag}
-              </span>
-            ))}
-          </div>
-          <p className="mt-2.5 text-[10px] text-[#a6a6a6]">
-            공시 {item.metadata.filingCount}건 · 뉴스 {item.metadata.newsCount}건
-          </p>
-          <p className="mt-0.5 text-[9px] text-[#a6a6a6]/60">
-            S:{item.metadata.smart.toFixed(1)} P:{item.metadata.earnings.toFixed(1)} E:{item.metadata.events.toFixed(1)} M:{item.metadata.market.toFixed(1)} N:{item.metadata.news.toFixed(1)}
-          </p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -141,6 +183,43 @@ function AdminWatchSkeleton() {
         <div key={i} className="h-28 animate-pulse rounded-[6px] bg-white/[0.04]" />
       ))}
     </div>
+  );
+}
+
+// ─── 수집 시각 배지 ──────────────────────────────────────────────────────────────
+
+function formatCollectionTime(iso: string): string {
+  const d = new Date(iso);
+  const utcHH = String(d.getUTCHours()).padStart(2, "0");
+  const utcMM = String(d.getUTCMinutes()).padStart(2, "0");
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const kstHH = String(kst.getUTCHours()).padStart(2, "0");
+  const kstMM = String(kst.getUTCMinutes()).padStart(2, "0");
+  const y   = kst.getUTCFullYear();
+  const m   = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(kst.getUTCDate()).padStart(2, "0");
+  return `[ KST ${kstHH}:${kstMM}, ${y}. ${m}. ${day} | UTC ${utcHH}:${utcMM} ]`;
+}
+
+async function CollectionTimeBadge() {
+  // updated_at은 top30_daily에 신규 추가되는 컬럼 — 생성된 타입에 아직 없어 any 캐스트 사용
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = createAdminClient() as any;
+
+  const { data } = await admin
+    .from("top30_daily")
+    .select("updated_at")
+    .eq("date", todayDateStr())
+    .order("updated_at", { ascending: false })
+    .limit(1);
+
+  const updatedAt = data?.[0]?.updated_at as string | undefined;
+  if (!updatedAt) return null;
+
+  return (
+    <span className="shrink-0 whitespace-nowrap text-xs text-[#a6a6a6]">
+      {formatCollectionTime(updatedAt)}
+    </span>
   );
 }
 
@@ -287,11 +366,16 @@ export default async function AdminPage() {
 
       {/* TickerFlow Screener (내부용) */}
       <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
-        <div className="mb-4">
-          <h2 className="text-sm font-medium text-red-400">TickerFlow Screener</h2>
-          <p className="mt-1 text-xs text-red-400/70">
-            SmartMoney×0.45 + Earnings×0.30 + Events×0.15 + Market×0.05 + News×0.05 | Decay | 섹터다양성(1-3위 100% · 4위 95% · 5위 90% · 6위 80% · 7위+ 70%) | 음수 제외 | 상위 30개
-          </p>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-medium text-white">티커플로우 스크리너(TickerFlow Screener)</h2>
+            <p className="mt-1 text-xs text-red-400/70">
+              스마트머니(45%) + 실적품질(30%) + 기업이벤트(15%) + 시장활동(5%) + 뉴스신뢰도(5%) | 시간감쇠 적용 | 섹터 분산 보정 | 음수 종목 제외 | 상위 30개 선정
+            </p>
+          </div>
+          <Suspense fallback={null}>
+            <CollectionTimeBadge />
+          </Suspense>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
           <AdminWatchSection />
