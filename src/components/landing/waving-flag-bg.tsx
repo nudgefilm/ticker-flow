@@ -34,12 +34,12 @@ export function WavingFlagBg() {
           가장자리를 마스크로 페이드아웃해 배경에 은은하게 묻히도록 처리 */}
       <svg
         viewBox={`0 0 ${FLAG_WIDTH} ${FLAG_HEIGHT}`}
-        className="absolute left-[40%] top-0 h-full -translate-x-1/2 animate-flag-wave opacity-[0.06] blur-[4px]"
+        className="absolute left-[40%] top-0 h-full -translate-x-1/2 animate-flag-wave opacity-[0.16] blur-[1.5px]"
         style={{
           aspectRatio: `${FLAG_WIDTH} / ${FLAG_HEIGHT}`,
           transformOrigin: "center",
-          maskImage: "radial-gradient(ellipse 60% 65% at center, black 35%, transparent 90%)",
-          WebkitMaskImage: "radial-gradient(ellipse 60% 65% at center, black 35%, transparent 90%)",
+          maskImage: "radial-gradient(ellipse 75% 80% at center, black 55%, transparent 95%)",
+          WebkitMaskImage: "radial-gradient(ellipse 75% 80% at center, black 55%, transparent 95%)",
         }}
       >
         {Array.from({ length: STRIPE_COUNT }, (_, i) => (
