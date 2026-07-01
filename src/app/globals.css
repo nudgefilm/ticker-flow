@@ -17,14 +17,6 @@
   }
 }
 
-@keyframes flag-wave {
-  0%   { transform: rotateY(0deg)   skewY(0deg); }
-  25%  { transform: rotateY(14deg)  skewY(1deg); }
-  50%  { transform: rotateY(0deg)   skewY(0deg); }
-  75%  { transform: rotateY(-9deg)  skewY(-0.8deg); }
-  100% { transform: rotateY(0deg)   skewY(0deg); }
-}
-
 /* ─── Theme mapping (Tailwind v4 → CSS vars) ────────────────────────────── */
 
 @theme inline {
@@ -69,7 +61,6 @@
   --radius-xl: calc(var(--radius) * 1.4);
 
   --animate-fade-in:    fade-in   0.3s ease-out;
-  --animate-flag-wave:  flag-wave 8s ease-in-out infinite;
 }
 
 /* ─── TickerFlow dark design system (HSL tokens) ────────────────────────── */
@@ -173,8 +164,5 @@
   }
   .animate-fade-in {
     animation: var(--animate-fade-in);
-  }
-  .animate-flag-wave {
-    animation: var(--animate-flag-wave);
   }
 }
