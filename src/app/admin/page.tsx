@@ -271,10 +271,10 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {/* 기업 동향 (내부용) */}
+      {/* TickerFlow Screener (내부용) */}
       <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
         <div className="mb-4">
-          <h2 className="text-sm font-medium text-red-400">기업 동향 (내부용)</h2>
+          <h2 className="text-sm font-medium text-red-400">TickerFlow Screener</h2>
           <p className="mt-1 text-xs text-red-400/70">
             Event×0.4 + SmartMoney×0.3 + Earnings×0.2 + Market×0.1 | Decay | 중복감산 | 섹터다양성 | 상위 30개
           </p>
