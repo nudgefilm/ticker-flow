@@ -7,7 +7,8 @@ const DELAY_MS    = 200;
 
 const CATEGORIES = [
   "ceo_change", "cfo_change", "buyback", "ma", "guidance",
-  "contract", "dividend", "offering", "lawsuit", "earnings", "other",
+  "contract", "dividend", "offering", "lawsuit", "earnings",
+  "fda_approval", "dividend_increase", "sec_investigation", "bankruptcy", "other",
 ] as const;
 type Category = typeof CATEGORIES[number];
 
@@ -77,7 +78,14 @@ export async function runClassifyFilings(): Promise<CollectResult> {
     const description = row.summary_kr  ?? "";
 
     const prompt = `다음 SEC 8-K 공시 제목과 설명을 읽고 아래 카테고리 중 하나만 반환하라.
-카테고리: ceo_change, cfo_change, buyback, ma, guidance, contract, dividend, offering, lawsuit, earnings, other
+카테고리: ceo_change, cfo_change, buyback, ma, guidance, contract, dividend, offering, lawsuit, earnings, fda_approval, dividend_increase, sec_investigation, bankruptcy, other
+
+카테고리 설명 (아래 4개는 특히 구분해서 판단):
+- fda_approval: FDA 승인, 신약 허가, 임상시험 승인 관련
+- dividend_increase: 배당 확대, 배당금 인상 관련
+- sec_investigation: SEC 조사, 증권거래위원회 조사, 회계 부정 조사 관련
+- bankruptcy: 파산 신청, Chapter 11, 법정관리 관련
+
 제목: ${title}
 설명: ${description}
 카테고리 단어 하나만 출력. 다른 텍스트 금지.`;

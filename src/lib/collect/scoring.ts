@@ -66,6 +66,7 @@ export const TAG_LABELS_KR: Record<string, string> = {
   both_beat:         "실적상회",
   beat_streak_4:     "4분기연속상회",
   guidance_up:       "가이던스상향",
+  guidance_down:     "가이던스하향",
   price_up_20:       "30일+20%",
   price_up_10:       "30일+10%",
   volume_spike:      "거래량급증",
@@ -383,11 +384,14 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       if (amt >= 1_000_000) { smartRaw += 3 * decayed; tags.add("insider_buy_large"); }
     }
 
-    let has13fNew = false;
+    let newInstCount = 0;
     for (const instName of currHold.keys()) {
-      if (!prevHold.has(instName)) { has13fNew = true; break; }
+      if (!prevHold.has(instName)) newInstCount++;
     }
-    if (has13fNew) { smartRaw += 5; tags.add("13f_new"); }
+    if (newInstCount > 0) {
+      smartRaw += Math.min(newInstCount * 5, 12); // 건당 +5, 기관 수 무관 최대 +12 캡
+      tags.add("13f_new");
+    }
 
     let has13fInc = false;
     for (const [instName, cData] of currHold) {
@@ -423,6 +427,9 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     if (callData?.guidance_direction === "up") {
       earningsRaw += 10;
       tags.add("guidance_up");
+    } else if (callData?.guidance_direction === "down") {
+      earningsRaw -= 5;
+      tags.add("guidance_down");
     }
     if (callData?.management_tone === "positive") earningsRaw += 2;
 
@@ -538,16 +545,22 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   // Sort
   scored.sort((a, b) => b.finalScore - a.finalScore);
 
-  // ── 섹터 다양성 ──────────────────────────────────────────────────────────────
+  // ── 섹터 다양성 (1~3위 100% / 4위 95% / 5위 90% / 6위 80% / 7위+ 70%) ────────
   const sectorCnt = new Map<string, number>();
   const withDiversity = scored.map((item) => {
     const sec = item.sector ?? "__none__";
     const cnt = (sectorCnt.get(sec) ?? 0) + 1;
     sectorCnt.set(sec, cnt);
-    if (cnt > 5) {
+    const multiplier =
+      cnt <= 3 ? 1.0 :
+      cnt === 4 ? 0.95 :
+      cnt === 5 ? 0.90 :
+      cnt === 6 ? 0.80 :
+      0.70;
+    if (multiplier < 1.0) {
       return {
         ...item,
-        finalScore: item.finalScore * 0.7,
+        finalScore: item.finalScore * multiplier,
         metadata: { ...item.metadata, sectorPenalty: true },
       };
     }
@@ -555,5 +568,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   });
   withDiversity.sort((a, b) => b.finalScore - a.finalScore);
 
-  return withDiversity;
+  // finalScore < 0(Offering/SEC Investigation/Bankruptcy 감점 등)인 종목은
+  // Top30 선정에서 제외 — 정렬 상태를 유지하므로 상위 슬라이스에 영향 없음
+  return withDiversity.filter((item) => item.finalScore >= 0);
 }

@@ -25,19 +25,29 @@ const TAG_LABELS: Record<string, string> = {
   "13f_new": "13F신규", "13f_increase": "13F증가",
   eps_beat: "EPS상회", revenue_beat: "매출상회", both_beat: "실적상회",
   beat_streak_4: "4분기연속상회",
-  guidance_up: "가이던스Up", price_up_20: "30일+20%", price_up_10: "30일+10%",
+  guidance_up: "가이던스Up", guidance_down: "가이던스Down",
+  price_up_20: "30일+20%", price_up_10: "30일+10%",
   volume_spike: "거래량급증", volatility_spike: "변동성급증",
   short_decrease: "공매도↓", target_up: "목표가↑",
 };
 
 function tagStyle(tag: string): string {
   switch (tag) {
-    case "sec_investigation": case "bankruptcy": case "offering":
+    // 신규 Corporate Events 카테고리 — 요청된 개별 색상
+    case "fda_approval":
+      return "bg-green-500/10 text-green-400 border border-green-500/20";
+    case "dividend_increase":
+      return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+    case "sec_investigation":
+      return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
+    case "bankruptcy":
+      return "bg-red-500/10 text-red-400 border border-red-500/20";
+    case "offering": case "guidance_down":
       return "bg-red-500/10 text-red-400 border border-red-500/20";
     case "ceo_change":
     case "eps_beat": case "revenue_beat": case "both_beat": case "beat_streak_4":
       return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
-    case "fda_approval": case "buyback": case "ma": case "contract": case "dividend_increase":
+    case "buyback": case "ma": case "contract":
     case "13f_new": case "13f_increase":
       return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     case "insider_buy": case "insider_buy_large":
@@ -280,7 +290,7 @@ export default async function AdminPage() {
         <div className="mb-4">
           <h2 className="text-sm font-medium text-red-400">TickerFlow Screener</h2>
           <p className="mt-1 text-xs text-red-400/70">
-            SmartMoney×0.45 + Earnings×0.30 + Events×0.15 + Market×0.05 + News×0.05 | Decay | 섹터다양성 | 상위 30개
+            SmartMoney×0.45 + Earnings×0.30 + Events×0.15 + Market×0.05 + News×0.05 | Decay | 섹터다양성(1-3위 100% · 4위 95% · 5위 90% · 6위 80% · 7위+ 70%) | 음수 제외 | 상위 30개
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
