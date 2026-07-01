@@ -5,7 +5,14 @@ import type { MacroGroup } from "@/lib/macro";
 import IndicatorCard from "@/components/macro/indicator-card";
 
 const ALL = "전체";
-const FEATURED_SERIES = "FEDFUNDS"; // 기준금리
+
+// 그룹별로 더 크게 강조할 핵심 지표. 2개 이상 지표가 있는 그룹에서만 히어로 레이아웃이 적용됨.
+const FEATURED_BY_GROUP: Record<string, string> = {
+  금리: "FEDFUNDS",  // 기준금리 — 모든 금리의 기준이 되는 정책금리
+  물가: "CPIAUCSL",  // CPI — 가장 널리 참조되는 헤드라인 인플레이션 지표
+  고용: "UNRATE",    // 실업률 — 고용시장을 대표하는 지표
+  경기: "GDP",       // GDP — 경제 규모를 나타내는 가장 포괄적인 지표
+};
 
 export default function MacroBoard({
   groups,
@@ -28,17 +35,6 @@ export default function MacroBoard({
   const tabKeys = [ALL, ...groups.map((g) => g.label)];
   const displayed =
     activeTab === ALL ? groups : groups.filter((g) => g.label === activeTab);
-
-  // 기준금리 히어로 레이아웃: 전체 탭 or 금리 탭
-  const rateGroup = groups.find((g) => g.key === "금리");
-  const featuredInd = rateGroup?.indicators.find((i) => i.seriesId === FEATURED_SERIES);
-  const showHero = (activeTab === ALL || activeTab === "금리") && !!featuredInd;
-  const heroCompanions = rateGroup?.indicators.filter((i) => i.seriesId !== FEATURED_SERIES) ?? [];
-
-  // 히어로 섹션에서 금리 그룹은 별도 렌더링하므로 나머지 그룹만 그리드에 표시
-  const gridGroups = showHero
-    ? displayed.filter((g) => g.key !== "금리")
-    : displayed;
 
   return (
     <div className="space-y-6">
@@ -65,62 +61,70 @@ export default function MacroBoard({
         </div>
       </div>
 
-      {/* 기준금리 히어로 섹션 */}
-      {showHero && featuredInd && (
-        <section>
-          <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
-            금리
-          </p>
-          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-            {/* 좌측: 기준금리 히어로 */}
-            <div className="h-full">
-              <IndicatorCard ind={featuredInd} hero />
-            </div>
-            {/* 우측: 나머지 금리 지표 */}
-            {heroCompanions.length > 0 && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {heroCompanions.map((ind, i) => {
-                  const isLastOdd =
-                    i === heroCompanions.length - 1 &&
-                    heroCompanions.length % 2 !== 0;
-                  return (
-                    <div
-                      key={ind.seriesId}
-                      className={`h-full${isLastOdd ? " md:col-span-2" : ""}`}
-                    >
-                      <IndicatorCard ind={ind} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+      {/* 그룹별 지표 — 핵심 지표가 지정된 그룹은 히어로 레이아웃, 그 외는 균등 그리드 */}
+      {displayed.map((group) => {
+        const featuredSeriesId = FEATURED_BY_GROUP[group.key];
+        const featuredInd = featuredSeriesId
+          ? group.indicators.find((i) => i.seriesId === featuredSeriesId)
+          : undefined;
+        const companions = featuredInd
+          ? group.indicators.filter((i) => i.seriesId !== featuredSeriesId)
+          : [];
 
-      {/* 나머지 그룹 */}
-      {gridGroups.map((group) => (
-        <section key={group.key}>
-          <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
-            {group.label}
-          </p>
-          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-            {group.indicators.map((ind, i) => {
-              const isLastOdd =
-                i === group.indicators.length - 1 &&
-                group.indicators.length % 2 !== 0;
-              return (
-                <div
-                  key={ind.seriesId}
-                  className={`w-full${isLastOdd ? " md:col-span-2" : ""}`}
-                >
-                  <IndicatorCard ind={ind} />
+        if (featuredInd && companions.length > 0) {
+          return (
+            <section key={group.key}>
+              <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
+                {group.label}
+              </p>
+              <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                {/* 좌측: 핵심 지표 히어로 */}
+                <div className="h-full">
+                  <IndicatorCard ind={featuredInd} hero />
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+                {/* 우측: 나머지 지표 */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {companions.map((ind, i) => {
+                    const isLastOdd =
+                      i === companions.length - 1 && companions.length % 2 !== 0;
+                    return (
+                      <div
+                        key={ind.seriesId}
+                        className={`h-full${isLastOdd ? " md:col-span-2" : ""}`}
+                      >
+                        <IndicatorCard ind={ind} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          );
+        }
+
+        return (
+          <section key={group.key}>
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
+              {group.label}
+            </p>
+            <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+              {group.indicators.map((ind, i) => {
+                const isLastOdd =
+                  i === group.indicators.length - 1 &&
+                  group.indicators.length % 2 !== 0;
+                return (
+                  <div
+                    key={ind.seriesId}
+                    className={`w-full${isLastOdd ? " md:col-span-2" : ""}`}
+                  >
+                    <IndicatorCard ind={ind} />
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

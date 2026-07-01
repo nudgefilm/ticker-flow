@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-07-01 · 세션 74
+
+### SEO 메타데이터, TickerFlow Screener 스코어링 재설계, Google 로그인 404 진단, 경제지표 히어로 레이아웃 확장
+
+**SEO 메타데이터 (`src/app/sitemap.ts`, `robots.ts`, `middleware.ts`, `layout.tsx`)**
+- `sitemap.ts`/`robots.ts` 신규 생성 — 로그인 필요 경로(`/billing` 등)는 사이트맵 제외, robots.txt에 `PROTECTED_PATHS` 전체 disallow
+- 배포 후 `tickerflow.net/sitemap.xml`·`/robots.txt`가 `{"error":"requested path is invalid"}` 404 — 원인: `middleware.ts` matcher가 이 두 정적 메타데이터 라우트까지 매칭해 Vercel 라우팅과 충돌. matcher에 `sitemap.xml|robots.txt` 제외 추가해 해결
+- 네이버 서치어드바이저 인증 메타태그(`verification.other`) 추가
+- OG 이미지 절대 URL 지정 + `og:type`/`og:url` 추가, `description`/`og:description`/`twitter:description` 통일 후 80자 이내로 축약
+- 랜딩 페이지 시맨틱 마크업(h1 1개/h2 평탄 계층/img alt) 전수 점검 — 이상 없음
+
+**TickerFlow Screener 스코어링 전면 재설계 (`src/lib/collect/scoring.ts`, `classify-filings.ts`, `top30.ts`)**
+- 가중치 구조를 Smart Money 45% / Earnings Quality 30% / Corporate Events 15% / Market 5% / News Credibility 5%로 전면 교체
+- Smart Money: 내부자매수 30일 선형감쇠, 13F 신규편입 건당+5(최대+12 캡), 13F는 분기 스냅샷(감쇠 없음)
+- Earnings Quality: EPS/매출 Beat, Guidance up(+10)/down(-5), 4분기연속Beat(+8) 신규, 발표일→다음 발표예정일 선형감쇠(없으면 90일)
+- Corporate Events: 뉴스 건수/surge 보너스 완전 제거, FDA승인/대형계약/Buyback/M&A/배당증가/CEO변경/유상증자(-)/SEC조사(-)/파산(-) 카테고리로 교체, 7일 급감 Decay. `classify-filings.ts`에 4개 신규 카테고리(fda_approval/dividend_increase/sec_investigation/bankruptcy) 및 Haiku 프롬프트 설명 추가 — DB CHECK 제약 SQL 별도 제공(사용자 직접 실행)
+- Market/News Credibility: 데이터 신선도·출처 신뢰도 티어 기반 재계산, News는 최대 +5 캡
+- 섹터 다양성 보정 세분화(1-3위 100%/4위 95%/5위 90%/6위 80%/7위+ 70%), `finalScore<0` 종목 Top30 제외
+- Discovery Bonus: `tickers.market_cap` 컬럼 없어 TODO로 스킵
+
+**어드민 홈 TickerFlow Screener 성능·UI (`src/app/admin/page.tsx`, `top30.ts`, `vercel.json`)**
+- 접속마다 `computeScores()`로 10개 테이블 실시간 재계산 → `top30_daily`(date=오늘) 캐시 조회로 전환, 딜레이 없이 즉시 렌더링. 오늘 데이터 없으면 안내 문구 표시
+- 종목 카드: 티커/회사명에 `/stocks/[ticker]` 링크(새 탭) 추가, 타이틀 색상 white로 변경, 부제 한글 요약, 카드 하단 텍스트 밝기 상향(`#a6a6a6`→`#d4d4d4`, `#a6a6a6/60`→`#999999`)
+- 수집 시각 배지 신규(`[ KST HH:MM, YYYY.MM.DD | UTC HH:MM ]`) — `top30_daily.updated_at` 컬럼 추가(SQL 제공) 후 `pnpm gen:types` 재생성해 반영
+- TOP30 계산 Cron을 21:00 UTC(KST 06:00) → 13:35 UTC(KST 22:35, 미국 개장 직후)로 변경
+- 트리거 페이지 버튼명 "TOP30 선정" → "티커플로우 스크리너 TOP30"로 변경, 오렌지 강조 색상 적용, Cron 안내 테이블 스케줄 표기 동기화
+
+**Google 로그인 404 진단 (코드 변경 없음)**
+- 증상: Google 로그인 시 `tickerflow.net/auth/v1/callback`에서 Next.js 404
+- 원인 확정: Supabase Auth Custom Domain을 apex 도메인(`tickerflow.net`)으로 설정 — 이 도메인은 이미 DNS가 Vercel(`76.76.21.21`)을 가리키고 있어 Supabase Custom Domain은 대시보드상 "Active"로 표시돼도 실제로 트래픽을 받을 수 없는 상태였음. Supabase의 `/auth/v1/authorize` 호출이 Google에 `redirect_uri=tickerflow.net/auth/v1/callback`을 지시 → DNS가 Vercel로 보냄 → Next.js에 해당 라우트 없어 404
+- 해결: Supabase 대시보드에서 Custom Domain 삭제 → Callback URL이 기본값(`bjyceygtamogiikjedlu.supabase.co/auth/v1/callback`)으로 자동 복귀, 로그인 정상화 확인
+- 브랜딩(Google 계정 선택 화면에 tickerflow 도메인 노출) 재도입 시 apex 대신 `auth.tickerflow.net` 서브도메인으로 재설정 필요 — 다음 작업으로 보류
+
+**경제지표 히어로 레이아웃 확장 (`src/components/macro/macro-board.tsx`)**
+- 금리 그룹(기준금리)에만 하드코딩돼 있던 "핵심 지표 크게 표시" 레이아웃을 `FEATURED_BY_GROUP` 맵으로 일반화 — 물가(CPI)/고용(실업률)/경기(GDP) 그룹에도 동일 적용
+- 어느 탭에서 봐도(전체/개별 그룹) 그룹별로 독립적으로 히어로 레이아웃 적용되도록 탭 분기 로직 제거·단순화
+
+---
+
 ## 2026-07-01 · 세션 73
 
 ### 다이제스트 이메일 레이아웃 완전 인라인화 + 사이드바 스와이프 수정 + 모바일 카드 그리드 점검
