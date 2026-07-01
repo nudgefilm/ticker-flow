@@ -803,6 +803,7 @@ export type Database = {
           reason_tags: string[] | null
           smart_score: number | null
           ticker: string
+          updated_at: string
         }
         Insert: {
           date?: string
@@ -816,6 +817,7 @@ export type Database = {
           reason_tags?: string[] | null
           smart_score?: number | null
           ticker: string
+          updated_at?: string
         }
         Update: {
           date?: string
@@ -829,6 +831,7 @@ export type Database = {
           reason_tags?: string[] | null
           smart_score?: number | null
           ticker?: string
+          updated_at?: string
         }
         Relationships: []
       }
