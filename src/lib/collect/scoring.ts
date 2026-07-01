@@ -3,87 +3,135 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 export type ScoredMetadata = {
-  event: number;
   smart: number;
   earnings: number;
+  events: number;
   market: number;
+  news: number;
+  discoveryBonus: number;
   filingCount: number;
   dedupFilingCount: number;
   newsCount: number;
   dedupNewsCount: number;
-  decayAvg: number;
   sectorPenalty: boolean;
   insiderAmount: number | null;
-  guidanceDirection: string | null;
   shortDecrease: boolean;
   targetUp: boolean;
+  beatStreak4: boolean;
 };
 
 export type ScoredTicker = {
   ticker: string;
   sector: string | null;
-  eventScore: number;
   smartScore: number;
   earningsScore: number;
+  eventsScore: number;
   marketScore: number;
+  newsScore: number;
+  discoveryBonus: number;
   finalScore: number;
   reasonTags: string[];
   metadata: ScoredMetadata;
 };
 
-// ─── 상수 ─────────────────────────────────────────────────────────────────────
+// ─── 가중치 ───────────────────────────────────────────────────────────────────
+// Smart Money 45% / Earnings Quality 30% / Corporate Events 15% / Market 5% / News Credibility 5%
+
+const FINAL_WEIGHTS = {
+  smart:    0.45,
+  earnings: 0.30,
+  events:   0.15,
+  market:   0.05,
+  news:     0.05,
+};
 
 export const TAG_LABELS_KR: Record<string, string> = {
-  buyback:          "자사주매입",
-  ma:               "M&A",
-  ceo_change:       "CEO변경",
-  cfo_change:       "CFO변경",
-  guidance:         "가이던스변경",
-  contract:         "대형계약",
-  insider_buy:      "내부자취득",
-  insider_buy_large:"내부자대규모취득",
-  "13f_new":        "기관신규편입",
-  "13f_increase":   "기관보유증가",
-  eps_beat:         "EPS상회",
-  revenue_beat:     "매출상회",
-  both_beat:        "실적상회",
-  guidance_up:      "가이던스상향",
-  price_up_20:      "30일+20%",
-  price_up_10:      "30일+10%",
-  volume_spike:     "거래량급증",
-  volatility_spike: "변동성급증",
-  short_decrease:   "공매도감소",
-  target_up:        "목표가상향",
+  fda_approval:      "FDA승인",
+  contract:          "대형계약",
+  buyback:           "자사주매입",
+  ma:                "M&A",
+  dividend_increase: "배당증가",
+  ceo_change:        "CEO변경",
+  offering:          "유상증자",
+  sec_investigation: "SEC조사",
+  bankruptcy:        "파산",
+  insider_buy:       "내부자취득",
+  insider_buy_large: "내부자대규모취득",
+  "13f_new":         "기관신규편입",
+  "13f_increase":    "기관보유증가",
+  short_decrease:    "공매도감소",
+  target_up:         "목표가상향",
+  eps_beat:          "EPS상회",
+  revenue_beat:      "매출상회",
+  both_beat:         "실적상회",
+  beat_streak_4:     "4분기연속상회",
+  guidance_up:       "가이던스상향",
+  price_up_20:       "30일+20%",
+  price_up_10:       "30일+10%",
+  volume_spike:      "거래량급증",
+  volatility_spike:  "변동성급증",
 };
 
-const ET_WEIGHTS: Record<string, number> = {
-  buyback: 9, ma: 9, guidance: 8, ceo_change: 8, cfo_change: 7,
-  contract: 6, dividend: 5, earnings: 5, lawsuit: 4, offering: 3, other: 2,
+// Corporate Events(15%) 카테고리별 가중치 — event_type 기준.
+// 이 9종 외 event_type(cfo_change/guidance/dividend/lawsuit/earnings/other 등)은
+// 새 설계에 명시되지 않아 0점 처리(스킵)한다.
+const EVENT_WEIGHTS: Record<string, number> = {
+  fda_approval:       10,
+  contract:            9,
+  buyback:             9,
+  ma:                  8,
+  dividend_increase:   6,
+  ceo_change:          5,
+  offering:           -5,
+  sec_investigation:  -8,
+  bankruptcy:         -10,
 };
 
-const ET_TAGS: ReadonlySet<string> = new Set([
-  "buyback", "ma", "guidance", "ceo_change", "cfo_change", "contract",
-]);
+// News Credibility(5%) 출처 신뢰도 티어
+const SOURCE_TIER1 = ["sec", "reuters", "bloomberg"];
+const SOURCE_TIER2 = ["wsj", "wall street journal", "cnbc", "ap", "associated press", "financial times"];
+const SOURCE_TIER3 = ["yahoo", "marketwatch", "barron"];
+const SOURCE_TIER4 = ["motley fool", "investorplace", "seeking alpha", "benzinga", "zacks"];
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
-function filingWeight(eventType: string | null, formType: string): number {
-  if (eventType) return ET_WEIGHTS[eventType] ?? 2;
-  if (formType.startsWith("10-K")) return 7;
-  if (formType.startsWith("10-Q")) return 5;
-  if (formType.startsWith("8-K")) return 6;
-  return 2;
-}
-
-function decay(dateStr: string, todayMs: number): number {
-  const daysAgo = Math.floor(
+function daysSince(dateStr: string, todayMs: number): number {
+  return Math.floor(
     (todayMs - new Date(dateStr.slice(0, 10) + "T00:00:00Z").getTime()) / 86_400_000
   );
+}
+
+// Smart Money — 내부자 매수 30일 완만 선형 감쇠 (13F는 분기 스냅샷이라 감쇠 없음)
+function decaySmart30(daysAgo: number): number {
+  if (daysAgo <= 0) return 1;
+  if (daysAgo >= 30) return 0;
+  return 1 - daysAgo / 30;
+}
+
+// Corporate Events — 7일 이내 급감
+function decayEvents7(daysAgo: number): number {
   if (daysAgo <= 0) return 1.0;
-  if (daysAgo === 1) return 0.8;
-  if (daysAgo === 2) return 0.6;
-  if (daysAgo === 3) return 0.4;
-  return 0.2;
+  if (daysAgo === 1) return 0.5;
+  if (daysAgo === 2) return 0.25;
+  if (daysAgo <= 4) return 0.1;
+  if (daysAgo <= 7) return 0.03;
+  return 0;
+}
+
+// Market / News Credibility — 3~7일 빠른 감쇠
+function decayRapid(daysAgo: number): number {
+  if (daysAgo <= 0) return 1.0;
+  if (daysAgo <= 2) return 0.6;
+  if (daysAgo <= 4) return 0.3;
+  if (daysAgo <= 7) return 0.1;
+  return 0;
+}
+
+// Earnings Quality — 발표일→다음 발표 예정일 선형 감쇠 (없으면 90일)
+function decayEarnings(daysSinceReport: number, windowDays: number): number {
+  if (daysSinceReport <= 0) return 1;
+  if (daysSinceReport >= windowDays) return 0;
+  return 1 - daysSinceReport / windowDays;
 }
 
 function dedupFactor(n: number): number {
@@ -98,6 +146,22 @@ function avg(arr: number[]): number {
   return arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 }
 
+function sourceTierScore(source: string | null): number {
+  if (!source) return 0;
+  const s = source.toLowerCase();
+  if (SOURCE_TIER1.some((k) => s.includes(k))) return 2;
+  if (SOURCE_TIER2.some((k) => s.includes(k))) return 1;
+  if (SOURCE_TIER3.some((k) => s.includes(k))) return 0;
+  if (SOURCE_TIER4.some((k) => s.includes(k))) return -1;
+  return 0; // 미분류 출처는 가점 없이 제외
+}
+
+function isBeat(row: { actual_eps: number | null; eps_estimate: number | null; actual_revenue: number | null; revenue_estimate: number | null }): boolean {
+  const epsBeat = row.actual_eps != null && row.eps_estimate != null && row.actual_eps > row.eps_estimate;
+  const revBeat = row.actual_revenue != null && row.revenue_estimate != null && row.actual_revenue > row.revenue_estimate;
+  return epsBeat || revBeat;
+}
+
 // ─── 스코어링 함수 ────────────────────────────────────────────────────────────
 
 export async function computeScores(): Promise<ScoredTicker[]> {
@@ -107,10 +171,9 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   const now = new Date();
   now.setUTCHours(0, 0, 0, 0);
   const todayMs = now.getTime();
+  const todayStr = now.toISOString().slice(0, 10);
 
   const d14 = new Date(todayMs - 14 * 86_400_000).toISOString();
-  const d7  = new Date(todayMs -  7 * 86_400_000).toISOString().slice(0, 10);
-  const d3  = new Date(todayMs -  3 * 86_400_000).toISOString().slice(0, 10);
   const d30 = new Date(todayMs - 30 * 86_400_000).toISOString().slice(0, 10);
 
   const currentQ = (() => {
@@ -126,24 +189,28 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   // Phase 1 — 병렬 쿼리
   const [
     filingsRes, newsRes, insiderRes, holdingsRes,
-    earningsRes, tickersRes, callsRes, shortInterestRes, priceTargetRes,
+    earningsRes, upcomingEarningsRes, tickersRes, callsRes, shortInterestRes, priceTargetRes,
   ] = await Promise.all([
     admin.from("filings")
       .select("ticker, form_type, event_type, filed_at")
       .gte("filed_at", d14).limit(2000),
     admin.from("news")
-      .select("ticker, published_at, headline")
+      .select("ticker, published_at, headline, source")
       .gte("published_at", d14).not("ticker", "is", null).limit(3000),
     admin.from("insider_trades")
       .select("ticker, shares, price, transaction_date")
-      .eq("transaction_type", "buy").gte("transaction_date", d7).limit(500),
+      .eq("transaction_type", "buy").gte("transaction_date", d30).limit(1500),
     admin.from("institutional_holdings")
       .select("ticker, institution_name, quarter, shares, value")
       .in("quarter", [currentQ, prevQ]).limit(2000),
     admin.from("earnings")
       .select("ticker, actual_eps, eps_estimate, actual_revenue, revenue_estimate, report_date")
       .not("actual_eps", "is", null)
-      .order("report_date", { ascending: false }).limit(1000),
+      .order("report_date", { ascending: false }).limit(6000),
+    admin.from("earnings")
+      .select("ticker, report_date")
+      .is("actual_eps", null).gte("report_date", todayStr)
+      .order("report_date", { ascending: true }).limit(3000),
     admin.from("tickers")
       .select("ticker, sector").limit(2000),
     admin.from("earnings_calls")
@@ -167,7 +234,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     filingsByTicker.set(f.ticker, arr);
   }
 
-  type NewsRow = { ticker: string | null; published_at: string; headline: string };
+  type NewsRow = { ticker: string | null; published_at: string; headline: string; source: string | null };
   const newsByTicker = new Map<string, NewsRow[]>();
   for (const n of (newsRes.data ?? []) as NewsRow[]) {
     if (!n.ticker) continue;
@@ -204,9 +271,19 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     ticker: string; actual_eps: number | null; eps_estimate: number | null;
     actual_revenue: number | null; revenue_estimate: number | null; report_date: string;
   };
-  const earningsByTicker = new Map<string, EarningsRow>();
+  // 티커당 report_date desc 순서로 여러 분기 보관 (4분기 연속 Beat 판정용)
+  const earningsByTicker = new Map<string, EarningsRow[]>();
   for (const e of (earningsRes.data ?? []) as EarningsRow[]) {
-    if (!earningsByTicker.has(e.ticker)) earningsByTicker.set(e.ticker, e);
+    const arr = earningsByTicker.get(e.ticker) ?? [];
+    arr.push(e);
+    earningsByTicker.set(e.ticker, arr);
+  }
+
+  // 티커당 가장 이른 "다음 실적 발표 예정일" (없으면 90일 기준으로 폴백)
+  type UpcomingRow = { ticker: string; report_date: string };
+  const nextReportByTicker = new Map<string, string>();
+  for (const u of (upcomingEarningsRes.data ?? []) as UpcomingRow[]) {
+    if (!nextReportByTicker.has(u.ticker)) nextReportByTicker.set(u.ticker, u.report_date);
   }
 
   const sectorByTicker = new Map<string, string | null>();
@@ -281,7 +358,8 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     const insiders  = insiderByTicker.get(ticker)      ?? [];
     const currHold  = holdingsCurr.get(ticker)         ?? new Map<string, InstData>();
     const prevHold  = holdingsPrev.get(ticker)         ?? new Map<string, InstData>();
-    const earnData  = earningsByTicker.get(ticker);
+    const quarters  = earningsByTicker.get(ticker)     ?? [];
+    const earnData  = quarters[0];
     const callData  = earningsCallsByTicker.get(ticker);
     const siRows    = shortInterestByTicker.get(ticker) ?? [];
     const ptRows    = priceTargetsByTicker.get(ticker)  ?? [];
@@ -289,63 +367,20 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     const sector    = sectorByTicker.get(ticker)        ?? null;
     const tags      = new Set<string>();
 
-    let totalDecaySum = 0;
-    let totalDecayN   = 0;
-
-    // ── Event Score ────────────────────────────────────────────────────────────
-    const filingGroups = new Map<string, FilingRow[]>();
-    for (const f of filings) {
-      const key = f.event_type ?? f.form_type.split("/")[0].split(" ")[0];
-      const arr = filingGroups.get(key) ?? [];
-      arr.push(f);
-      filingGroups.set(key, arr);
-    }
-
-    let eventRaw = 0;
-    for (const [, group] of filingGroups) {
-      const factor = dedupFactor(group.length);
-      for (const f of group) {
-        const w = filingWeight(f.event_type, f.form_type);
-        const d = decay(f.filed_at, todayMs);
-        eventRaw += w * d * factor;
-        totalDecaySum += d; totalDecayN++;
-      }
-      const et = group[0].event_type;
-      if (et && ET_TAGS.has(et)) tags.add(et);
-    }
-
-    const seenH = new Set<string>();
-    const uniqueNews: NewsRow[] = [];
-    for (const n of newsItems) {
-      const k = normalizeHeadline(n.headline);
-      if (!seenH.has(k)) { seenH.add(k); uniqueNews.push(n); }
-    }
-
-    let newsRaw = 0;
-    const recentNewsCount = uniqueNews.filter(n => n.published_at.slice(0, 10) >= d7).length;
-    const olderNewsCount  = uniqueNews.filter(n => n.published_at.slice(0, 10) <  d7).length;
-    for (const n of uniqueNews) {
-      const d = decay(n.published_at, todayMs);
-      newsRaw += d;
-      totalDecaySum += d; totalDecayN++;
-    }
-    if (olderNewsCount > 0 && recentNewsCount >= olderNewsCount * 2) newsRaw += 4;
-
-    const eventScore      = eventRaw + newsRaw;
-    const dedupFilingCount = filingGroups.size;
-
-    // ── Smart Money Score ──────────────────────────────────────────────────────
-    let smartRaw     = 0;
+    // ── Smart Money (45%) — 내부자매수 30일 완만감쇠, 13F는 분기 내 감쇠없음 ────
+    let smartRaw = 0;
     let insiderAmount: number | null = null;
 
-    const recentBuys = insiders.filter(t => t.transaction_date && t.transaction_date >= d3);
-    if (recentBuys.length > 0) {
-      smartRaw += 6;
+    for (const t of insiders) {
+      if (!t.transaction_date) continue;
+      const dAgo = daysSince(t.transaction_date, todayMs);
+      const decayed = decaySmart30(dAgo);
+      if (decayed <= 0) continue;
+      smartRaw += 6 * decayed;
       tags.add("insider_buy");
-      const totalAmt = recentBuys.reduce((s, t) =>
-        t.shares && t.price ? s + t.shares * t.price : s, 0);
-      if (totalAmt > 0) insiderAmount = totalAmt;
-      if (totalAmt >= 1_000_000) { smartRaw += 3; tags.add("insider_buy_large"); }
+      const amt = t.shares && t.price ? t.shares * t.price : 0;
+      if (amt > 0) insiderAmount = (insiderAmount ?? 0) + amt;
+      if (amt >= 1_000_000) { smartRaw += 3 * decayed; tags.add("insider_buy_large"); }
     }
 
     let has13fNew = false;
@@ -376,13 +411,8 @@ export async function computeScores(): Promise<ScoredTicker[]> {
 
     const smartScore = smartRaw;
 
-    // ── Earnings Score ─────────────────────────────────────────────────────────
+    // ── Earnings Quality (30%) — 발표일→다음 발표예정일 선형감쇠(없으면 90일) ──
     let earningsRaw = 0;
-    if (callData?.guidance_direction === "up") {
-      earningsRaw += 10;
-      tags.add("guidance_up");
-    }
-    if (callData?.management_tone === "positive") earningsRaw += 2;
     if (earnData) {
       const epsBeat = earnData.actual_eps     != null && earnData.eps_estimate     != null && earnData.actual_eps     > earnData.eps_estimate;
       const revBeat = earnData.actual_revenue != null && earnData.revenue_estimate != null && earnData.actual_revenue > earnData.revenue_estimate;
@@ -390,15 +420,51 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       else if (epsBeat)            { earningsRaw += 5; tags.add("eps_beat"); }
       else if (revBeat)            { earningsRaw += 4; tags.add("revenue_beat"); }
     }
-    const chgPcts = prices.filter(p => p.change_pct != null).map(p => p.change_pct!);
-    if (chgPcts.length >= 5) {
-      const a5  = avg(chgPcts.slice(-5));
-      const a10 = avg(chgPcts.slice(-Math.min(10, chgPcts.length)));
-      if (a5 > a10) earningsRaw += 3;
+    if (callData?.guidance_direction === "up") {
+      earningsRaw += 10;
+      tags.add("guidance_up");
     }
-    const earningsScore = earningsRaw;
+    if (callData?.management_tone === "positive") earningsRaw += 2;
 
-    // ── Market Score ───────────────────────────────────────────────────────────
+    const beatStreak4 = quarters.length >= 4 && quarters.slice(0, 4).every(isBeat);
+    if (beatStreak4) { earningsRaw += 8; tags.add("beat_streak_4"); }
+
+    let earningsScore = 0;
+    if (earnData) {
+      const nextReport = nextReportByTicker.get(ticker);
+      const windowDays = nextReport
+        ? Math.max(1, Math.ceil(
+            (new Date(nextReport).getTime() - new Date(earnData.report_date).getTime()) / 86_400_000
+          ))
+        : 90;
+      const daysSinceReport = daysSince(earnData.report_date, todayMs);
+      earningsScore = earningsRaw * decayEarnings(daysSinceReport, windowDays);
+    }
+
+    // ── Corporate Events (15%) — 7일 이내 급감, 뉴스건수/surge 보너스 완전 제거 ─
+    const eventFilings = filings.filter((f) => f.event_type != null && EVENT_WEIGHTS[f.event_type] !== undefined);
+    const filingGroups = new Map<string, FilingRow[]>();
+    for (const f of eventFilings) {
+      const key = f.event_type as string;
+      const arr = filingGroups.get(key) ?? [];
+      arr.push(f);
+      filingGroups.set(key, arr);
+    }
+
+    let eventsRaw = 0;
+    for (const [eventType, group] of filingGroups) {
+      const factor = dedupFactor(group.length);
+      const w = EVENT_WEIGHTS[eventType];
+      for (const f of group) {
+        const dAgo = daysSince(f.filed_at, todayMs);
+        eventsRaw += w * decayEvents7(dAgo) * factor;
+      }
+      tags.add(eventType);
+    }
+    const eventsScore = eventsRaw;
+    const dedupFilingCount = filingGroups.size;
+
+    // ── Market (5%) — 뉴스와 동일(7일) 감쇠, 데이터 신선도 기준 ──────────────────
     let marketRaw = 0;
     if (prices.length >= 2) {
       const fc = prices[0].close;
@@ -407,34 +473,64 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       if (ret >= 20)      { marketRaw += 3; tags.add("price_up_20"); }
       else if (ret >= 10) { marketRaw += 2; tags.add("price_up_10"); }
     }
-    const vols = prices.map(p => p.volume ?? 0).filter(v => v > 0);
+    const vols = prices.map((p) => p.volume ?? 0).filter((v) => v > 0);
     if (vols.length >= 5) {
       const a5v  = avg(vols.slice(-5));
       const a20v = avg(vols.slice(-Math.min(20, vols.length)));
       if (a20v > 0 && a5v > a20v * 2) { marketRaw += 4; tags.add("volume_spike"); }
     }
-    const absPcts = prices.filter(p => p.change_pct != null).map(p => Math.abs(p.change_pct!));
+    const absPcts = prices.filter((p) => p.change_pct != null).map((p) => Math.abs(p.change_pct!));
     if (absPcts.length >= 5) {
       const a5p  = avg(absPcts.slice(-5));
       const a20p = avg(absPcts.slice(-Math.min(20, absPcts.length)));
       if (a20p > 0 && a5p > a20p * 1.5) { marketRaw += 2; tags.add("volatility_spike"); }
     }
-    const marketScore = marketRaw;
+    let marketScore = 0;
+    if (prices.length > 0) {
+      const lastPriceDaysAgo = daysSince(prices[prices.length - 1].date, todayMs);
+      marketScore = marketRaw * decayRapid(lastPriceDaysAgo);
+    }
+
+    // ── News Credibility (5%) — 뉴스 건수 점수 제거, 출처 신뢰도만, 최대 +5 캡 ──
+    const seenH = new Set<string>();
+    const uniqueNews: NewsRow[] = [];
+    for (const n of newsItems) {
+      const k = normalizeHeadline(n.headline);
+      if (!seenH.has(k)) { seenH.add(k); uniqueNews.push(n); }
+    }
+
+    let newsRaw = 0;
+    for (const n of uniqueNews) {
+      const dAgo = daysSince(n.published_at, todayMs);
+      newsRaw += sourceTierScore(n.source) * decayRapid(dAgo);
+    }
+    const newsScore = Math.min(newsRaw, 5);
+
+    // ── Discovery Bonus — tickers 테이블에 market_cap 컬럼 없어 스킵 ────────────
+    // TODO: tickers.market_cap 컬럼 추가 시, 20억~300억 달러 구간 종목에 +5 부여
+    const discoveryBonus = 0;
 
     // ── Final Score ────────────────────────────────────────────────────────────
-    const finalScore = eventScore * 0.4 + smartScore * 0.3 + earningsScore * 0.2 + marketScore * 0.1;
+    const finalScore =
+      smartScore    * FINAL_WEIGHTS.smart +
+      earningsScore * FINAL_WEIGHTS.earnings +
+      eventsScore   * FINAL_WEIGHTS.events +
+      marketScore   * FINAL_WEIGHTS.market +
+      newsScore     * FINAL_WEIGHTS.news +
+      discoveryBonus;
 
     scored.push({
       ticker, sector,
-      eventScore, smartScore, earningsScore, marketScore, finalScore,
+      smartScore, earningsScore, eventsScore, marketScore, newsScore, discoveryBonus,
+      finalScore,
       reasonTags: Array.from(tags),
       metadata: {
-        event: eventScore, smart: smartScore, earnings: earningsScore, market: marketScore,
+        smart: smartScore, earnings: earningsScore, events: eventsScore,
+        market: marketScore, news: newsScore, discoveryBonus,
         filingCount: filings.length, dedupFilingCount,
         newsCount: newsItems.length, dedupNewsCount: uniqueNews.length,
-        decayAvg: totalDecayN > 0 ? totalDecaySum / totalDecayN : 0,
         sectorPenalty: false,
-        insiderAmount, guidanceDirection: null, shortDecrease, targetUp,
+        insiderAmount, shortDecrease, targetUp, beatStreak4,
       },
     });
   }
@@ -444,7 +540,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
 
   // ── 섹터 다양성 ──────────────────────────────────────────────────────────────
   const sectorCnt = new Map<string, number>();
-  const withDiversity = scored.map(item => {
+  const withDiversity = scored.map((item) => {
     const sec = item.sector ?? "__none__";
     const cnt = (sectorCnt.get(sec) ?? 0) + 1;
     sectorCnt.set(sec, cnt);

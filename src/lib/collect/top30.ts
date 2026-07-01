@@ -18,12 +18,13 @@ export async function runTop30Select(): Promise<CollectResult> {
     date:           todayStr,
     ticker:         item.ticker,
     rank:           idx + 1,
-    event_score:    item.eventScore,
+    event_score:    item.eventsScore,
     smart_score:    item.smartScore,
     earnings_score: item.earningsScore,
     market_score:   item.marketScore,
     final_score:    item.finalScore,
     reason_tags:    item.reasonTags,
+    // news_score/discoveryBonus는 top30_daily에 전용 컬럼이 없어 metadata JSON에 보존
     metadata:       item.metadata,
   }));
 

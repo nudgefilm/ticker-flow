@@ -18,11 +18,13 @@ export const dynamic = "force-dynamic";
 // ─── 표시 레이블 (어드민 배지용 축약형) ────────────────────────────────────────
 
 const TAG_LABELS: Record<string, string> = {
-  buyback: "자사주매입", ma: "M&A", guidance: "가이던스",
-  ceo_change: "CEO교체", cfo_change: "CFO교체", contract: "대형계약",
+  fda_approval: "FDA승인", contract: "대형계약", buyback: "자사주매입", ma: "M&A",
+  dividend_increase: "배당증가", ceo_change: "CEO교체",
+  offering: "유상증자", sec_investigation: "SEC조사", bankruptcy: "파산",
   insider_buy: "내부자취득", insider_buy_large: "대규모취득",
   "13f_new": "13F신규", "13f_increase": "13F증가",
   eps_beat: "EPS상회", revenue_beat: "매출상회", both_beat: "실적상회",
+  beat_streak_4: "4분기연속상회",
   guidance_up: "가이던스Up", price_up_20: "30일+20%", price_up_10: "30일+10%",
   volume_spike: "거래량급증", volatility_spike: "변동성급증",
   short_decrease: "공매도↓", target_up: "목표가↑",
@@ -30,15 +32,17 @@ const TAG_LABELS: Record<string, string> = {
 
 function tagStyle(tag: string): string {
   switch (tag) {
-    case "ceo_change": case "cfo_change":
-    case "eps_beat": case "revenue_beat": case "both_beat":
+    case "sec_investigation": case "bankruptcy": case "offering":
+      return "bg-red-500/10 text-red-400 border border-red-500/20";
+    case "ceo_change":
+    case "eps_beat": case "revenue_beat": case "both_beat": case "beat_streak_4":
       return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
-    case "buyback": case "ma": case "contract":
+    case "fda_approval": case "buyback": case "ma": case "contract": case "dividend_increase":
     case "13f_new": case "13f_increase":
       return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     case "insider_buy": case "insider_buy_large":
       return "bg-green-500/10 text-green-400 border border-green-500/20";
-    case "guidance": case "guidance_up":
+    case "guidance_up":
       return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
     case "volume_spike": case "volatility_spike": case "short_decrease":
       return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
@@ -112,7 +116,7 @@ async function AdminWatchSection() {
             공시 {item.metadata.filingCount}건 · 뉴스 {item.metadata.newsCount}건
           </p>
           <p className="mt-0.5 text-[9px] text-[#a6a6a6]/60">
-            E:{item.metadata.event.toFixed(1)} S:{item.metadata.smart.toFixed(1)} P:{item.metadata.earnings.toFixed(1)} M:{item.metadata.market.toFixed(1)}
+            S:{item.metadata.smart.toFixed(1)} P:{item.metadata.earnings.toFixed(1)} E:{item.metadata.events.toFixed(1)} M:{item.metadata.market.toFixed(1)} N:{item.metadata.news.toFixed(1)}
           </p>
         </div>
       ))}
@@ -276,7 +280,7 @@ export default async function AdminPage() {
         <div className="mb-4">
           <h2 className="text-sm font-medium text-red-400">TickerFlow Screener</h2>
           <p className="mt-1 text-xs text-red-400/70">
-            Event×0.4 + SmartMoney×0.3 + Earnings×0.2 + Market×0.1 | Decay | 중복감산 | 섹터다양성 | 상위 30개
+            SmartMoney×0.45 + Earnings×0.30 + Events×0.15 + Market×0.05 + News×0.05 | Decay | 섹터다양성 | 상위 30개
           </p>
         </div>
         <Suspense fallback={<AdminWatchSkeleton />}>
