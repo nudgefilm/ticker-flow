@@ -141,7 +141,7 @@ const TRIGGERS: Trigger[] = [
   },
   {
     id: "top30",
-    label: "TOP30 선정",
+    label: "티커플로우 스크리너 TOP30",
     desc: "스코어링 엔진을 실행해 오늘의 기업 동향 TOP30를 선정하고 top30_daily 테이블에 저장합니다. 섹터 다양성 적용.",
   },
   {
@@ -348,7 +348,11 @@ export default function TriggerPage() {
                   type="button"
                   onClick={() => handleTrigger(trigger)}
                   disabled={status === "running"}
-                  className="flex shrink-0 items-center gap-2 rounded-lg border border-white/[0.08] px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:opacity-50"
+                  className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    trigger.id === "top30"
+                      ? "border-orange-400/60 bg-orange-400/[0.05] text-orange-400 hover:bg-orange-400/[0.1]"
+                      : "border-white/[0.08] text-white hover:bg-[#1a1a1a]"
+                  }`}
                 >
                   {displayStatus === "done" && (
                     <>
@@ -402,7 +406,7 @@ export default function TriggerPage() {
             { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
-            { name: "TOP30 선정",         schedule: "매일 21:00 UTC (익일 06:00 KST)", path: "/api/collect/top30"             },
+            { name: "티커플로우 스크리너 TOP30", schedule: "매일 13:35 UTC (22:35 KST)",   path: "/api/collect/top30"             },
             { name: "텔레그램 발송",       schedule: "매일 21:10 UTC (익일 06:10 KST)", path: "/api/collect/telegram"          },
             { name: "텔레그램 공시 알림",  schedule: "매일 02:30 UTC (11:30 KST)",    path: "/api/collect/telegram-digest"   },
           ].map((cron) => (
