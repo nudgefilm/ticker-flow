@@ -29,15 +29,18 @@ export function WavingFlagBg() {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute inset-0 overflow-hidden"
+      style={{ perspective: "500px" }}
     >
       {/* 카드 왼쪽 2/5 지점에 중심을 두고 카드 높이에 꽉 차게 배치.
-          가장자리를 마스크로 페이드아웃해 배경에 은은하게 묻히도록 처리 */}
+          왼쪽 끝(깃대 쪽)을 축으로 rotateY 시켜, 왼쪽은 고정되고
+          오른쪽이 앞뒤로 출렁이며 멀어지는 느낌을 준다.
+          가장자리는 마스크로 페이드아웃해 배경에 은은하게 묻히도록 처리 */}
       <svg
         viewBox={`0 0 ${FLAG_WIDTH} ${FLAG_HEIGHT}`}
-        className="absolute left-[40%] top-0 h-full -translate-x-1/2 animate-flag-wave opacity-[0.16] blur-[1.5px]"
+        className="absolute left-[40%] top-0 h-full -translate-x-1/2 animate-flag-wave opacity-[0.10] blur-[1.5px]"
         style={{
           aspectRatio: `${FLAG_WIDTH} / ${FLAG_HEIGHT}`,
-          transformOrigin: "center",
+          transformOrigin: "left center",
           maskImage: "radial-gradient(ellipse 75% 80% at center, black 55%, transparent 95%)",
           WebkitMaskImage: "radial-gradient(ellipse 75% 80% at center, black 55%, transparent 95%)",
         }}

@@ -18,10 +18,11 @@
 }
 
 @keyframes flag-wave {
-  0%, 100% { transform: skewY(0deg) scaleX(1); }
-  25%      { transform: skewY(0.8deg) scaleX(1.01); }
-  50%      { transform: skewY(0deg) scaleX(1); }
-  75%      { transform: skewY(-0.8deg) scaleX(0.99); }
+  0%   { transform: rotateY(0deg)   skewY(0deg); }
+  25%  { transform: rotateY(14deg)  skewY(1deg); }
+  50%  { transform: rotateY(0deg)   skewY(0deg); }
+  75%  { transform: rotateY(-9deg)  skewY(-0.8deg); }
+  100% { transform: rotateY(0deg)   skewY(0deg); }
 }
 
 /* ─── Theme mapping (Tailwind v4 → CSS vars) ────────────────────────────── */
