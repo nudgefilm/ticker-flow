@@ -6,12 +6,13 @@ import IndicatorCard from "@/components/macro/indicator-card";
 
 const ALL = "전체";
 
-// 그룹별로 더 크게 강조할 핵심 지표. 2개 이상 지표가 있는 그룹에서만 히어로 레이아웃이 적용됨.
-const FEATURED_BY_GROUP: Record<string, string> = {
-  금리: "FEDFUNDS",  // 기준금리 — 모든 금리의 기준이 되는 정책금리
-  물가: "CPIAUCSL",  // CPI — 가장 널리 참조되는 헤드라인 인플레이션 지표
-  고용: "UNRATE",    // 실업률 — 고용시장을 대표하는 지표
-  경기: "GDP",       // GDP — 경제 규모를 나타내는 가장 포괄적인 지표
+// 그룹별로 더 크게 강조할 핵심 지표와, 히어로 카드를 둘 위치(좌/우).
+// 2개 이상 지표가 있는 그룹에서만 히어로 레이아웃이 적용됨.
+const FEATURED_BY_GROUP: Record<string, { seriesId: string; side: "left" | "right" }> = {
+  금리: { seriesId: "FEDFUNDS",  side: "left"  }, // 기준금리 — 모든 금리의 기준이 되는 정책금리
+  물가: { seriesId: "CPIAUCSL",  side: "right" }, // CPI — 가장 널리 참조되는 헤드라인 인플레이션 지표
+  고용: { seriesId: "UNRATE",    side: "left"  }, // 실업률 — 고용시장을 대표하는 지표
+  경기: { seriesId: "GDP",       side: "left"  }, // GDP — 경제 규모를 나타내는 가장 포괄적인 지표
 };
 
 export default function MacroBoard({
@@ -63,40 +64,62 @@ export default function MacroBoard({
 
       {/* 그룹별 지표 — 핵심 지표가 지정된 그룹은 히어로 레이아웃, 그 외는 균등 그리드 */}
       {displayed.map((group) => {
-        const featuredSeriesId = FEATURED_BY_GROUP[group.key];
-        const featuredInd = featuredSeriesId
-          ? group.indicators.find((i) => i.seriesId === featuredSeriesId)
+        const featured = FEATURED_BY_GROUP[group.key];
+        const featuredInd = featured
+          ? group.indicators.find((i) => i.seriesId === featured.seriesId)
           : undefined;
         const companions = featuredInd
-          ? group.indicators.filter((i) => i.seriesId !== featuredSeriesId)
+          ? group.indicators.filter((i) => i.seriesId !== featured.seriesId)
           : [];
 
         if (featuredInd && companions.length > 0) {
+          const heroOnRight = featured.side === "right";
+
+          const heroCard = (
+            <div className="h-full">
+              <IndicatorCard ind={featuredInd} hero />
+            </div>
+          );
+          const companionGrid = (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {companions.map((ind, i) => {
+                const isLastOdd =
+                  i === companions.length - 1 && companions.length % 2 !== 0;
+                return (
+                  <div
+                    key={ind.seriesId}
+                    className={`h-full${isLastOdd ? " md:col-span-2" : ""}`}
+                  >
+                    <IndicatorCard ind={ind} />
+                  </div>
+                );
+              })}
+            </div>
+          );
+
           return (
             <section key={group.key}>
               <p className="mb-3 text-xs font-medium uppercase tracking-wider text-[#666666]">
                 {group.label}
               </p>
-              <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-                {/* 좌측: 핵심 지표 히어로 */}
-                <div className="h-full">
-                  <IndicatorCard ind={featuredInd} hero />
-                </div>
-                {/* 우측: 나머지 지표 */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {companions.map((ind, i) => {
-                    const isLastOdd =
-                      i === companions.length - 1 && companions.length % 2 !== 0;
-                    return (
-                      <div
-                        key={ind.seriesId}
-                        className={`h-full${isLastOdd ? " md:col-span-2" : ""}`}
-                      >
-                        <IndicatorCard ind={ind} />
-                      </div>
-                    );
-                  })}
-                </div>
+              <div
+                className={`grid grid-cols-1 items-stretch gap-4 ${
+                  heroOnRight
+                    ? "md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+                    : "md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]"
+                }`}
+              >
+                {heroOnRight ? (
+                  <>
+                    {companionGrid}
+                    {heroCard}
+                  </>
+                ) : (
+                  <>
+                    {heroCard}
+                    {companionGrid}
+                  </>
+                )}
               </div>
             </section>
           );
