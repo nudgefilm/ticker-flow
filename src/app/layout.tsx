@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     template: "%s | TickerFlow",
   },
   description:
-    "TickerFlow는 미국 기업의 공시, 뉴스, 실적 일정을 정리해 주요 변화를 모니터링하는 정보 서비스입니다. 투자 자문이나 권유는 제공하지 않습니다.",
+    "미국 기업의 공시·뉴스·실적 일정을 한눈에 모니터링하는 정보 서비스, TickerFlow. 투자 자문이나 권유는 제공하지 않습니다.",
   icons: {
     icon: "/icon.png",
     shortcut: "/favicon.ico",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     url: "https://tickerflow.net",
     title: "TickerFlow | 미국 주식 모니터링 대시보드",
     description:
-      "TickerFlow는 미국 기업의 공시, 뉴스, 실적 일정을 정리해 주요 변화를 모니터링하는 정보 서비스입니다. 투자 자문이나 권유는 제공하지 않습니다.",
+      "미국 기업의 공시·뉴스·실적 일정을 한눈에 모니터링하는 정보 서비스, TickerFlow. 투자 자문이나 권유는 제공하지 않습니다.",
     siteName: "TickerFlow",
     images: [{ url: "https://tickerflow.net/og-image.jpeg", width: 1200, height: 630 }],
   },
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "TickerFlow | 미국 주식 모니터링 대시보드",
     description:
-      "TickerFlow는 미국 기업의 공시, 뉴스, 실적 일정을 정리해 주요 변화를 모니터링하는 정보 서비스입니다. 투자 자문이나 권유는 제공하지 않습니다.",
+      "미국 기업의 공시·뉴스·실적 일정을 한눈에 모니터링하는 정보 서비스, TickerFlow. 투자 자문이나 권유는 제공하지 않습니다.",
     images: ["https://tickerflow.net/og-image.jpeg"],
   },
   verification: {
