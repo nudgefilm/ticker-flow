@@ -84,22 +84,49 @@ export default function Sidebar() {
   const profile = useProfile();
   const { isOpen, open, close } = useSidebar();
 
-  // 스와이프 제스처: 좌측 끝에서 오른쪽 스와이프 → 열기 / 왼쪽 스와이프 → 닫기
-  const touchStartX = useRef(0);
+  // 닫힘 상태: 좌측 엣지 전용 트리거(edgeRef)에서 오른쪽 스와이프 → 열기
+  // 브라우저의 엣지 스와이프-뒤로가기 제스처와 겹치는 영역이라, touchmove에서
+  // preventDefault로 네이티브 제스처를 선점 차단해야 함 (React 합성 이벤트는
+  // touchmove를 passive로 등록해 preventDefault가 무시되므로 ref로 직접 리스너 등록)
+  const edgeRef = useRef<HTMLDivElement>(null);
+  const edgeTouchStart = useRef({ x: 0, y: 0 });
   useEffect(() => {
+    const el = edgeRef.current;
+    if (!el) return;
     function onTouchStart(e: TouchEvent) {
-      touchStartX.current = e.touches[0].clientX;
+      edgeTouchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    function onTouchMove(e: TouchEvent) {
+      const dx = e.touches[0].clientX - edgeTouchStart.current.x;
+      const dy = e.touches[0].clientY - edgeTouchStart.current.y;
+      if (dx > 10 && Math.abs(dx) > Math.abs(dy)) {
+        e.preventDefault();
+      }
     }
     function onTouchEnd(e: TouchEvent) {
-      const delta = e.changedTouches[0].clientX - touchStartX.current;
-      // 좌측 엣지(30px 이내)에서 60px 이상 오른쪽으로 스와이프 → 열기
-      if (!isOpen && touchStartX.current < 30 && delta > 60) {
-        open();
-      }
-      // 60px 이상 왼쪽으로 스와이프 → 닫기
-      if (isOpen && delta < -60) {
-        close();
-      }
+      const delta = e.changedTouches[0].clientX - edgeTouchStart.current.x;
+      if (delta > 60) open();
+    }
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [open]);
+
+  // 열림 상태: 화면 어디서든 왼쪽으로 60px 이상 스와이프 → 닫기
+  const closeTouchStartX = useRef(0);
+  useEffect(() => {
+    if (!isOpen) return;
+    function onTouchStart(e: TouchEvent) {
+      closeTouchStartX.current = e.touches[0].clientX;
+    }
+    function onTouchEnd(e: TouchEvent) {
+      const delta = e.changedTouches[0].clientX - closeTouchStartX.current;
+      if (delta < -60) close();
     }
     document.addEventListener("touchstart", onTouchStart, { passive: true });
     document.addEventListener("touchend", onTouchEnd, { passive: true });
@@ -107,7 +134,7 @@ export default function Sidebar() {
       document.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("touchend", onTouchEnd);
     };
-  }, [isOpen, open, close]);
+  }, [isOpen, close]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -117,6 +144,15 @@ export default function Sidebar() {
 
   return (
     <>
+      {/* 좌측 엣지 스와이프 트리거 — 닫힌 상태에서만, 모바일 전용 */}
+      {!isOpen && (
+        <div
+          ref={edgeRef}
+          className="fixed inset-y-0 left-0 z-40 w-5 touch-pan-y md:hidden"
+          aria-hidden="true"
+        />
+      )}
+
       {/* 모바일 오버레이 — 사이드바 열릴 때만 표시 */}
       {isOpen && (
         <div

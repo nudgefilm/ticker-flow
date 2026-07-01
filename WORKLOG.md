@@ -6,6 +6,32 @@
 
 ---
 
+## 2026-07-01 · 세션 73
+
+### 다이제스트 이메일 레이아웃 완전 인라인화 + 사이드바 스와이프 수정 + 모바일 카드 그리드 점검
+
+**다이제스트 이메일 Gmail 렌더링 문제 — 근본 원인 및 수정 (`src/lib/email/templates.ts`)**
+- 1차 수정(컨테이너 800px, 폰트 크기 확대, TOP3 박스 배경 `#2d2d2d`)이 Gmail에서 반영되지 않음을 확인
+- 원인 추정: `<head><style>` 블록의 클래스(`.wrap`, `.card`, `.header`, `.body`, `.footer`, `h1`, `p`)에 의존 → Gmail 앱 등 `<style>` 무시 클라이언트에서 스타일 미적용
+- 추가 원인: 직전 수정이 커밋되지 않은 상태였음 — 프로덕션 어드민 트리거 테스트 시 이전 코드로 발송됐을 가능성
+- 조치: `<style>` 블록 및 `class` 속성 전면 제거, 모든 요소에 `style=""` 인라인 스타일 직접 명시 (반복 스타일은 `HEADER_STYLE`/`BODY_STYLE`/`FOOTER_STYLE`/`H1_STYLE`/`P_STYLE`/`CTA_STYLE` JS 문자열 상수로 재사용, CSS 클래스 아님)
+- 박스형 요소에 `style` + `bgcolor` 속성 동시 적용 (Gmail 일부 버전 호환)
+- TOP10 리스트를 1열 세로 나열 → `<table>` 기반 2열(5행×2열) 레이아웃으로 변경, `width="50%" valign="top"`, 홀수 종목 시 마지막 셀 `&nbsp;` 채움, PC/모바일 동일 2열 고정
+- 폰트 기준: 본문 16px / 섹션 헤더 20px / 종목명 17px / 설명 텍스트 15px
+- 로컬에서 `dailyDigestEmail()` 직접 실행해 인라인 스타일·2열 레이아웃 반영 여부 사전 검증
+
+**사이드바 모바일 스와이프 방향 문제 (`src/components/dashboard/sidebar.tsx`)**
+- 원인: 좌측 30px 이내 엣지 스와이프 트리거가 브라우저/OS 네이티브 "엣지 스와이프 뒤로가기" 제스처와 충돌
+- 수정: 닫힌 상태에서만 렌더링되는 좌측 20px 전용 트리거 `<div>` 신설, `touch-pan-y` 적용 + non-passive `touchmove`에서 가로 스와이프 감지 시 `preventDefault()`로 네이티브 제스처 선점 차단
+- 열림 상태의 좌측 스와이프-닫기 로직은 기존 유지, PC(`md:hidden`)는 트리거 미렌더링으로 기존 동작 유지
+
+**모바일 카드 그리드 전수 점검 (`src/components/dashboard/insights/change-timeline.tsx`)**
+- `grid-cols-2`/`md:grid-cols-2` 패턴 34개 파일 전수 검색 — 랜딩·KPI 타일·어드민은 의도된 디자인으로 제외
+- 변화 타임라인 카드 그리드만 모바일 대응 누락 확인 → `grid-cols-2` → `grid-cols-1 md:grid-cols-2`로 수정
+- 대시보드 카드 폰트가 전역적으로 고정 크기(`text-sm`/`text-xs`)라 반응형 폰트 확대는 범위가 크다고 판단, 보류 (실제 가독성 문제 발견 시 개별 대응)
+
+---
+
 ## 2026-07-01 · 세션 72
 
 ### Google OAuth 브랜딩, BRIEF 버그 수정, top30_daily 권한 수정

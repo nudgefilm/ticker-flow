@@ -45,7 +45,7 @@ export default function ChangeTimeline({ events }: { events: TimelineEvent[] }) 
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {displayed.map((ev) => {
               const cfg = KIND_CONFIG[ev.kind];
               const { Icon } = cfg;
