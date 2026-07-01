@@ -35,6 +35,11 @@ export const metadata: Metadata = {
       "SEC 공시, 뉴스, 실적 일정 등 공개된 정보를 정리해 미국 기업의 주요 변화를 모니터링할 수 있도록 돕는 정보 서비스입니다.",
     images: ["/og-image.jpeg"],
   },
+  verification: {
+    other: {
+      "naver-site-verification": "d853939c87fb4bd413a326a490d6516b1ad74931",
+    },
+  },
 };
 
 export default function RootLayout({
