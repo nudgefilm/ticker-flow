@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { IconBrandGoogle, IconX } from "@tabler/icons-react";
 import { LegalModal, type LegalType } from "@/components/legal-modal";
+import { JellyfishBackground } from "@/components/jellyfish-background";
 
 interface LoginModalProps {
   onClose: () => void;
@@ -28,6 +29,12 @@ export default function LoginModal({ onClose }: LoginModalProps) {
 
   return (
     <>
+      {/* 해파리 배경 레이어 */}
+      <div className="fixed inset-0 z-40 bg-background" aria-hidden="true">
+        <JellyfishBackground />
+      </div>
+
+      {/* 기존 오버레이 */}
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
         onClick={onClose}
