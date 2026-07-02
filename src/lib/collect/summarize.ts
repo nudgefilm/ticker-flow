@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 const BATCH_LIMIT = 20;
@@ -239,4 +240,36 @@ export async function summarizeNews(
   }
 
   return { done, failed };
+}
+
+/**
+ * 기업 개요(영문) 한국어 요약 — Claude Haiku 사용.
+ * 원칙: 개요에 명시된 사실만, 투자 권유 표현 배제, 사실 서술체, 200자 내외.
+ * 결과는 tickers.description_kr에 저장.
+ */
+export async function summarizeCompanyDescription(
+  ticker: string,
+  descriptionEn: string
+): Promise<{ ok: boolean; error?: string }> {
+  const prompt = `다음은 ${ticker}의 영문 기업 개요입니다. 한국어로 요약해주세요.
+
+원칙
+- 개요에 명시된 사실만 서술하세요.
+- 분석, 해설, 의견, 전망, 투자 권유 표현은 추가하지 마세요.
+- "~합니다", "~제공합니다" 형태의 사실 서술체로만 작성하세요.
+- 분량: 200자 내외
+- plain text로만 응답하고 마크다운 기호(#, **, - 등)는 사용하지 마세요.
+
+영문 개요: ${descriptionEn}`;
+
+  const summary = await callHaiku(prompt, 400);
+  if (!summary) return { ok: false, error: "Haiku 호출 실패" };
+
+  const adminClient = createAdminClient();
+  const { error } = await adminClient
+    .from("tickers")
+    .update({ description_kr: summary.trim() })
+    .eq("ticker", ticker);
+
+  return error ? { ok: false, error: error.message } : { ok: true };
 }

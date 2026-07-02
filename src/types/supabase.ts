@@ -765,28 +765,55 @@ export type Database = {
       }
       tickers: {
         Row: {
+          ceo: string | null
+          description: string | null
+          description_kr: string | null
           exchange: string | null
+          full_time_employees: number | null
+          headquarters: string | null
+          image: string | null
           industry: string | null
+          ipo_date: string | null
+          market_cap: number | null
           name_en: string
           name_kr: string | null
           sector: string | null
           ticker: string
+          website: string | null
         }
         Insert: {
+          ceo?: string | null
+          description?: string | null
+          description_kr?: string | null
           exchange?: string | null
+          full_time_employees?: number | null
+          headquarters?: string | null
+          image?: string | null
           industry?: string | null
+          ipo_date?: string | null
+          market_cap?: number | null
           name_en: string
           name_kr?: string | null
           sector?: string | null
           ticker: string
+          website?: string | null
         }
         Update: {
+          ceo?: string | null
+          description?: string | null
+          description_kr?: string | null
           exchange?: string | null
+          full_time_employees?: number | null
+          headquarters?: string | null
+          image?: string | null
           industry?: string | null
+          ipo_date?: string | null
+          market_cap?: number | null
           name_en?: string
           name_kr?: string | null
           sector?: string | null
           ticker?: string
+          website?: string | null
         }
         Relationships: []
       }

@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { summarizeCompanyDescription } from "./summarize";
 import type { CollectResult } from "./types";
+
+const FMP_BASE = "https://financialmodelingprep.com";
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 const INDUSTRY_TO_SECTOR: Record<string, string> = {
   "Software": "Technology",
@@ -56,60 +60,143 @@ interface FinnhubProfile {
   finnhubIndustry?: string;
 }
 
+interface FmpProfile {
+  description?: string | null;
+  ceo?: string | null;
+  fullTimeEmployees?: string | null;
+  website?: string | null;
+  image?: string | null;
+  ipoDate?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  marketCap?: number | null;
+}
+
+function buildHeadquarters(
+  city?: string | null,
+  state?: string | null,
+  country?: string | null
+): string | null {
+  const parts = [city, state, country].filter((v): v is string => Boolean(v));
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+function parseEmployees(v?: string | null): number | null {
+  if (!v) return null;
+  const n = parseInt(v, 10);
+  return isNaN(n) ? null : n;
+}
+
+interface TickerProfileUpdate {
+  sector?: string;
+  industry?: string;
+  description?: string;
+  ceo?: string;
+  full_time_employees?: number;
+  website?: string;
+  image?: string;
+  ipo_date?: string;
+  headquarters?: string;
+  market_cap?: number;
+}
+
 export async function runProfileCollect(limit = 20): Promise<CollectResult> {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
+  const finnhubKey = process.env.FINNHUB_API_KEY;
+  const fmpKey = process.env.FMP_API_KEY;
+  if (!finnhubKey) return { ok: false, error: "FINNHUB_API_KEY not set", retryable: false };
 
   const adminClient = createAdminClient();
   const clampedLimit = Math.min(Math.max(1, isNaN(limit) ? 20 : limit), 200);
 
   const { data: tickerRows, error: fetchErr } = await adminClient
     .from("tickers")
-    .select("ticker")
-    .is("sector", null)
+    .select("ticker, sector, description")
+    .or("sector.is.null,description.is.null")
     .limit(clampedLimit);
 
   if (fetchErr) return { ok: false, error: fetchErr.message };
 
-  const tickers = (tickerRows ?? []).map((r) => r.ticker);
+  const rows = tickerRows ?? [];
   let updated = 0;
   let skipped = 0;
   let errors = 0;
   let firstError: string | null = null;
 
-  for (const ticker of tickers) {
+  for (const row of rows) {
+    const ticker = row.ticker;
+    const update: TickerProfileUpdate = {};
+    let newDescription: string | null = null;
+
     try {
-      const res = await fetch(
-        `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${apiKey}`
-      );
+      if (row.sector == null) {
+        const res = await fetch(
+          `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${finnhubKey}`
+        );
+        if (res.ok) {
+          const profile: FinnhubProfile = await res.json();
+          if (profile.finnhubIndustry) {
+            const industry = profile.finnhubIndustry;
+            update.sector = INDUSTRY_TO_SECTOR[industry] ?? industry;
+            update.industry = industry;
+          }
+        }
+        await delay(200);
+      }
 
-      if (!res.ok) { skipped++; await new Promise((r) => setTimeout(r, 200)); continue; }
+      if (fmpKey && row.description == null) {
+        const fmpRes = await fetch(
+          `${FMP_BASE}/stable/profile?symbol=${ticker}&apikey=${fmpKey}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (fmpRes.ok) {
+          const raw = await fmpRes.json();
+          const p: FmpProfile | undefined = Array.isArray(raw) ? raw[0] : raw;
+          if (p) {
+            if (p.description) {
+              update.description = p.description;
+              newDescription = p.description;
+            }
+            if (p.ceo) update.ceo = p.ceo;
+            const employees = parseEmployees(p.fullTimeEmployees);
+            if (employees != null) update.full_time_employees = employees;
+            if (p.website) update.website = p.website;
+            if (p.image) update.image = p.image;
+            if (p.ipoDate) update.ipo_date = p.ipoDate;
+            const headquarters = buildHeadquarters(p.city, p.state, p.country);
+            if (headquarters) update.headquarters = headquarters;
+            if (p.marketCap != null) update.market_cap = p.marketCap;
+          }
+        }
+        await delay(300);
+      }
 
-      const profile: FinnhubProfile = await res.json();
-
-      if (!profile.finnhubIndustry) { skipped++; await new Promise((r) => setTimeout(r, 200)); continue; }
-
-      const industry = profile.finnhubIndustry;
-      const sector = INDUSTRY_TO_SECTOR[industry] ?? industry;
+      if (Object.keys(update).length === 0) {
+        skipped++;
+        continue;
+      }
 
       const { error: updateErr } = await adminClient
         .from("tickers")
-        .update({ sector, industry })
+        .update(update)
         .eq("ticker", ticker);
 
       if (updateErr) {
         errors++;
         if (!firstError) firstError = updateErr.message;
-      } else {
-        updated++;
+        continue;
+      }
+
+      updated++;
+
+      if (newDescription) {
+        await summarizeCompanyDescription(ticker, newDescription).catch(() => {});
       }
     } catch (err) {
       errors++;
       if (!firstError) firstError = err instanceof Error ? err.message : "Unknown error";
     }
-
-    await new Promise((r) => setTimeout(r, 200));
   }
 
-  return { ok: true, total: tickers.length, updated, skipped, errors, firstError };
+  return { ok: true, total: rows.length, updated, skipped, errors, firstError };
 }

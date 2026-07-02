@@ -11,12 +11,21 @@
 -- 1. tickers — 종목 기본 정보
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.tickers (
-  ticker    TEXT PRIMARY KEY,
-  name_en   TEXT NOT NULL,
-  name_kr   TEXT,
-  sector    TEXT,
-  industry  TEXT,
-  exchange  TEXT
+  ticker               TEXT PRIMARY KEY,
+  name_en              TEXT NOT NULL,
+  name_kr              TEXT,
+  sector               TEXT,
+  industry             TEXT,
+  exchange             TEXT,
+  description          TEXT,
+  description_kr       TEXT,
+  ceo                  TEXT,
+  full_time_employees  INTEGER,
+  website              TEXT,
+  image                TEXT,
+  ipo_date             DATE,
+  headquarters         TEXT,
+  market_cap           BIGINT
 );
 
 

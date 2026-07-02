@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
-import { StockBrief, StockBriefPending } from "@/components/dashboard/snapshot/stock-brief";
+import { StockBrief, type StockBriefState } from "@/components/dashboard/snapshot/stock-brief";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
 import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filings";
@@ -59,7 +59,7 @@ export default async function StockPage({
 
   let briefContent: string | null = null;
   let briefGeneratedAt: string | null = null;
-  let briefEligible = false;
+  let briefState: StockBriefState = "gated";
 
   if (user) {
     const [profileRes, watchlistRes] = await Promise.all([
@@ -76,7 +76,6 @@ export default async function StockPage({
     const inWatchlist = watchlistRes.data !== null;
 
     if (isPro && inWatchlist) {
-      briefEligible = true;
       const { data: brief } = await supabase
         .from("stock_briefs")
         .select("content, generated_at")
@@ -85,7 +84,9 @@ export default async function StockPage({
       if (brief) {
         briefContent = brief.content as string;
         briefGeneratedAt = brief.generated_at as string;
+        briefState = "ready";
       } else {
+        briefState = "pending";
         // BRIEF 미생성 → 응답 전송 후 백그라운드에서 1회 생성 (다음 방문 시 표시)
         after(async () => {
           const { runStockBriefCollect } = await import("@/lib/collect/brief");
@@ -99,7 +100,9 @@ export default async function StockPage({
     await Promise.all([
       supabase
         .from("tickers")
-        .select("ticker, name_kr, name_en, exchange, sector, industry")
+        .select(
+          "ticker, name_kr, name_en, exchange, sector, industry, description_kr, ceo, full_time_employees, website, image, ipo_date, headquarters, market_cap"
+        )
         .eq("ticker", ticker)
         .maybeSingle(),
       supabase
@@ -257,16 +260,6 @@ export default async function StockPage({
         updatedAt={updatedAt}
       />
 
-      {briefContent && briefGeneratedAt ? (
-        <StockBrief
-          ticker={ticker}
-          content={briefContent}
-          generatedAt={briefGeneratedAt}
-        />
-      ) : briefEligible ? (
-        <StockBriefPending ticker={ticker} />
-      ) : null}
-
       <PriceCard quote={quote} />
 
       <StockSplits splits={splitRows} />
@@ -278,6 +271,12 @@ export default async function StockPage({
           exchange={info?.exchange ?? null}
           sector={info?.sector ?? null}
           industry={info?.industry ?? null}
+          ceo={info?.ceo ?? null}
+          fullTimeEmployees={info?.full_time_employees ?? null}
+          ipoDate={info?.ipo_date ?? null}
+          headquarters={info?.headquarters ?? null}
+          marketCap={info?.market_cap ?? null}
+          website={info?.website ?? null}
         />
         <SnapshotInsider trades={trades} />
       </div>
@@ -286,6 +285,15 @@ export default async function StockPage({
       <SnapshotNews news={news} />
 
       <EarningsFlow earnings={earnings} />
+
+      <StockBrief
+        ticker={ticker}
+        state={briefState}
+        descriptionKr={info?.description_kr ?? null}
+        companyImage={info?.image ?? null}
+        content={briefContent}
+        generatedAt={briefGeneratedAt}
+      />
 
       <DataSources
         description="미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터를 기반으로 제공됩니다."
