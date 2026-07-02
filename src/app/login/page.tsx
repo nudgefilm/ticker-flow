@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { IconBrandGoogle, IconX } from "@tabler/icons-react";
 import { LegalModal, type LegalType } from "@/components/legal-modal";
+import { JellyfishBackground } from "@/components/jellyfish-background";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,7 +32,13 @@ export default function LoginPage() {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+      {/* 해파리 배경 레이어 */}
+      <div className="fixed inset-0 z-40 bg-background" aria-hidden="true">
+        <JellyfishBackground />
+      </div>
+
+      {/* 기존 오버레이 */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
         <div className="relative w-full max-w-sm rounded-xl border border-border bg-card px-8 pb-8 pt-12">
           {/* 닫기 버튼 */}
           <button

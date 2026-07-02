@@ -51,7 +51,7 @@ export function JellyfishBackground({ className }: { className?: string }) {
       canvas.style.width = `${width}px`
       canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      const count = Math.max(5, Math.min(14, Math.round((width * height) / 100000)))
+      const count = 1
       jellies = Array.from({ length: count }, () => createJelly(false))
     }
 
