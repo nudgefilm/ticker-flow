@@ -36,7 +36,7 @@ export default function LoginModal({ onClose }: LoginModalProps) {
 
       {/* 기존 오버레이 */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
         onClick={onClose}
       >
         <div
