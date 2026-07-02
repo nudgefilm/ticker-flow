@@ -69,14 +69,16 @@ export function SectionCard({
   description,
   action,
   children,
+  className,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-white/[0.08] bg-[#1a1a1a]">
+    <section className={cn("overflow-hidden rounded-lg border border-white/[0.08] bg-[#1a1a1a]", className)}>
       <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] bg-[#242424] px-5 py-4">
         <div>
           <h2 className="text-sm font-semibold text-white">{title}</h2>

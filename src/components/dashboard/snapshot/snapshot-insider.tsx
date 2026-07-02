@@ -9,9 +9,19 @@ function compactAmount(n: number | null): string {
   return `$${n}`;
 }
 
-export function SnapshotInsider({ trades }: { trades: InsiderTrade[] }) {
+export function SnapshotInsider({
+  trades,
+  className,
+}: {
+  trades: InsiderTrade[];
+  className?: string;
+}) {
   return (
-    <SectionCard title="내부자 거래" description="내부자(임원·이사·10% 이상 대주주) 최근 10건">
+    <SectionCard
+      title="내부자 거래"
+      description="내부자(임원·이사·10% 이상 대주주) 최근 10건"
+      className={className}
+    >
       {trades.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 내부자 거래 내역이 없습니다.</p>
       ) : (

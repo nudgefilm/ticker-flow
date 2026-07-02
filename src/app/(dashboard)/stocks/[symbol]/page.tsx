@@ -266,8 +266,9 @@ export default async function StockPage({
 
       <KeyMetrics quote={quote} nextEarnings={nextEarnings} />
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <CompanyInfo
+          className="h-full"
           exchange={info?.exchange ?? null}
           sector={info?.sector ?? null}
           industry={info?.industry ?? null}
@@ -278,7 +279,7 @@ export default async function StockPage({
           marketCap={info?.market_cap ?? null}
           website={info?.website ?? null}
         />
-        <SnapshotInsider trades={trades} />
+        <SnapshotInsider className="h-full" trades={trades} />
       </div>
 
       <SnapshotFilings filings={filings} ticker={ticker} />

@@ -11,6 +11,7 @@ interface Props {
   headquarters?: string | null;
   marketCap?: number | null;
   website?: string | null;
+  className?: string;
 }
 
 const SECTOR_KR: Record<string, string> = {
@@ -51,6 +52,7 @@ export function CompanyInfo({
   headquarters,
   marketCap,
   website,
+  className,
 }: Props) {
   const sectorKr = sector ? (SECTOR_KR[sector] ?? sector) : null;
   const ipoLabel = ipoDate ? formatIpoYear(ipoDate) : null;
@@ -88,7 +90,7 @@ export function CompanyInfo({
   ];
 
   return (
-    <SectionCard title="기업 정보">
+    <SectionCard title="기업 정보" className={className}>
       {rows.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">정보 없음</p>
       ) : (
