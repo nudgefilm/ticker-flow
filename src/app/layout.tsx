@@ -17,9 +17,14 @@ export const metadata: Metadata = {
   description:
     "미국 기업의 공시·뉴스·실적 일정을 한눈에 모니터링하는 정보 서비스, TickerFlow. 투자 자문이나 권유는 제공하지 않습니다.",
   icons: {
-    icon: "/icon.png",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon.png", type: "image/png", sizes: "512x512" },
+      { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
     shortcut: "/favicon.ico",
-    apple: "/icon.png",
+    apple: "/apple-touch-icon.png",
   },
   openGraph: {
     type: "website",
