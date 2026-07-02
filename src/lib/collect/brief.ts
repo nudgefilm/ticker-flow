@@ -219,7 +219,11 @@ export async function runStockBriefCollect(
 
   if (latestEarnings) {
     const le = latestEarnings as any;
-    const quarter = `Q${le.fiscal_quarter} FY${le.fiscal_year}`;
+    const quarter =
+      le.fiscal_quarter != null && le.fiscal_year != null
+        ? `Q${le.fiscal_quarter} FY${le.fiscal_year}`
+        : null;
+    const callDate = le.call_date ? String(le.call_date).slice(0, 10) : null;
     const guidanceLabel =
       le.guidance_direction === "up"
         ? "가이던스 상향"
@@ -227,7 +231,8 @@ export async function runStockBriefCollect(
           ? "가이던스 하향"
           : "가이던스 유지";
     parts.push("【최근 실적】");
-    parts.push(`- ${quarter}: ${guidanceLabel}`);
+    const quarterLabel = [quarter, callDate ? `발표일 ${callDate}` : null].filter(Boolean).join(", ");
+    parts.push(`- ${quarterLabel || "발표일 미상"}: ${guidanceLabel}`);
     if (le.headline_summary) {
       parts.push(`- ${String(le.headline_summary).slice(0, 120)}`);
     }
@@ -251,6 +256,7 @@ export async function runStockBriefCollect(
 - 회계연도·분기는 입력 정보에 명시된 값만 그대로 사용합니다. 입력 정보에 없으면 임의로 추론하거나 계산해서 표기하지 않습니다.
 - 실적 발표일이 입력 정보에 있으면 "2026년 5월 발표 실적"처럼 발표일 기준으로 표기합니다. 발표일과 회계연도가 모두 있으면 둘 다 표기해도 됩니다.
 - 날짜·회계연도 정보가 전혀 없으면 "최근 분기 실적"으로만 표기합니다.
+- 회계연도는 실제 발표 시점과 다를 수 있으므로, "X 회계연도 Y분기 실적에서"가 아니라 "X 회계연도 Y분기에 해당하는 실적에서" 형태로 "해당하는"을 붙여 표기합니다. 발표일이 있으면 "2026년 5월 발표된 FY2027 Q1 실적에서"처럼 발표일과 회계연도를 병기해도 됩니다.
 
 입력 정보:
 ${inputData}
