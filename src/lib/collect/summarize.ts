@@ -244,7 +244,7 @@ export async function summarizeNews(
 
 /**
  * 기업 개요(영문) 한국어 요약 — Claude Haiku 사용.
- * 원칙: 개요에 명시된 사실만, 투자 권유 표현 배제, 사실 서술체, 200자 내외.
+ * 원칙: 개요에 명시된 사실만, 투자 권유 표현 배제, 사실 서술체, 200자 이내에서 문장 완결.
  * 결과는 tickers.description_kr에 저장.
  */
 export async function summarizeCompanyDescription(
@@ -257,7 +257,8 @@ export async function summarizeCompanyDescription(
 - 개요에 명시된 사실만 서술하세요.
 - 분석, 해설, 의견, 전망, 투자 권유 표현은 추가하지 마세요.
 - "~합니다", "~제공합니다" 형태의 사실 서술체로만 작성하세요.
-- 분량: 200자 내외
+- 분량: 200자 이내에서 문장이 완전히 끝나도록 요약하세요. 문장 중간에 잘리지 않고 마침표(。또는 .)로 끝나야 합니다.
+- 반드시 완성된 문장으로 끝내야 하며, 200자를 넘기더라도 마지막 문장은 완전히 마무리하세요.
 - plain text로만 응답하고 마크다운 기호(#, **, - 등)는 사용하지 마세요.
 
 영문 개요: ${descriptionEn}`;
