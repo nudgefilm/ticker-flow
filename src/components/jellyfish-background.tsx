@@ -24,10 +24,14 @@ export function JellyfishBackground({ className }: { className?: string }) {
     let raf = 0
     let last = performance.now()
 
+    // 모달 카드가 화면 중앙을 차지하므로, 2/5 지점 또는 3~4/5 지점 중 하나에 배치
+    const pickX = () =>
+      Math.random() < 0.5 ? width * 0.4 : width * (0.6 + Math.random() * 0.2)
+
     const createJelly = (startBelow: boolean): Jellyfish => {
       const size = 26 + Math.random() * 64
       return {
-        x: Math.random() * width,
+        x: pickX(),
         y: startBelow ? height + size + Math.random() * height : Math.random() * height,
         size,
         speed: 8 + Math.random() * 20,
