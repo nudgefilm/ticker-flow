@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { IconX } from "@tabler/icons-react";
 import { LegalModal } from "@/components/legal-modal";
@@ -99,13 +100,9 @@ export default function Footer() {
               >
                 데이터 출처
               </button>
-              <button
-                type="button"
-                onClick={() => setModal("privacy")}
-                className="transition-colors hover:text-foreground"
-              >
+              <Link href="/privacy" className="transition-colors hover:text-foreground">
                 개인정보처리방침
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => setModal("terms")}
