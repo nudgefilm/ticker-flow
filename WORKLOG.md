@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-07-02 · 세션 75
+
+### 파비콘/OG 이미지 교체, BRIEF 회계연도 오기재 수정, 종목 스냅샷 BRIEF 대개편, 로그인 모달 해파리 배경
+
+**파비콘·OG 이미지 신규 로고 교체 (`public/*`, `src/app/layout.tsx`)**
+- 신규 확정 로고(`TickerFlow_Logo.png`, 투명 배경 화이트 마크) 기반으로 `favicon.ico`(16/32/48 멀티사이즈), `favicon.png`, `icon.png`(512), `icon-192.png`, `apple-touch-icon.png`(180) 전부 네이비(#0d1b2e) 배경으로 재생성. OG 이미지도 동일 배경에 로고 중앙 배치로 교체
+- 이미지 생성에 `sharp`/`png-to-ico`를 임시 devDependency로 설치해 사용 후 완전히 원복 (package.json/lockfile 변경 없음)
+- `layout.tsx`의 `icons` 메타데이터를 사이즈별 배열로 확장, `apple`을 전용 `apple-touch-icon.png`로 분리
+
+**BRIEF 요약 프롬프트 — 미래 회계연도 오기재 버그 수정 (`src/lib/collect/brief.ts`)**
+- 증상: NVDA BRIEF가 "2027 회계연도 1분기 실적에서"를 확정 사실처럼 표기 (2026년 7월 시점 기준 미래처럼 보임)
+- 1차 수정: 프롬프트에 오늘 날짜 명시 + "미래 회계연도 확정 표기 금지" 등 5개 지침 추가
+- 근본 원인 추가 발견: `earnings_calls.call_date`를 DB에서 조회만 하고 실제 프롬프트 입력에는 누락 — Haiku가 발표 시점을 판단할 근거 자체가 없었음. 실제 `call_date`(2026-05-20)는 오늘 기준 과거라 "미래 표기"가 아니라 NVIDIA 특유의 회계연도 오프셋 표기가 낯설어 보인 것으로 확인
+- 2차 수정: `call_date`를 프롬프트 입력에 "발표일 YYYY-MM-DD"로 병기, "X 회계연도 Y분기 실적에서" 대신 "X 회계연도 Y분기에 해당하는 실적에서" 형태로 "해당하는" 수식어 추가 지침
+- `stock_briefs`는 ticker당 1회 생성 후 upsert 없이 재사용되는 구조라, 기존 캐시(NVDA 등)는 코드 배포만으로 갱신 안 됨 — row 삭제 후 어드민 "BRIEF 백필" 재실행으로 검증 완료
+
+**종목 스냅샷 52주 위치 인디케이터 (`src/components/dashboard/snapshot/price-card.tsx`)**
+- 파란 점(현재가 위치)에 `filing-filter-bar.tsx`와 동일한 CSS-only hover 툴팁 패턴 적용, 모바일은 하단 안내 문구로 대체
+- 슬라이더 바에 `aria-label` 추가, `animate-ping`으로 실시간 체크 효과(라이브 pulse) 부여
+
+**종목 스냅샷 BRIEF 섹션 대개편 — 기업 개요 통합 (`tickers` 테이블, `profile.ts`, `summarize.ts`, `stock-brief.tsx`, `company-info.tsx`, `stocks/[symbol]/page.tsx`)**
+- `tickers`에 `description`/`description_kr`/`ceo`/`full_time_employees`/`website`/`image`/`ipo_date`/`headquarters`/`market_cap` 컬럼 추가 (SQL 제공, 사용자 직접 실행 후 `pnpm gen:types` 재생성)
+- `runProfileCollect()`가 FMP `/stable/profile`도 함께 호출해 신규 필드 수집(`marketCap` 필드명 주의, `fullTimeEmployees` string→int 파싱), 수집 대상 필터를 `sector IS NULL` → `sector IS NULL OR description IS NULL`로 확장
+- `summarizeCompanyDescription()` 신규 — Haiku로 기업 개요 200자 내외 한국어 요약 → `description_kr` 저장
+- BRIEF 섹션을 "기업 한눈에"(설명+로고, 전체 유저 공통) + 최근 30일 동향(Pro+워치리스트 전용)으로 재구성 — `StockBrief`를 `state: "ready"|"pending"|"gated"` 3분기 단일 컴포넌트로 재작성, Free/미워치리스트 유저는 "Pro 시작하기" 유도 카드 노출
+  - 버그: `gated` + `description_kr` 없음 케이스에서 컴포넌트 전체가 렌더링 안 되던 문제 발견 후 즉시 수정 (ProGate가 항상 보이도록)
+- BRIEF 섹션 위치를 페이지 상단 → 데이터 출처 섹션 바로 위로 이동
+- 기업 정보 카드에 CEO/직원 수/상장일/본사/시가총액(T·B·M 단위)/홈페이지 링크 추가, null 필드 자동 숨김
+- `scripts/seed-profiles-full.ts` 신규 — 전체 8,490종목 일괄 백필용 터미널 스크립트 (`npx tsx scripts/seed-profiles-full.ts`), FMP 호출 후 300ms·Haiku 호출 후 200ms 딜레이, 100종목마다 진행률 출력
+
+**로그인 모달 해파리 배경 애니메이션 (`src/components/jellyfish-background.tsx` 신규, `login-modal.tsx`, `login/page.tsx`)**
+- Canvas 2D 기반 `JellyfishBackground` 컴포넌트 추가, Navbar `LoginModal`과 `/login` 페이지(비로그인 시 `/dashboard` 리다이렉트 대상 — 별개 컴포넌트라 누락돼 있었음) 양쪽 모두에 적용
+- 오버레이 `backdrop-blur-sm`이 뒤 레이어(해파리 캔버스 자체 blur와 중복)를 한 번 더 블러 처리해 해파리가 거의 안 보이던 문제 발견, 오버레이는 `bg-black/40` 틴트만 유지하도록 수정
+- 저사양 기기에서 프레임당 blur 필터 부하로 로딩 지연 보고 → 해파리 개수를 뷰포트 기반 5~14마리 → 고정 1마리로 축소
+- 로그인 카드가 화면 중앙을 차지해 해파리가 가려지는 문제 → 스폰 x좌표를 전체 랜덤 대신 2/5(40%) 또는 3~4/5(60~80%) 지점 중 하나로 제한
+
+---
+
 ## 2026-07-01 · 세션 74
 
 ### SEO 메타데이터, TickerFlow Screener 스코어링 재설계, Google 로그인 404 진단, 경제지표 히어로 레이아웃 확장
