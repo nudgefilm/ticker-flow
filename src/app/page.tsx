@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   IconFileText,
   IconMicrophone,
@@ -17,7 +16,7 @@ import FaqAccordion from "@/components/landing/faq-accordion";
 import ScreenTabs from "@/components/landing/screen-tabs";
 import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
-import { WavingFlagBg } from "@/components/landing/waving-flag-bg";
+import { CtaCard } from "@/components/cta-card";
 
 export const dynamic = "force-dynamic";
 
@@ -481,25 +480,7 @@ export default async function HomePage() {
           ══════════════════════════════════════════════ */}
           <section className="py-20 lg:py-28">
             <div className="mx-auto max-w-7xl px-6">
-              <div className="relative overflow-hidden rounded-[20px] border border-border bg-card px-8 py-16 text-center">
-                <WavingFlagBg />
-                <div className="relative z-10">
-                  <h2 className="text-3xl font-bold text-foreground md:text-4xl">
-                    미국 기업의 변화를
-                    <br />
-                    가장 빠르게 확인해 보세요.
-                  </h2>
-                  <p className="mx-auto mt-4 max-w-lg text-base text-muted-foreground">
-                    공시부터 어닝콜까지, 하나의 화면에서 모니터링할 수 있습니다.
-                  </p>
-                  <Link
-                    href="/dashboard"
-                    className="mt-8 inline-flex items-center gap-2 rounded-xl bg-foreground px-8 py-3.5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
-                  >
-                    무료로 시작하기
-                  </Link>
-                </div>
-              </div>
+              <CtaCard />
             </div>
           </section>
 

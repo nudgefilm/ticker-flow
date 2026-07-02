@@ -17,6 +17,11 @@
   }
 }
 
+@keyframes ticker-up {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
 /* ─── Theme mapping (Tailwind v4 → CSS vars) ────────────────────────────── */
 
 @theme inline {
@@ -164,5 +169,15 @@
   }
   .animate-fade-in {
     animation: var(--animate-fade-in);
+  }
+  .animate-ticker-up {
+    animation: ticker-up 180s linear infinite;
+    will-change: transform;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker-up {
+    animation: none;
   }
 }
