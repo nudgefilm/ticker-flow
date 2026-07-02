@@ -42,7 +42,9 @@ function CompanyGlance({
             className="mt-0.5 h-8 w-8 shrink-0 rounded-[4px] border border-white/[0.08] bg-white object-contain p-1"
           />
         ) : null}
-        <p className="text-sm leading-relaxed text-[#cccccc]">{descriptionKr}</p>
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[#cccccc]">
+          {descriptionKr}
+        </p>
       </div>
     </div>
   );
@@ -86,7 +88,12 @@ export function StockBrief({
         <div className={descriptionKr ? "pt-4" : ""}>
           {state === "ready" && content ? (
             <>
-              <p className="text-sm leading-relaxed text-[#cccccc]">{content}</p>
+              <p className="mb-2 text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">
+                최근 동향
+              </p>
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[#cccccc]">
+                {content}
+              </p>
               <p className="mt-3 text-[11px] text-[#555555]">
                 최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
               </p>
