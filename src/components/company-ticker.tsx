@@ -23,7 +23,7 @@ export function CompanyTicker({
         {items.map((name, i) => (
           <li
             key={`${name}-${i}`}
-            className="text-right text-[8px] font-bold tracking-tight text-white md:text-[10px]"
+            className="text-right text-[8px] font-normal tracking-tight text-white md:text-[10px]"
           >
             {name}
           </li>

@@ -50,9 +50,9 @@ export function UsGhostMap({ className }: { className?: string }) {
               <Geography
                 key={geo.rsmKey}
                 geography={geo}
-                fill="rgba(255,255,255,0.06)"
-                stroke="rgba(255,255,255,0.9)"
-                strokeWidth={0.9}
+                fill="none"
+                stroke="rgba(255,255,255,0.5)"
+                strokeWidth={0.6}
                 style={{
                   default: { outline: "none" },
                   hover: { outline: "none" },
