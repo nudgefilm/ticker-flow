@@ -56,9 +56,6 @@ export function StockBrief({
   content,
   generatedAt,
 }: StockBriefProps) {
-  // 보여줄 게 전혀 없으면(기업 한눈에도 없고 Pro BRIEF도 없는 경우) 렌더링하지 않음
-  if (!descriptionKr && state === "gated") return null;
-
   return (
     <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
       {/* 헤더 */}
