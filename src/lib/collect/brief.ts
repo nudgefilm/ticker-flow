@@ -113,7 +113,10 @@ export async function runStockBriefCollect(
   const adminClient = createAdminClient();
 
   // 1. Pro 와치리스트 포함 여부 확인
-  const isEligible = await isTickerInProWatchlist(ticker);
+  // snapshot_view: 종목 스냅샷 페이지는 Pro 유저에게만 노출되므로 와치리스트 등록 여부와
+  // 무관하게 즉시 생성 대상으로 취급한다.
+  const isEligible =
+    triggerReason === "snapshot_view" || (await isTickerInProWatchlist(ticker));
   if (!isEligible) {
     return { ok: true, skipped: 1, generated: 0 };
   }

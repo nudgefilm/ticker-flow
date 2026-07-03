@@ -59,10 +59,16 @@ export default async function StockPage({
 
   let briefContent: string | null = null;
   let briefGeneratedAt: string | null = null;
+  let briefPeriodStart: string | null = null;
+  let briefPeriodEnd: string | null = null;
   let briefState: StockBriefState = "gated";
 
+  let isPro = false;
+  let inWatchlist = false;
+  let watchlistCount = 0;
+
   if (user) {
-    const [profileRes, watchlistRes] = await Promise.all([
+    const [profileRes, watchlistRowRes, watchlistCountRes] = await Promise.all([
       supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle(),
       supabase
         .from("watchlist")
@@ -70,20 +76,28 @@ export default async function StockPage({
         .eq("user_id", user.id)
         .eq("ticker", ticker)
         .maybeSingle(),
+      supabase
+        .from("watchlist")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id),
     ]);
 
-    const isPro = profileRes.data?.plan === "pro";
-    const inWatchlist = watchlistRes.data !== null;
+    isPro = profileRes.data?.plan === "pro";
+    inWatchlist = watchlistRowRes.data !== null;
+    watchlistCount = watchlistCountRes.count ?? 0;
 
-    if (isPro && inWatchlist) {
+    // BRIEF는 와치리스트 등록 여부와 무관하게 Pro 유저 전체에게 노출한다.
+    if (isPro) {
       const { data: brief } = await supabase
         .from("stock_briefs")
-        .select("content, generated_at")
+        .select("content, generated_at, source_period_start, source_period_end")
         .eq("ticker", ticker)
         .maybeSingle();
       if (brief) {
         briefContent = brief.content as string;
         briefGeneratedAt = brief.generated_at as string;
+        briefPeriodStart = brief.source_period_start as string | null;
+        briefPeriodEnd = brief.source_period_end as string | null;
         briefState = "ready";
       } else {
         briefState = "pending";
@@ -95,6 +109,9 @@ export default async function StockPage({
       }
     }
   }
+
+  const watchlistLimit = isPro ? 30 : 5;
+  const watchlistAtLimit = watchlistCount >= watchlistLimit;
 
   const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings, nextEarningsRes, splitsRes] =
     await Promise.all([
@@ -258,6 +275,10 @@ export default async function StockPage({
         sector={info?.sector ?? null}
         industry={info?.industry ?? null}
         updatedAt={updatedAt}
+        showWatchlistButton={!!user}
+        inWatchlist={inWatchlist}
+        atLimit={watchlistAtLimit}
+        isPro={isPro}
       />
 
       <PriceCard quote={quote} />
@@ -294,6 +315,8 @@ export default async function StockPage({
         companyImage={info?.image ?? null}
         content={briefContent}
         generatedAt={briefGeneratedAt}
+        periodStart={briefPeriodStart}
+        periodEnd={briefPeriodEnd}
       />
 
       <DataSources
