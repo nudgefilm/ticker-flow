@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, ArrowRight } from "lucide-react";
 import type { NewsItem } from "@/lib/insights/types";
 import { SectionCard } from "@/components/dashboard/insights/ui";
 
@@ -6,7 +7,15 @@ export function SnapshotNews({ news }: { news: NewsItem[] }) {
   return (
     <SectionCard title="최근 뉴스" description="최근 5건">
       {news.length === 0 ? (
-        <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 뉴스가 없습니다.</p>
+        <div>
+          <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 뉴스가 없습니다.</p>
+          <Link
+            href="/news"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#60a5fa] hover:text-[#93c5fd]"
+          >
+            뉴스 피드 보기 <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
       ) : (
         <ul className="divide-y divide-white/[0.06]">
           {news.slice(0, 5).map((item) => (

@@ -42,3 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# 작업용 스크래치 폴더 (스크린샷, 임시 파일 등) — 커밋 제외
+/work/
