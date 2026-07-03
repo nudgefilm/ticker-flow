@@ -282,7 +282,11 @@ async function fetchDistinctCount(
   let from = 0;
 
   while (true) {
-    const { data } = await supabase.from(table).select(column).range(from, from + PAGE - 1);
+    const { data, error } = await supabase.from(table).select(column).range(from, from + PAGE - 1);
+    if (error) {
+      console.error(`[watchlist] ${table}.${column} distinct count 조회 실패:`, error.message);
+      break;
+    }
     if (!data || data.length === 0) break;
     for (const row of data as unknown as Record<string, string | null>[]) {
       const v = row[column];
