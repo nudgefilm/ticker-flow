@@ -219,7 +219,7 @@ export type DigestData = {
 };
 
 // ─── 일간 다이제스트 이메일 (v5) ──────────────────────────────────────────────
-// 다른 이메일 템플릿과 달리 600px 너비 + 별도 다크 팔레트(#0a0a0a/#161616)를
+// 다른 이메일 템플릿과 달리 600px 너비 + 별도 다크 팔레트(#000000/#0f0f0f/#1e1e1e)를
 // 사용하는 전용 레이아웃이라, 공용 shell()을 쓰지 않고 자체 래퍼를 사용한다.
 
 const BASE_URL = "https://tickerflow.net";
@@ -234,11 +234,11 @@ const DIGEST_DISCLAIMER = `
 
 function digestStockLink(ticker: string, name: string): string {
   return `<a href="${BASE_URL}/stocks/${escapeHtml(ticker)}" style="color:#ffffff;text-decoration:none;font-weight:700;font-size:14px">${escapeHtml(ticker)}</a>`
-    + ` <span style="color:#8a8a8a;font-size:12px">${escapeHtml(name)}</span>`;
+    + ` <span style="color:#bbbbbb;font-size:12px">${escapeHtml(name)}</span>`;
 }
 
 function digestSecTitle(text: string): string {
-  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#8a8a8a;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
+  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#999999;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
 }
 
 function digestSpacer(px: number): string {
@@ -246,15 +246,15 @@ function digestSpacer(px: number): string {
 }
 
 function digestCard(inner: string): string {
-  return `<table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:16px" bgcolor="#161616">${inner}</td></tr></table>`;
+  return `<table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:16px" bgcolor="#1e1e1e">${inner}</td></tr></table>`;
 }
 
 // TOP3 — 큰 카드
 function digestTopBigCard(item: DigestTopItem): string {
   const bullets = item.descriptions.slice(0, 3)
-    .map((d) => `<p style="margin:4px 0 0;font-size:14px;color:#a6a6a6;line-height:1.5">· ${escapeHtml(d)}</p>`)
+    .map((d) => `<p style="margin:4px 0 0;font-size:14px;color:#bbbbbb;line-height:1.5">· ${escapeHtml(d)}</p>`)
     .join("");
-  return `<table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:10px"><tr><td style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:16px" bgcolor="#161616">
+  return `<table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:10px"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:16px" bgcolor="#1e1e1e">
     <p style="margin:0 0 6px;font-size:14px">
       <span style="display:inline-block;background:#242424;color:#ffffff;font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;margin-right:8px">${item.rank}위</span>
       ${digestStockLink(item.ticker, item.name)}
@@ -267,10 +267,10 @@ function digestTopBigCard(item: DigestTopItem): string {
 function digestTopCompactRow(item: DigestTopItem): string {
   const desc = item.descriptions[0] ? escapeHtml(item.descriptions[0]) : "최근 시장 변화 확인";
   return `<tr>
-    <td style="padding:9px 0;border-bottom:1px solid #2a2a2a;font-size:12px;color:#666666;width:24px">${item.rank}</td>
-    <td style="padding:9px 0 9px 8px;border-bottom:1px solid #2a2a2a">
+    <td style="padding:9px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#666666;width:24px">${item.rank}</td>
+    <td style="padding:9px 0 9px 8px;border-bottom:1px solid #3a3a3a">
       <p style="margin:0;font-size:14px">${digestStockLink(item.ticker, item.name)}</p>
-      <p style="margin:2px 0 0;font-size:12px;color:#8a8a8a">${desc}</p>
+      <p style="margin:2px 0 0;font-size:12px;color:#bbbbbb">${desc}</p>
     </td>
   </tr>`;
 }
@@ -307,7 +307,7 @@ function digestFeaturedSection(featured: FeaturedCompany | null): string {
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr>
         <td valign="top">
           <p style="margin:0 0 8px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
-          <p style="margin:0;font-size:14px;color:#a6a6a6;line-height:1.6">${escapeHtml(featured.descriptionKr)}</p>
+          <p style="margin:0;font-size:14px;color:#bbbbbb;line-height:1.6">${escapeHtml(featured.descriptionKr)}</p>
           <p style="margin:12px 0 0"><a href="${BASE_URL}/stocks/${escapeHtml(featured.ticker)}" style="color:#60a5fa;text-decoration:none;font-size:13px;font-weight:600">종목 스냅샷 보기 →</a></p>
         </td>
         <td valign="top" width="150" align="right" style="padding-left:12px">${chart}</td>
@@ -322,11 +322,11 @@ function digestMacroSection(macros: MacroItem[]): string {
   const cells = macros.map((m) => {
     const delta = m.value != null && m.previousValue != null ? m.value - m.previousValue : null;
     const deltaStr = delta != null
-      ? `<span style="color:#8a8a8a;font-size:12px">전월 대비 ${delta >= 0 ? "+" : ""}${delta.toFixed(2)}${escapeHtml(m.unit)}</span>`
+      ? `<span style="color:#bbbbbb;font-size:12px">전월 대비 ${delta >= 0 ? "+" : ""}${delta.toFixed(2)}${escapeHtml(m.unit)}</span>`
       : "";
     return `<td width="50%" valign="top" style="padding:4px">
-      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:14px" bgcolor="#161616">
-        <p style="margin:0 0 4px;font-size:11px;color:#8a8a8a">${escapeHtml(m.label)}</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:14px" bgcolor="#1e1e1e">
+        <p style="margin:0 0 4px;font-size:11px;color:#bbbbbb">${escapeHtml(m.label)}</p>
         <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff">${m.value != null ? m.value.toFixed(2) : "—"}${escapeHtml(m.unit)}</p>
         <p style="margin:4px 0 0">${deltaStr}</p>
       </td></tr></table>
@@ -349,19 +349,19 @@ export function dailyDigestEmail(data: DigestData): string {
   // ⑤ TOP30 신규 진입
   const newEntrantHtml = newEntrants.length > 0
     ? newEntrants.slice(0, 5).map((item) =>
-        `<div style="padding:8px 0;border-bottom:1px solid #2a2a2a">
+        `<div style="padding:8px 0;border-bottom:1px solid #3a3a3a">
           <p style="margin:0;font-size:14px">${digestStockLink(item.ticker, item.name)}</p>
-          <p style="margin:3px 0 0;font-size:12px;color:#8a8a8a">· ${escapeHtml(item.description)}</p>
+          <p style="margin:3px 0 0;font-size:12px;color:#bbbbbb">· ${escapeHtml(item.description)}</p>
         </div>`
       ).join("")
-    : `<p style="margin:0;font-size:14px;color:#8a8a8a">어제와 동일한 기업들이 TOP30에 유지되었습니다.</p>`;
+    : `<p style="margin:0;font-size:14px;color:#bbbbbb">어제와 동일한 기업들이 TOP30에 유지되었습니다.</p>`;
 
   // ⑥ 어제 대비 변화 — 이탈 + 순위 변화
   const droppedLinks = dropped.length > 0
     ? dropped.slice(0, 5)
-        .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#8a8a8a;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
+        .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#bbbbbb;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
         .join("")
-    : `<span style="font-size:13px;color:#8a8a8a">없음</span>`;
+    : `<span style="font-size:13px;color:#bbbbbb">없음</span>`;
 
   const moverRows = rankMovers.length > 0
     ? rankMovers.slice(0, 5).map((m) => {
@@ -369,12 +369,12 @@ export function dailyDigestEmail(data: DigestData): string {
         const color = up ? "#6ee7b7" : "#f87171";
         const arrow = up ? "▲" : "▼";
         return `<tr>
-          <td style="padding:6px 0;border-bottom:1px solid #2a2a2a;font-size:13px">${digestStockLink(m.ticker, m.name)}</td>
-          <td style="padding:6px 0;border-bottom:1px solid #2a2a2a;font-size:12px;color:#8a8a8a;text-align:right">${m.prevRank}위 → ${m.currRank}위</td>
-          <td style="padding:6px 0;border-bottom:1px solid #2a2a2a;font-size:12px;color:${color};text-align:right;width:48px">${arrow} ${Math.abs(m.delta)}</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:13px">${digestStockLink(m.ticker, m.name)}</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#bbbbbb;text-align:right">${m.prevRank}위 → ${m.currRank}위</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:${color};text-align:right;width:48px">${arrow} ${Math.abs(m.delta)}</td>
         </tr>`;
       }).join("")
-    : `<tr><td style="padding:6px 0;font-size:13px;color:#8a8a8a">순위 변화가 크지 않았습니다.</td></tr>`;
+    : `<tr><td style="padding:6px 0;font-size:13px;color:#bbbbbb">순위 변화가 크지 않았습니다.</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -383,9 +383,11 @@ export function dailyDigestEmail(data: DigestData): string {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TickerFlow 데일리 다이제스트</title>
 </head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif" bgcolor="#0a0a0a">
-  <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;margin:0 auto">
-    <tr><td style="padding:0 12px">
+<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif" bgcolor="#000000">
+  <table cellpadding="0" cellspacing="0" style="width:100%;background:#000000" bgcolor="#000000">
+    <tr><td align="center" style="padding:24px 12px">
+      <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#0f0f0f" bgcolor="#0f0f0f">
+        <tr><td style="padding:0 12px">
 
       <!-- 헤더 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:28px 8px 20px">
@@ -394,12 +396,12 @@ export function dailyDigestEmail(data: DigestData): string {
           <span style="display:inline-block;margin-left:8px;background:#3b82f6;color:#ffffff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;vertical-align:middle">PRO</span>
         </p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">데일리 다이제스트</p>
-        <p style="margin:0 0 10px;font-size:12px;color:#8a8a8a">${escapeHtml(kstDate)} · KST</p>
-        <p style="margin:0;font-size:13px;color:#a6a6a6">${escapeHtml(headlineLine)}</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#bbbbbb">${escapeHtml(kstDate)} · KST</p>
+        <p style="margin:0;font-size:13px;color:#bbbbbb">${escapeHtml(headlineLine)}</p>
       </td></tr></table>
 
       <!-- ① 오늘 시장 분위기 -->
-      ${digestCard(`<p style="margin:0;font-size:14px;color:#cccccc;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
+      ${digestCard(`<p style="margin:0;font-size:14px;color:#e5e5e5;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
       ${digestSpacer(24)}
 
       <!-- ② 기업동향 TOP10 -->
@@ -433,9 +435,9 @@ export function dailyDigestEmail(data: DigestData): string {
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("어제 대비 변화")}
         ${digestCard(`
-          <p style="margin:0 0 6px;font-size:11px;color:#8a8a8a;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">순위 변화</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#999999;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">순위 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
-          <p style="margin:0 0 6px;font-size:11px;color:#8a8a8a;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">TOP30 이탈</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#999999;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">TOP30 이탈</p>
           <p style="margin:0">${droppedLinks}</p>
         `)}
       </td></tr></table>
@@ -444,7 +446,7 @@ export function dailyDigestEmail(data: DigestData): string {
       <!-- ⑦ 시장 요약 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("시장 요약")}
-        ${digestCard(`<p style="margin:0;font-size:14px;color:#cccccc;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
+        ${digestCard(`<p style="margin:0;font-size:14px;color:#e5e5e5;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
       </td></tr></table>
       ${digestSpacer(24)}
 
@@ -476,9 +478,9 @@ export function dailyDigestEmail(data: DigestData): string {
           </td>
         </tr></table>
         ${digestSpacer(16)}
-        <p style="margin:0 0 2px;font-size:11px;color:#8a8a8a">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
-        <p style="margin:0 0 2px;font-size:11px;color:#8a8a8a">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
-        <p style="margin:0 0 14px;font-size:11px;color:#8a8a8a">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#bbbbbb">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#bbbbbb">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
+        <p style="margin:0 0 14px;font-size:11px;color:#bbbbbb">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
         ${DIGEST_DISCLAIMER}
         ${digestSpacer(12)}
         <p style="margin:0;font-size:11px;color:#666666">
@@ -489,6 +491,8 @@ export function dailyDigestEmail(data: DigestData): string {
         <p style="margin:10px 0 0;font-size:11px;color:#555555">© 2026 언폴드랩(UNFOLD LAB). All rights reserved.</p>
       </td></tr></table>
 
+        </td></tr>
+      </table>
     </td></tr>
   </table>
 </body>
