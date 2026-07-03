@@ -141,9 +141,9 @@ export default async function HomePage() {
 
                 {/* 좌측 */}
                 <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                  <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1.5">
-                    <span className="text-xs font-medium text-amber-400">미국 기업의 변화, 놓치지 마세요.</span>
-                  </div>
+                  <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
+                    정보 비대칭 해소를 위한
+                  </p>
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
                     나스닥 모니터링
