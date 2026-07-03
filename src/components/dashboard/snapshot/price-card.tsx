@@ -41,7 +41,8 @@ const RANGE_INDICATOR_LABEL =
   "현재 주가가 52주 범위 내 어느 위치에 있는지를 나타내는 위치 인디케이터";
 
 function RangeBar({ low, high, close }: { low: number; high: number; close: number }) {
-  const pct = Math.min(Math.max(((close - low) / (high - low)) * 100, 0), 100);
+  // high === low(가격 데이터가 하루치뿐인 경우 등)일 때 0/0 = NaN이 되는 것을 방지
+  const pct = high === low ? 50 : Math.min(Math.max(((close - low) / (high - low)) * 100, 0), 100);
   return (
     <div>
       <div className="mb-2 flex items-center justify-between text-xs">

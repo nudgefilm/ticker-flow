@@ -15,12 +15,26 @@ type EarningsCallRow = {
   fiscal_quarter: number;
   fiscal_year: number;
   call_date: string | null;
-  summary_kr: string | null;
-  key_points: Record<string, unknown> | null;
+  headline_summary: string | null;
+  revenue_actual: string | null;
+  revenue_estimate: string | null;
+  eps_actual: string | null;
+  eps_estimate: string | null;
+  surprise_percent: number | null;
+  guidance_direction: string | null;
+  guidance_previous: string | null;
+  guidance_summary: string | null;
+  keywords: string[] | null;
+  key_statements: KeyStatement[] | null;
+  qa_pairs: QaPair[] | null;
+  keyword_changes: KeywordChange[] | null;
+  tone_previous: string | null;
+  tone_current: string | null;
+  has_earnings_release: boolean | null;
   processed_at: string | null;
   source_url: string | null;
   transcript_url: string | null;
-  tone_change: string | null;
+  summary_generated_at: string | null;
   tickers: { name_kr: string | null; name_en: string | null } | null;
 };
 
@@ -81,7 +95,7 @@ export default async function CallsPage() {
   const { data } = await adminClient
     .from("earnings_calls")
     .select(
-      "id, ticker, fiscal_quarter, fiscal_year, call_date, summary_kr, key_points, processed_at, source_url, transcript_url, tone_change, tickers(name_kr, name_en)"
+      "id, ticker, fiscal_quarter, fiscal_year, call_date, headline_summary, revenue_actual, revenue_estimate, eps_actual, eps_estimate, surprise_percent, guidance_direction, guidance_previous, guidance_summary, keywords, key_statements, qa_pairs, keyword_changes, tone_previous, tone_current, has_earnings_release, processed_at, source_url, transcript_url, summary_generated_at, tickers(name_kr, name_en)"
     )
     .order("call_date", { ascending: false, nullsFirst: false })
     .order("processed_at", { ascending: false })
@@ -95,9 +109,11 @@ export default async function CallsPage() {
   }
   const dataUpdatedAt = rows[0]?.processed_at ? fmtDate(rows[0].processed_at) : null;
 
-  const calls: EarningsCall[] = rows.map((row) => {
-    const kp = (row.key_points ?? {}) as Record<string, unknown>;
+  function toGuidanceDirection(v: string | null): GuidanceDirection {
+    return v === "up" || v === "down" ? v : "maintain";
+  }
 
+  const calls: EarningsCall[] = rows.map((row) => {
     return {
       id: row.id,
       ticker: row.ticker,
@@ -106,30 +122,30 @@ export default async function CallsPage() {
         (row.tickers?.name_en ? cleanCompanyName(row.tickers.name_en) : row.ticker),
       quarter: `Q${row.fiscal_quarter} FY${row.fiscal_year}`,
       call_date: row.call_date?.slice(0, 10) ?? row.processed_at?.slice(0, 10) ?? "",
-      headline_summary: row.summary_kr ?? "",
-      revenue_actual: String(kp.revenue_actual ?? ""),
-      revenue_estimate: String(kp.revenue_estimate ?? ""),
-      eps_actual: String(kp.eps_actual ?? ""),
-      eps_estimate: String(kp.eps_estimate ?? ""),
-      surprise_percent: Number(kp.surprise_percent ?? 0),
-      guidance_direction: (kp.guidance_direction as GuidanceDirection) ?? "maintain",
-      guidance_previous: (kp.guidance_previous as GuidanceDirection) ?? "maintain",
-      guidance_summary: String(kp.guidance_summary ?? ""),
-      keywords: Array.isArray(kp.keywords) ? (kp.keywords as string[]) : [],
-      key_statements: Array.isArray(kp.key_statements)
-        ? (kp.key_statements as KeyStatement[])
-        : [],
-      qa_pairs: Array.isArray(kp.qa_pairs) ? (kp.qa_pairs as QaPair[]) : [],
-      keyword_changes: Array.isArray(kp.keyword_changes)
-        ? (kp.keyword_changes as KeywordChange[])
-        : [],
-      tone_previous: String(kp.tone_previous ?? ""),
-      tone_current: String(kp.tone_current ?? row.tone_change ?? ""),
-      has_earnings_release: Boolean(kp.has_earnings_release),
+      headline_summary: row.headline_summary ?? "",
+      revenue_actual: row.revenue_actual ?? "",
+      revenue_estimate: row.revenue_estimate ?? "",
+      eps_actual: row.eps_actual ?? "",
+      eps_estimate: row.eps_estimate ?? "",
+      surprise_percent: row.surprise_percent ?? 0,
+      guidance_direction: toGuidanceDirection(row.guidance_direction),
+      guidance_previous: toGuidanceDirection(row.guidance_previous),
+      guidance_summary: row.guidance_summary ?? "",
+      keywords: row.keywords ?? [],
+      key_statements: row.key_statements ?? [],
+      qa_pairs: row.qa_pairs ?? [],
+      keyword_changes: row.keyword_changes ?? [],
+      tone_previous: row.tone_previous ?? "",
+      tone_current: row.tone_current ?? "",
+      has_earnings_release: row.has_earnings_release ?? false,
       in_watchlist: watchlistSet.has(row.ticker),
       source_url: row.source_url ?? "",
-      transcript_url: row.transcript_url ?? String(kp.transcript_url ?? ""),
-      summary_generated_at: row.processed_at ? toKST(row.processed_at) : "",
+      transcript_url: row.transcript_url ?? "",
+      summary_generated_at: row.summary_generated_at
+        ? toKST(row.summary_generated_at)
+        : row.processed_at
+          ? toKST(row.processed_at)
+          : "",
     };
   });
 

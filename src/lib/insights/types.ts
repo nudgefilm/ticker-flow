@@ -13,8 +13,8 @@ export interface Quote {
 export interface NextEarnings {
   date: string;
   daysUntil: number;
-  timing: "BMO" | "AMC";
-  epsEstimate: number;
+  timing: "BMO" | "AMC" | null;
+  epsEstimate: number | null;
 }
 
 export interface Filing {
@@ -78,7 +78,7 @@ export interface StockInsight {
   industry: string | null;
   lastClose: number | null;
   updatedAt: string | null;
-  marketCap: string;
+  marketCap: number | null;
   summary: {
     filings: number;
     keyEvents: number;

@@ -29,12 +29,21 @@ function ChangeStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function formatMarketCap(v: number): string {
+  if (v >= 1_000_000_000_000) return `$${(v / 1_000_000_000_000).toFixed(1)}T`;
+  if (v >= 1_000_000_000) return `$${(v / 1_000_000_000).toFixed(1)}B`;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  return `$${v.toLocaleString("ko-KR")}`;
+}
+
 interface Props {
   ticker: string;
   name: string;
   exchange: string | null;
   sector: string | null;
   industry: string | null;
+  lastClose: number | null;
+  marketCap: number | null;
   updatedAt: string | null;
   summary: {
     filings: number;
@@ -52,12 +61,18 @@ export default function StockHeader({
   exchange,
   sector,
   industry,
+  lastClose,
+  marketCap,
   updatedAt,
   summary,
   comboboxOptions,
 }: Props) {
   const sectorKr = sector ? (SECTOR_KR[sector] ?? sector) : null;
   const meta = [exchange, sectorKr, industry].filter(Boolean).join(" · ");
+  const priceMeta = [
+    lastClose != null ? `최근 종가 $${lastClose.toFixed(2)}` : null,
+    marketCap != null ? `시가총액 ${formatMarketCap(marketCap)}` : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div className="rounded-lg border border-white/[0.08] bg-[#1a1a1a] p-5">
@@ -70,6 +85,7 @@ export default function StockHeader({
             </span>
           </div>
           {meta && <p className="mt-1 text-xs text-[#a6a6a6]">{meta}</p>}
+          {priceMeta && <p className="mt-1 text-xs text-[#cccccc]">{priceMeta}</p>}
         </div>
         <StockCombobox value={ticker} options={comboboxOptions} />
       </div>

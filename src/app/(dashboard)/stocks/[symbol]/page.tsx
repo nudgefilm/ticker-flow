@@ -191,8 +191,8 @@ export default async function StockPage({
     nextEarnings = {
       date: nextEarningsRow.report_date,
       daysUntil: daysUntil(nextEarningsRow.report_date),
-      timing: raw === "BMO" ? "BMO" : "AMC",
-      epsEstimate: nextEarningsRow.eps_estimate ?? 0,
+      timing: raw === "BMO" ? "BMO" : raw === "AMC" ? "AMC" : null,
+      epsEstimate: nextEarningsRow.eps_estimate,
     };
   }
 

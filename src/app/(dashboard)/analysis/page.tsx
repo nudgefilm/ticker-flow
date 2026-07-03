@@ -90,7 +90,7 @@ export default async function AnalysisPage({
     await Promise.all([
       supabase
         .from("tickers")
-        .select("ticker, name_kr, name_en, exchange, sector, industry")
+        .select("ticker, name_kr, name_en, exchange, sector, industry, market_cap")
         .eq("ticker", symbol)
         .maybeSingle(),
       supabase
@@ -253,7 +253,7 @@ export default async function AnalysisPage({
     industry: tickerRow?.industry ?? null,
     lastClose: lastPrice?.close ?? null,
     updatedAt,
-    marketCap: "준비 중",
+    marketCap: tickerRow?.market_cap ?? null,
     summary: {
       filings: filingRows.length,
       keyEvents: filingRows.filter((f) => f.event_type !== null).length,
@@ -286,6 +286,8 @@ export default async function AnalysisPage({
               exchange={insight.exchange}
               sector={insight.sector}
               industry={insight.industry}
+              lastClose={insight.lastClose}
+              marketCap={insight.marketCap}
               updatedAt={insight.updatedAt}
               summary={insight.summary}
               comboboxOptions={watchlistOptions}

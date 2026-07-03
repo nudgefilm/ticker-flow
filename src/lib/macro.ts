@@ -146,7 +146,7 @@ export function formatMainValue(ind: MacroIndicator): string {
   if (value == null) return "—";
 
   if (valueType === "pct_change") {
-    if (previousValue == null) return "—";
+    if (previousValue == null || previousValue === 0) return "—";
     const change = ((value - previousValue) / previousValue) * 100;
     const sign = change >= 0 ? "+" : "";
     return `${sign}${change.toFixed(2)}%`;
