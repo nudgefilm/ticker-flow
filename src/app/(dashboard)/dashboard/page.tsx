@@ -10,6 +10,8 @@ import DisclosureTrendChart from "@/components/dashboard/disclosure-trend-chart"
 import SectorActivityChart from "@/components/dashboard/sector-activity-chart";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSector } from "@/lib/sectors";
+import { getMarketStatusMessage } from "@/lib/us-holidays";
+import { IconInfoCircle } from "@tabler/icons-react";
 import DataSources from "@/components/dashboard/insights/data-sources";
 
 export const dynamic = "force-dynamic";
@@ -154,6 +156,7 @@ export default async function DashboardPage({
   const { page: pageParam, type: typeParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
   const type = typeParam ?? "all";
+  const marketStatusMessage = getMarketStatusMessage(new Date());
 
   // ── 차트용 집계 데이터 ──────────────────────────────────────────────────────
   const supabase = await createClient();
@@ -262,6 +265,12 @@ export default async function DashboardPage({
       </section>
 
       {/* 필터 탭 + 피드 */}
+      {marketStatusMessage && (
+        <div className="mt-6 flex items-start gap-2 rounded-[6px] border border-blue-500/20 bg-blue-500/10 px-4 py-3.5 text-sm text-blue-300">
+          <IconInfoCircle className="mt-0.5 size-4 shrink-0" stroke={1.5} />
+          <p>{marketStatusMessage}</p>
+        </div>
+      )}
       <div className="mt-6">
         <FilingFilterBar currentType={type} />
       </div>

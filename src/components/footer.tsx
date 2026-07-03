@@ -118,16 +118,19 @@ export default function Footer() {
             <div className="flex flex-col gap-6 sm:flex-row sm:justify-between">
               {/* 좌측: 사업자 정보 */}
               <div className="space-y-1 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground/80">언폴드랩(UNFOLD LAB)</p>
+                <p className="whitespace-nowrap font-medium text-foreground/80">
+                  언폴드랩(UNFOLD LAB)
+                  <span className="text-xs font-normal text-muted-foreground"> | 데이터 기반 SaaS 인디 개발 스튜디오</span>
+                </p>
                 <p>대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
                 <p>주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
                 <p>연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
               </div>
               {/* 우측: 면책 문구 */}
               <div className="shrink-0 space-y-1 text-xs text-muted-foreground sm:pt-6 sm:text-right">
-                <p>📌 본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
-                <p>📌 특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
-                <p>📌 투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
+                <p>본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.</p>
+                <p>특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.</p>
+                <p>투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.</p>
               </div>
             </div>
             {/* 저작권 */}

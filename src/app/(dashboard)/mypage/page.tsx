@@ -5,13 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  IconBell,
   IconDownload,
   IconMail,
   IconMessageCircle,
   IconLogout,
   IconTrash,
-  IconLock,
   IconX,
   IconAlertTriangle,
   IconChevronRight,
@@ -169,35 +167,6 @@ export default function MyPage() {
                 </Link>
               </div>
             </>
-          )}
-        </SectionCard>
-
-        {/* 3. 알림 설정 */}
-        <SectionCard label="알림 설정">
-          {isPro ? (
-            <div className="px-5 py-4">
-              <Link
-                href="/alerts"
-                className="inline-flex items-center gap-2 text-sm text-white transition-colors hover:text-[#cccccc]"
-              >
-                <IconBell size={16} stroke={1.5} />
-                알림 설정 바로가기
-                <IconChevronRight size={14} stroke={1.5} className="text-[#a6a6a6]" />
-              </Link>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-2 text-sm text-[#a6a6a6]">
-                <IconLock size={16} stroke={1.5} />
-                Pro 전용 기능
-              </div>
-              <Link
-                href="/billing"
-                className="rounded-[6px] bg-white px-3 py-1.5 text-xs font-medium text-black transition-colors hover:bg-white/90"
-              >
-                Pro 시작하기
-              </Link>
-            </div>
           )}
         </SectionCard>
 

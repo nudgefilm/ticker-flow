@@ -6,6 +6,46 @@
 
 ---
 
+## 2026-07-04 · 세션 77
+
+### 종목 스냅샷 BRIEF 노출 정책 개편, 뉴스 티커 필터, 카드 UI 정리, 배당 데이터 파이프라인 사고 진단, 미국 공휴일 유틸
+
+**종목 스냅샷 BRIEF — Pro 전면 노출 + Free blur 잠금 UI (`stock-brief.tsx`, `stocks/[symbol]/page.tsx`, `snapshot-header.tsx`, `watchlist-add-button.tsx` 신규, `brief.ts`)**
+- Pro 유저는 와치리스트 등록 여부와 무관하게 BRIEF 전체 열람 가능하도록 정책 변경, BRIEF 미생성 종목은 스냅샷 조회 시 `after()`로 백그라운드 즉시 생성 트리거
+- `runStockBriefCollect()`의 `isTickerInProWatchlist` 게이트를 `trigger_reason === "snapshot_view"`일 때만 우회하도록 수정(다른 트리거는 기존 비용 통제 유지)
+- Free 유저 잠금 UI를 텍스트 안내 → blur(4px) 처리된 더미 콘텐츠 + 중앙 오버레이 잠금 카드(`IconLock` `#60a5fa` + Pro 업그레이드 버튼) 방식으로 3차례 반복 개편
+- 종목명 옆 "＋ 종목 추가" 버튼 신규(`watchlist-add-button.tsx`) — 등록됨/한도초과(Free 5·Pro 30)/추가 3가지 상태 처리, `SnapshotHeader`에 결합
+
+**뉴스 피드 종목 필터 (`snapshot-news.tsx`, `news/page.tsx`, `news-filter-bar.tsx`, `feed-pagination.tsx`, `news-ticker-empty-notice.tsx` 신규)**
+- 종목 스냅샷 "뉴스 피드 보기" 클릭 시 `/news?ticker={symbol}`로 이동해 해당 종목 뉴스만 필터링
+- 필터 결과 0건이면 토스트 안내 후 2.5초 뒤 `router.replace("/news")`로 전체 피드 자동 전환, 필터 탭에 종목 배지(✕로 해제) 표시, 페이지네이션에 `ticker` 파라미터 유지
+
+**카드 하단 안내 문구 📌 표시 — 위치 시행착오 및 최종 정리 (`dashboard-disclaimer.tsx`, `footer.tsx`, `insights/data-sources.tsx`, 기타 출처 표기 8개 파일)**
+- 1차: 면책 문구 3줄·BRIEF 안내·데이터 출처·EPS/내부자거래 출처 등 전체에 📌 부착
+- 2차 피드백: 데이터 출처 카드 설명문에서 📌 제거 → "마지막 업데이트" 앞으로 이동
+- "면책 카드와 데이터 카드가 붙어 하나처럼 보인다"는 피드백 → 조사 결과 실제 중복 렌더링은 없고 두 카드 배경색(`#1a1a1a`)이 동일해 생긴 시각적 문제로 확인, 면책 카드 배경을 `#111827`(블루 톤)로 분리
+- 최종 피드백으로 면책 카드 📌도 완전 제거, 랜딩 푸터(`footer.tsx`) 면책 3줄도 동일하게 제거
+- `insights/ui.tsx`의 `SectionCard`를 `flex flex-col`(+본문 `flex-1 flex-col`)로 변경해 `h-full`로 늘어난 카드의 남는 여백 문제 해결, `snapshot-insider.tsx` 출처 문구를 `mt-auto`로 하단 고정(기업정보 카드와 높이를 맞췄을 때 생기던 하단 공백 제거)
+
+**마이페이지 알림 카드 제거 (`mypage/page.tsx`)**
+- "알림 설정" `SectionCard` 섹션 전체 삭제(사용하지 않는 `IconBell`/`IconLock` import 정리), 세로 스택 레이아웃이라 다른 카드 영향 없음
+
+**배당 일정 데이터 파이프라인 사고 진단 (`supabase/fix_dividends_table.sql` 신규)**
+- 실적 캘린더 "배당 일정" 탭 조회 안 되는 문제 조사 — UI 쿼리 코드는 정상이었고, `dividends` 테이블이 `scripts/seed-dividends.ts`(로컬 1회성 스크립트)로만 생성되어 `supabase/schema.sql`에 등록된 다른 테이블과 달리 GRANT/RLS/FK 설정이 누락된 것이 원인으로 확인(`permission denied` + `Could not find a relationship between 'dividends' and 'tickers'`)
+- 서비스 롤 키로 직접 REST 조회해 전체 13,684행 존재·고아 티커 0건 확인 후 안전하게 FK 추가 가능함을 검증, 수정 SQL은 사용자가 Supabase SQL Editor에서 직접 실행 필요 (DB 직접 실행 권한 없음)
+- 재발 방지를 위해 CLAUDE.md 10항에 "새 테이블 생성 시 schema.sql 등록+authenticated GRANT+service_role GRANT+RLS 정책 4종 필수, 누락 시 커밋 금지" 17번 규칙 추가
+
+**미국 연방 공휴일 유틸 신규 (`src/lib/us-holidays.ts`)**
+- 연방 공휴일 11개(요일 기반 6개는 `nthWeekdayOfMonth`로 매년 자동 계산) 정의, `isUsHoliday`/`isUsMarketClosed`/`getMarketStatusMessage`로 공시 피드(`dashboard/page.tsx`) 상단에 공휴일·주말 안내 배너 노출
+- 후속 요청으로 관측일(Observed Holiday) 로직 추가 — 토요일 공휴일→전날 금요일, 일요일→다음날 월요일로 휴장 판단을 관측일 기준으로 전환, `getObservedHolidays`/`isMarketOpen`/`nextTradingDay` 추가, 뉴이어가 토요일과 겹쳐 관측일이 전년도 12/31로 넘어가는 연도 경계 케이스까지 `npx tsx`로 직접 실행 검증
+
+**랜딩 푸터 브랜드 소개 문구 추가 (`footer.tsx`)**
+- "언폴드랩(UNFOLD LAB)" 옆에 "| 데이터 기반 SaaS 인디 개발 스튜디오" 인라인 추가, 요청받은 HEX 색상은 랜딩 HSL 토큰 규칙에 따라 동일 값의 `text-muted-foreground`로 대체 적용
+
+**빌드 검증**: 매 단계 `pnpm build` 성공, 에러 0건.
+
+---
+
 ## 2026-07-03 · 세션 76
 
 ### 와치리스트 주간/월간 BRIEF 신규 기능 — 실시간 계산 → 캐시 전환, 어코디언 UI 개편
