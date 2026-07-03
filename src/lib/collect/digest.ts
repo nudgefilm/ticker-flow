@@ -2,7 +2,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
 import { resend, FROM } from "@/lib/email/resend";
 import { dailyDigestEmail } from "@/lib/email/templates";
-import type { DigestData, Top30Item, NewEntrantItem, MarketStats } from "@/lib/email/templates";
+import type {
+  DigestData,
+  DigestTopItem,
+  FeaturedCompany,
+  NewEntrantItem,
+  DroppedItem,
+  RankMoverItem,
+  MarketChangeCounts,
+  MacroItem,
+} from "@/lib/email/templates";
 
 // ─── reason_tag → 사람이 읽는 설명 ────────────────────────────────────────────
 
@@ -29,6 +38,11 @@ const TAG_TO_DESC: Record<string, string> = {
   target_up:         "목표가 상향 발표",
 };
 
+const MACRO_SPEC: Record<string, { label: string; unit: string }> = {
+  FEDFUNDS: { label: "연방기금금리 (FEDFUNDS)", unit: "%" },
+  CPI:      { label: "소비자물가지수 (CPI)",      unit: "" },
+};
+
 // ─── 내부 타입 ────────────────────────────────────────────────────────────────
 
 type Top30Row = {
@@ -46,44 +60,85 @@ function tagsToDescs(tags: string[] | null, limit: number): string[] {
   return descs.length > 0 ? descs : ["최근 시장 변화 확인"];
 }
 
-function countTag(tagCounts: Record<string, number>, ...keys: string[]): number {
-  return keys.reduce((s, k) => s + (tagCounts[k] ?? 0), 0);
+// 날짜 문자열(YYYY-MM-DD) 하루치 UTC 타임스탬프 범위 — TIMESTAMPTZ 컬럼 필터링용
+function dayRangeUtc(dateStr: string): { gte: string; lt: string } {
+  const gte = `${dateStr}T00:00:00.000Z`;
+  const next = new Date(`${dateStr}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return { gte, lt: next.toISOString() };
 }
 
-// ─── Claude Haiku 시장 요약 생성 ──────────────────────────────────────────────
+function sparklineUrl(closes: number[]): string | null {
+  if (closes.length < 2) return null;
+  const up = closes[closes.length - 1] >= closes[0];
+  const config = {
+    type: "line",
+    data: {
+      labels: closes.map((_, i) => i),
+      datasets: [{
+        data: closes,
+        borderColor: up ? "#6ee7b7" : "#f87171",
+        borderWidth: 2,
+        fill: false,
+        pointRadius: 0,
+        tension: 0.3,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false },
+      },
+    },
+  };
+  const encoded = encodeURIComponent(JSON.stringify(config));
+  return `https://quickchart.io/chart?c=${encoded}&width=280&height=96&backgroundColor=transparent&version=4`;
+}
 
-async function generateMarketSummary(
-  top10: Top30Row[],
-  nameMap: Map<string, string>,
-  stats: MarketStats
-): Promise<string> {
-  const fallback = stats.interpretation;
+// ─── Claude Haiku 시장 분위기 + 시장 요약 (1회 호출) ──────────────────────────
+
+async function generateMarketNarrative(params: {
+  latestDate: string;
+  top1Name: string;
+  newEntrantCount: number;
+  institutionalCount: number;
+  insiderCount: number;
+  earningsCount: number;
+  earningsBeatCount: number;
+  filingsCount: number;
+  fallbackMood: string;
+  fallbackSummary: string;
+}): Promise<{ mood: string; summary: string }> {
+  const fallback = { mood: params.fallbackMood, summary: params.fallbackSummary };
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return fallback;
 
-  const allTags = top10.flatMap((r) => r.reason_tags ?? []);
-  const tagCounts: Record<string, number> = {};
-  for (const t of allTags) tagCounts[t] = (tagCounts[t] ?? 0) + 1;
+  const prompt = `다음은 ${params.latestDate} 미국 나스닥 주요 기업 동향 데이터입니다.
 
-  const factParts: string[] = [];
-  if (stats.institutionalCount > 0) factParts.push(`기관 신규 편입 ${stats.institutionalCount}건`);
-  if (stats.insiderBuyCount > 0) factParts.push(`내부자 매수 ${stats.insiderBuyCount}건`);
-  if (stats.epsBeatCount > 0) factParts.push(`EPS 예상치 상회 ${stats.epsBeatCount}건`);
-  if (stats.filingCount > 0) factParts.push(`관련 공시 ${stats.filingCount}건`);
+- 기업동향 TOP1: ${params.top1Name}
+- TOP30 신규 진입: ${params.newEntrantCount}건
+- 기관 관련 공시: ${params.institutionalCount}건
+- 내부자 거래: ${params.insiderCount}건
+- 실적 발표: ${params.earningsCount}건 (예상치 상회 ${params.earningsBeatCount}건)
+- 관련 공시: ${params.filingsCount}건
 
-  const name1 = nameMap.get(top10[0]?.ticker ?? "") ?? top10[0]?.ticker ?? "";
-  const factsStr = factParts.length > 0 ? factParts.join(", ") : "다양한 기업 변화";
+아래 두 항목을 정확히 이 형식으로 작성하라.
 
-  const prompt = `오늘 미국 나스닥 주요 기업 동향 현황: ${factsStr}. TOP10 1위: ${name1}.
-이를 바탕으로 오늘 시장의 주요 흐름을 2~3문장으로 요약하라.
-규칙:
-- 투자 권유, 매수, 매도, 추천 표현 금지
-- 사실 기반 서술만 사용 (예: "~가 집중됐습니다", "~가 두드러졌습니다")
-- 점수, 가중치, 알고리즘 언급 금지
-- 기관명 비노출
-- plain text로만, 마크다운 기호 금지
-- 한국어로만 작성`;
+[MOOD]
+(오늘 시장 분위기를 1~2문장으로 사실 기반 서술)
+
+[SUMMARY]
+(오늘 시장 전반의 동향을 3~4문장으로 사실 기반 서술)
+
+규칙
+- 투자 권유, 매수, 매도, 추천, 강세, 약세 표현 금지
+- 사실 기반 서술체만 사용 (예: "~가 관측되었습니다", "~가 두드러졌습니다")
+- 점수, 가중치, 알고리즘, 스코어링 로직 언급 금지
+- 기관명·개인명 비노출
+- plain text로만 작성, 마크다운 기호(#, **, - 등) 금지
+- 반드시 [MOOD]와 [SUMMARY] 두 섹션 헤더를 그대로 포함해 응답할 것`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -95,14 +150,23 @@ async function generateMarketSummary(
       },
       body: JSON.stringify({
         model:      "claude-haiku-4-5-20251001",
-        max_tokens: 200,
+        max_tokens: 400,
         messages:   [{ role: "user", content: prompt }],
       }),
     });
     if (!res.ok) return fallback;
     const json = await res.json() as { content?: { text?: string }[] };
-    const text = json?.content?.[0]?.text?.trim();
-    return text && text.length > 0 ? text : fallback;
+    const text = json?.content?.[0]?.text?.trim() ?? "";
+
+    const moodMatch = text.match(/\[MOOD\]\s*([\s\S]*?)(?=\[SUMMARY\]|$)/);
+    const summaryMatch = text.match(/\[SUMMARY\]\s*([\s\S]*)$/);
+    const mood = moodMatch?.[1]?.trim();
+    const summary = summaryMatch?.[1]?.trim();
+
+    return {
+      mood: mood && mood.length > 0 ? mood : fallback.mood,
+      summary: summary && summary.length > 0 ? summary : fallback.summary,
+    };
   } catch {
     return fallback;
   }
@@ -114,36 +178,35 @@ export async function runDigestCollect(): Promise<CollectResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
-  // 1. Pro 유저 이메일 조회
+  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일 이내 Free 유저
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: profiles, error: profileErr } = await admin
     .from("profiles")
     .select("email")
-    .eq("plan", "pro");
+    .or(`plan.eq.pro,and(plan.eq.free,created_at.gte.${sevenDaysAgoIso})`);
 
   if (profileErr) return { ok: false, error: (profileErr as { message: string }).message };
 
-  const proEmails = ((profiles ?? []) as { email: string | null }[])
+  const targetEmails = ((profiles ?? []) as { email: string | null }[])
     .map((p) => p.email)
     .filter((e): e is string => typeof e === "string" && e.length > 0);
 
-  if (proEmails.length === 0) return { ok: true, sent: 0, message: "Pro 유저 없음" };
+  if (targetEmails.length === 0) return { ok: true, sent: 0, message: "발송 대상 없음" };
 
-  // 2. 가장 최근 top30_daily 날짜 조회
-  const { data: latestRow } = await admin
+  // 2. 최근 2개 수집일(오늘/전일) 조회 — 주말·공휴일 공백 대응을 위해 달력일 차감 대신 실제 존재하는 직전 날짜 사용
+  const { data: dateRows } = await admin
     .from("top30_daily")
     .select("date")
     .order("date", { ascending: false })
-    .limit(1)
-    .maybeSingle() as { data: { date: string } | null };
+    .limit(90);
 
-  if (!latestRow?.date) {
+  const distinctDates = [...new Set(((dateRows ?? []) as { date: string }[]).map((r) => r.date))];
+  const latestDate = distinctDates[0];
+  const prevDate = distinctDates[1] ?? null;
+
+  if (!latestDate) {
     return { ok: true, sent: 0, message: "TOP30 데이터 없음" };
   }
-
-  const latestDate = latestRow.date;
-  const prevDateObj = new Date(latestDate + "T00:00:00Z");
-  prevDateObj.setDate(prevDateObj.getDate() - 1);
-  const prevDate = prevDateObj.toISOString().slice(0, 10);
 
   // 3. 최신 TOP30 조회
   const { data: todayRows } = await admin
@@ -153,78 +216,176 @@ export async function runDigestCollect(): Promise<CollectResult> {
     .order("rank", { ascending: true })
     .limit(30) as { data: Top30Row[] | null };
 
-  // 4. 전일 TOP30 조회 (비교용)
-  const { data: prevRows } = await admin
-    .from("top30_daily")
-    .select("ticker")
-    .eq("date", prevDate)
-    .order("rank", { ascending: true })
-    .limit(30) as { data: { ticker: string }[] | null };
-
   const today30 = todayRows ?? [];
-  const prev30  = prevRows  ?? [];
-
   if (today30.length === 0) {
     return { ok: true, sent: 0, message: `TOP30 데이터 없음 (${latestDate})` };
   }
 
-  // 5. 티커 이름 조회
+  // 4. 전일 TOP30 조회 (신규진입·이탈·순위변화 계산용)
+  const { data: prevRows } = prevDate
+    ? await admin
+        .from("top30_daily")
+        .select("ticker, rank")
+        .eq("date", prevDate)
+        .order("rank", { ascending: true })
+        .limit(30) as { data: { ticker: string; rank: number | null }[] | null }
+    : { data: [] as { ticker: string; rank: number | null }[] };
+
+  const prev30 = prevRows ?? [];
+  const prevRankMap = new Map<string, number>();
+  for (const r of prev30) if (r.rank != null) prevRankMap.set(r.ticker, r.rank);
+
+  // 5. 티커 이름 + 기업 소개 조회
   const allTickers = [...new Set([...today30.map((r) => r.ticker), ...prev30.map((r) => r.ticker)])];
   const nameMap = new Map<string, string>();
+  const descMap = new Map<string, string>();
 
   if (allTickers.length > 0) {
     const { data: tickerRows } = await admin
       .from("tickers")
-      .select("ticker, name_kr, name_en")
+      .select("ticker, name_kr, name_en, description_kr")
       .in("ticker", allTickers) as {
-        data: { ticker: string; name_kr: string | null; name_en: string | null }[] | null;
+        data: { ticker: string; name_kr: string | null; name_en: string | null; description_kr: string | null }[] | null;
       };
     for (const t of tickerRows ?? []) {
       nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+      if (t.description_kr) descMap.set(t.ticker, t.description_kr);
     }
   }
 
-  // 6. 신규 진입 / 빠진 기업 계산
-  const todaySet  = new Set(today30.map((r) => r.ticker));
-  const prevSet   = new Set(prev30.map((r) => r.ticker));
-  const newEntrantRows = today30.filter((r) => !prevSet.has(r.ticker));
+  // 6. 신규 진입 / 이탈 / 순위 변화 계산
+  const todaySet = new Set(today30.map((r) => r.ticker));
+  const newEntrantRows = today30.filter((r) => !prevRankMap.has(r.ticker));
   const droppedTickers = prev30.filter((r) => !todaySet.has(r.ticker)).map((r) => r.ticker);
 
-  // 7. 시장 통계 집계 (TOP10 기준)
-  const top10 = today30.slice(0, 10);
-  const allTags: string[] = top10.flatMap((r) => r.reason_tags ?? []);
-  const tagCounts: Record<string, number> = {};
-  for (const t of allTags) tagCounts[t] = (tagCounts[t] ?? 0) + 1;
+  const rankMovers: RankMoverItem[] = today30
+    .filter((r) => r.rank != null && prevRankMap.has(r.ticker))
+    .map((r) => {
+      const prevRank = prevRankMap.get(r.ticker)!;
+      const currRank = r.rank!;
+      return {
+        ticker: r.ticker,
+        name: nameMap.get(r.ticker) ?? r.ticker,
+        prevRank,
+        currRank,
+        delta: prevRank - currRank,
+      };
+    })
+    .filter((m) => m.delta !== 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, 5);
 
-  const filingCount       = top10.reduce((s, r) => s + (r.metadata?.filingCount ?? 0), 0);
-  const institutionalCount = countTag(tagCounts, "13f_new", "13f_increase");
-  const insiderBuyCount    = countTag(tagCounts, "insider_buy", "insider_buy_large");
-  const epsBeatCount       = countTag(tagCounts, "eps_beat", "both_beat", "revenue_beat");
+  // 7. 오늘 날짜 기준 시장 변화 집계 (filings, insider_trades, institutional_holdings, earnings)
+  const filingsRange = dayRangeUtc(latestDate);
+  const insiderRange = dayRangeUtc(latestDate);
+  const institutionalRange = dayRangeUtc(latestDate);
 
-  const maxSig = Math.max(institutionalCount, insiderBuyCount, epsBeatCount);
-  let interpretation: string;
-  if (maxSig === 0) {
-    interpretation = "오늘은 다양한 기업 변화가 고르게 관측되었습니다.";
-  } else if (institutionalCount === maxSig) {
-    interpretation = "오늘은 기관 수급 변화가 두드러졌습니다.";
-  } else if (insiderBuyCount === maxSig) {
-    interpretation = "오늘은 내부자 매수가 두드러졌습니다.";
-  } else {
-    interpretation = "오늘은 실적 발표 이후 변화가 두드러졌습니다.";
-  }
+  const [{ count: filingsCount }, { count: insiderCount }, { count: institutionalCount }, { data: earningsRows }] = await Promise.all([
+    admin.from("filings").select("id", { count: "exact", head: true })
+      .gte("filed_at", filingsRange.gte).lt("filed_at", filingsRange.lt),
+    admin.from("insider_trades").select("id", { count: "exact", head: true })
+      .gte("filed_at", insiderRange.gte).lt("filed_at", insiderRange.lt),
+    admin.from("institutional_holdings").select("id", { count: "exact", head: true })
+      .gte("filed_at", institutionalRange.gte).lt("filed_at", institutionalRange.lt),
+    admin.from("earnings")
+      .select("ticker, eps_estimate, actual_eps, revenue_estimate, actual_revenue")
+      .eq("report_date", latestDate),
+  ]) as [
+    { count: number | null },
+    { count: number | null },
+    { count: number | null },
+    { data: { ticker: string; eps_estimate: number | null; actual_eps: number | null; revenue_estimate: number | null; actual_revenue: number | null }[] | null },
+  ];
 
-  const marketStats: MarketStats = {
-    filingCount,
-    epsBeatCount,
-    institutionalCount,
-    insiderBuyCount,
-    interpretation,
+  const earningsToday = earningsRows ?? [];
+  const earningsBeatCount = earningsToday.filter((e) =>
+    (e.actual_eps != null && e.eps_estimate != null && e.actual_eps > e.eps_estimate) ||
+    (e.actual_revenue != null && e.revenue_estimate != null && e.actual_revenue > e.revenue_estimate)
+  ).length;
+
+  const marketChange: MarketChangeCounts = {
+    institutionalCount: institutionalCount ?? 0,
+    earningsBeatCount,
+    insiderCount: insiderCount ?? 0,
+    filingsCount: filingsCount ?? 0,
   };
 
-  // 8. Haiku 시장 요약
-  const marketSummary = await generateMarketSummary(top10, nameMap, marketStats);
+  // 8. 오늘의 한 기업 — TOP10 중 description_kr 있는 첫 종목 (TOP1 우선)
+  const top10Rows = today30.slice(0, 10);
+  const featuredRow = top10Rows.find((r) => descMap.has(r.ticker));
+  let featured: FeaturedCompany | null = null;
 
-  // 9. DigestData 구성
+  if (featuredRow) {
+    const { data: priceRows } = await admin
+      .from("stock_prices")
+      .select("date, close")
+      .eq("ticker", featuredRow.ticker)
+      .order("date", { ascending: false })
+      .limit(30) as { data: { date: string; close: number }[] | null };
+
+    const closes = (priceRows ?? []).slice().reverse().map((r) => r.close);
+
+    featured = {
+      ticker: featuredRow.ticker,
+      name: nameMap.get(featuredRow.ticker) ?? featuredRow.ticker,
+      descriptionKr: descMap.get(featuredRow.ticker)!,
+      sparklineUrl: sparklineUrl(closes),
+    };
+  }
+
+  // 9. 주요 경제지표 (FEDFUNDS, CPI 최신 1건씩)
+  const { data: macroRows } = await admin
+    .from("macro_indicators")
+    .select("indicator_name, value, previous_value, released_at")
+    .in("indicator_name", Object.keys(MACRO_SPEC))
+    .order("released_at", { ascending: false })
+    .limit(20) as { data: { indicator_name: string; value: number | null; previous_value: number | null; released_at: string }[] | null };
+
+  const macroLatest = new Map<string, { value: number | null; previous_value: number | null }>();
+  for (const row of macroRows ?? []) {
+    if (!macroLatest.has(row.indicator_name)) {
+      macroLatest.set(row.indicator_name, { value: row.value, previous_value: row.previous_value });
+    }
+  }
+
+  const macros: MacroItem[] = Object.keys(MACRO_SPEC)
+    .filter((key) => macroLatest.has(key))
+    .map((key) => {
+      const row = macroLatest.get(key)!;
+      const spec = MACRO_SPEC[key];
+      return { key, label: spec.label, value: row.value, previousValue: row.previous_value, unit: spec.unit };
+    });
+
+  // 10. 시장 분위기 판단 (Haiku 실패 시 폴백)
+  const maxSig = Math.max(marketChange.institutionalCount, marketChange.insiderCount, marketChange.earningsBeatCount);
+  let fallbackMood: string;
+  if (maxSig === 0) {
+    fallbackMood = "오늘은 다양한 기업 변화가 고르게 관측되었습니다.";
+  } else if (marketChange.institutionalCount === maxSig) {
+    fallbackMood = "오늘은 기관 수급 변화가 두드러졌습니다.";
+  } else if (marketChange.insiderCount === maxSig) {
+    fallbackMood = "오늘은 내부자 거래가 두드러졌습니다.";
+  } else {
+    fallbackMood = "오늘은 실적 발표 이후 변화가 두드러졌습니다.";
+  }
+
+  const fallbackSummary = `오늘은 관련 공시 ${marketChange.filingsCount}건, 실적 발표 ${earningsToday.length}건(예상치 상회 ${marketChange.earningsBeatCount}건)이 집계되었습니다. TOP30 신규 진입은 ${newEntrantRows.length}건입니다.`;
+
+  const top1Name = nameMap.get(today30[0]?.ticker ?? "") ?? today30[0]?.ticker ?? "";
+  const { mood: marketMood, summary: marketSummary } = await generateMarketNarrative({
+    latestDate,
+    top1Name,
+    newEntrantCount: newEntrantRows.length,
+    institutionalCount: marketChange.institutionalCount,
+    insiderCount: marketChange.insiderCount,
+    earningsCount: earningsToday.length,
+    earningsBeatCount: marketChange.earningsBeatCount,
+    filingsCount: marketChange.filingsCount,
+    fallbackMood,
+    fallbackSummary,
+  });
+
+  // 11. DigestData 구성
   const kstDate = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     year:     "numeric",
@@ -232,16 +393,18 @@ export async function runDigestCollect(): Promise<CollectResult> {
     day:      "numeric",
   }).format(new Date());
 
-  const top10Items: Top30Item[] = top10.map((r) => ({
+  const top3Items: DigestTopItem[] = today30.slice(0, 3).map((r) => ({
     ticker:       r.ticker,
     name:         nameMap.get(r.ticker) ?? r.ticker,
-    descriptions: tagsToDescs(r.reason_tags, 2),
+    rank:         r.rank ?? 0,
+    descriptions: tagsToDescs(r.reason_tags, 3),
   }));
 
-  const top3Items: Top30Item[] = today30.slice(0, 3).map((r) => ({
+  const top4to10Items: DigestTopItem[] = today30.slice(3, 10).map((r) => ({
     ticker:       r.ticker,
     name:         nameMap.get(r.ticker) ?? r.ticker,
-    descriptions: tagsToDescs(r.reason_tags, 3),
+    rank:         r.rank ?? 0,
+    descriptions: tagsToDescs(r.reason_tags, 1),
   }));
 
   const newEntrants: NewEntrantItem[] = newEntrantRows.slice(0, 5).map((r) => ({
@@ -250,32 +413,42 @@ export async function runDigestCollect(): Promise<CollectResult> {
     description: tagsToDescs(r.reason_tags, 1)[0],
   }));
 
-  const dropped = droppedTickers.slice(0, 5).map((t) => ({
+  const dropped: DroppedItem[] = droppedTickers.slice(0, 5).map((t) => ({
     ticker: t,
     name:   nameMap.get(t) ?? t,
   }));
 
   const digestData: DigestData = {
     kstDate,
-    top10:         top10Items,
-    top3:          top3Items,
-    marketStats,
-    marketSummary,
+    headline: {
+      top30Count: today30.length,
+      newEntrantCount: newEntrantRows.length,
+      institutionalCount: marketChange.institutionalCount,
+      earningsBeatCount: marketChange.earningsBeatCount,
+    },
+    marketMood,
+    top3: top3Items,
+    top4to10: top4to10Items,
+    marketChange,
+    featured,
     newEntrants,
     dropped,
+    rankMovers,
+    marketSummary,
+    macros,
   };
 
-  // 10. HTML 생성 및 발송
+  // 12. HTML 생성 및 발송
   const html    = dailyDigestEmail(digestData);
   const subject = "오늘의 기업동향 TOP10 | TickerFlow";
   let sent   = 0;
   let errors = 0;
 
-  for (const email of proEmails) {
+  for (const email of targetEmails) {
     const { error } = await resend.emails.send({ from: FROM, to: email, subject, html });
     if (error) errors++;
     else sent++;
   }
 
-  return { ok: true, sent, errors, total: proEmails.length };
+  return { ok: true, sent, errors, total: targetEmails.length };
 }
