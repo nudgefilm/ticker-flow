@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
-import { resend, FROM } from "@/lib/email/resend";
+import { resend } from "@/lib/email/resend";
 import { dailyDigestEmail } from "@/lib/email/templates";
 import type {
   DigestData,
@@ -42,6 +42,22 @@ const MACRO_SPEC: Record<string, { label: string; unit: string }> = {
   FEDFUNDS: { label: "연방기금금리 (FEDFUNDS)", unit: "%" },
   CPI:      { label: "소비자물가지수 (CPI)",      unit: "" },
 };
+
+// 다이제스트 전용 발신자명 — 다른 이메일(welcome/pro-upgrade/contact 등)의
+// 공용 FROM 상수와 무관하게 이 발송 건에만 적용한다.
+const DIGEST_FROM = "TickerFlow Team <support@tickerflow.net>";
+
+// 제목용 KST 날짜 — "2026. 07. 03" 형식
+function kstSubjectDate(): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year:     "numeric",
+    month:    "2-digit",
+    day:      "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}. ${get("month")}. ${get("day")}`;
+}
 
 // ─── 내부 타입 ────────────────────────────────────────────────────────────────
 
@@ -440,12 +456,12 @@ export async function runDigestCollect(): Promise<CollectResult> {
 
   // 12. HTML 생성 및 발송
   const html    = dailyDigestEmail(digestData);
-  const subject = "오늘의 기업동향 TOP10 | TickerFlow";
+  const subject = `TickerFlow Pro 데일리 다이제스트 · ${kstSubjectDate()} KST`;
   let sent   = 0;
   let errors = 0;
 
   for (const email of targetEmails) {
-    const { error } = await resend.emails.send({ from: FROM, to: email, subject, html });
+    const { error } = await resend.emails.send({ from: DIGEST_FROM, to: email, subject, html });
     if (error) errors++;
     else sent++;
   }

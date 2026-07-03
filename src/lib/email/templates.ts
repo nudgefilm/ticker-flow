@@ -234,11 +234,11 @@ const DIGEST_DISCLAIMER = `
 
 function digestStockLink(ticker: string, name: string): string {
   return `<a href="${BASE_URL}/stocks/${escapeHtml(ticker)}" style="color:#ffffff;text-decoration:none;font-weight:700;font-size:14px">${escapeHtml(ticker)}</a>`
-    + ` <span style="color:#bbbbbb;font-size:12px">${escapeHtml(name)}</span>`;
+    + ` <span style="color:#dddddd;font-size:12px">${escapeHtml(name)}</span>`;
 }
 
 function digestSecTitle(text: string): string {
-  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#999999;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
+  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#cccccc;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
 }
 
 function digestSpacer(px: number): string {
@@ -322,11 +322,11 @@ function digestMacroSection(macros: MacroItem[]): string {
   const cells = macros.map((m) => {
     const delta = m.value != null && m.previousValue != null ? m.value - m.previousValue : null;
     const deltaStr = delta != null
-      ? `<span style="color:#bbbbbb;font-size:12px">전월 대비 ${delta >= 0 ? "+" : ""}${delta.toFixed(2)}${escapeHtml(m.unit)}</span>`
+      ? `<span style="color:#dddddd;font-size:12px">전월 대비 ${delta >= 0 ? "+" : ""}${delta.toFixed(2)}${escapeHtml(m.unit)}</span>`
       : "";
     return `<td width="50%" valign="top" style="padding:4px">
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:14px" bgcolor="#1e1e1e">
-        <p style="margin:0 0 4px;font-size:11px;color:#bbbbbb">${escapeHtml(m.label)}</p>
+        <p style="margin:0 0 4px;font-size:11px;color:#dddddd">${escapeHtml(m.label)}</p>
         <p style="margin:0;font-size:20px;font-weight:700;color:#ffffff">${m.value != null ? m.value.toFixed(2) : "—"}${escapeHtml(m.unit)}</p>
         <p style="margin:4px 0 0">${deltaStr}</p>
       </td></tr></table>
@@ -359,7 +359,7 @@ export function dailyDigestEmail(data: DigestData): string {
   // ⑥ 어제 대비 변화 — 이탈 + 순위 변화
   const droppedLinks = dropped.length > 0
     ? dropped.slice(0, 5)
-        .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#bbbbbb;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
+        .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#dddddd;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
         .join("")
     : `<span style="font-size:13px;color:#bbbbbb">없음</span>`;
 
@@ -370,7 +370,7 @@ export function dailyDigestEmail(data: DigestData): string {
         const arrow = up ? "▲" : "▼";
         return `<tr>
           <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:13px">${digestStockLink(m.ticker, m.name)}</td>
-          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#bbbbbb;text-align:right">${m.prevRank}위 → ${m.currRank}위</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#dddddd;text-align:right">${m.prevRank}위 → ${m.currRank}위</td>
           <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:${color};text-align:right;width:48px">${arrow} ${Math.abs(m.delta)}</td>
         </tr>`;
       }).join("")
@@ -383,8 +383,8 @@ export function dailyDigestEmail(data: DigestData): string {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>TickerFlow 데일리 다이제스트</title>
 </head>
-<body style="margin:0;padding:0;background:#000000;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif" bgcolor="#000000">
-  <table cellpadding="0" cellspacing="0" style="width:100%;background:#000000" bgcolor="#000000">
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif" bgcolor="#ffffff">
+  <table cellpadding="0" cellspacing="0" style="width:100%;background:#ffffff" bgcolor="#ffffff">
     <tr><td align="center" style="padding:24px 12px">
       <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#0f0f0f" bgcolor="#0f0f0f">
         <tr><td style="padding:0 12px">
@@ -396,12 +396,12 @@ export function dailyDigestEmail(data: DigestData): string {
           <span style="display:inline-block;margin-left:8px;background:#3b82f6;color:#ffffff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;vertical-align:middle">PRO</span>
         </p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">데일리 다이제스트</p>
-        <p style="margin:0 0 10px;font-size:12px;color:#bbbbbb">${escapeHtml(kstDate)} · KST</p>
-        <p style="margin:0;font-size:13px;color:#bbbbbb">${escapeHtml(headlineLine)}</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#dddddd">${escapeHtml(kstDate)} · KST</p>
+        <p style="margin:0;font-size:13px;color:#dddddd">${escapeHtml(headlineLine)}</p>
       </td></tr></table>
 
       <!-- ① 오늘 시장 분위기 -->
-      ${digestCard(`<p style="margin:0;font-size:14px;color:#e5e5e5;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
+      ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
       ${digestSpacer(24)}
 
       <!-- ② 기업동향 TOP10 -->
@@ -435,9 +435,9 @@ export function dailyDigestEmail(data: DigestData): string {
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("어제 대비 변화")}
         ${digestCard(`
-          <p style="margin:0 0 6px;font-size:11px;color:#999999;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">순위 변화</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">순위 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
-          <p style="margin:0 0 6px;font-size:11px;color:#999999;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">TOP30 이탈</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">TOP30 이탈</p>
           <p style="margin:0">${droppedLinks}</p>
         `)}
       </td></tr></table>
@@ -446,7 +446,7 @@ export function dailyDigestEmail(data: DigestData): string {
       <!-- ⑦ 시장 요약 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("시장 요약")}
-        ${digestCard(`<p style="margin:0;font-size:14px;color:#e5e5e5;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
+        ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
       </td></tr></table>
       ${digestSpacer(24)}
 
@@ -478,9 +478,9 @@ export function dailyDigestEmail(data: DigestData): string {
           </td>
         </tr></table>
         ${digestSpacer(16)}
-        <p style="margin:0 0 2px;font-size:11px;color:#bbbbbb">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
-        <p style="margin:0 0 2px;font-size:11px;color:#bbbbbb">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
-        <p style="margin:0 0 14px;font-size:11px;color:#bbbbbb">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
+        <p style="margin:0 0 14px;font-size:11px;color:#dddddd">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
         ${DIGEST_DISCLAIMER}
         ${digestSpacer(12)}
         <p style="margin:0;font-size:11px;color:#666666">
