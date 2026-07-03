@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { requireCollectAuth } from "@/lib/collect/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { createRunRecord, finishRunRecord } from "@/lib/collect/log-run";
 import {
   type CollectJob,
   type CollectHandler,
@@ -66,42 +66,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: `Unknown job: ${job}` }, { status: 400 });
   }
 
-  const adminClient = createAdminClient();
+  const runId = await createRunRecord(job, "admin");
 
-  const { data: run, error: insertErr } = await (adminClient as any)
-    .from("collect_runs")
-    .insert({ job_type: job, status: "running", source: "admin" })
-    .select("id")
-    .single();
-
-  if (insertErr || !run) {
+  if (!runId) {
     return NextResponse.json({ error: "DB 기록 생성 실패" }, { status: 500 });
   }
-
-  const runId = run.id as string;
 
   after(async () => {
     try {
       const result = await COLLECT_MAP[job]();
-
-      await (adminClient as any)
-        .from("collect_runs")
-        .update({
-          status: result.ok ? "done" : "error",
-          result,
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
+      await finishRunRecord(runId, result);
     } catch (err) {
-      const error_msg = err instanceof Error ? err.message : "Unknown error";
-      await (adminClient as any)
-        .from("collect_runs")
-        .update({
-          status: "error",
-          error_msg,
-          finished_at: new Date().toISOString(),
-        })
-        .eq("id", runId);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      await finishRunRecord(runId, null, message);
     }
   });
 
