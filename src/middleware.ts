@@ -65,7 +65,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/watchlist";
     return NextResponse.redirect(url);
   }
 
@@ -73,7 +73,7 @@ export async function middleware(request: NextRequest) {
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail || user.email !== adminEmail) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = "/watchlist";
       return NextResponse.redirect(url);
     }
   }

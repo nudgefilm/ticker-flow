@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import TrendingCarousel from "@/components/dashboard/trending-carousel";
 import type { TrendingItem } from "@/components/dashboard/trending-carousel";
 import WeeklySummaryCard, { type SummaryMetric } from "@/components/dashboard/weekly-summary-card";
+import DataStatusCard from "@/components/dashboard/data-status-card";
 
 export const dynamic = "force-dynamic";
 
@@ -227,6 +228,134 @@ async function WatchlistContent() {
   );
 }
 
+// ─── 데이터 현황 스켈레톤 ───────────────────────────────────────────────────────
+
+function DataStatusSkeleton() {
+  return (
+    <div className="mt-6 h-64 animate-pulse rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]" />
+  );
+}
+
+// ─── 데이터 현황 ────────────────────────────────────────────────────────────────
+
+// KST(UTC+9) 기준 오늘 00:00에 해당하는 UTC 시각(ISO)
+function todayKstStartUtcIso(): string {
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const kstMidnightUtcMs =
+    Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate(), 0, 0, 0) -
+    9 * 60 * 60 * 1000;
+  return new Date(kstMidnightUtcMs).toISOString();
+}
+
+// 가장 최근 타임스탬프를 "오늘"/"MM.DD" + "HH:MM"(KST)로 분리 포맷
+function formatLastUpdated(iso: string | null): { dayLabel: string; time: string | null } {
+  if (!iso) return { dayLabel: "—", time: null };
+
+  const d = new Date(iso);
+  const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+  const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+
+  const isToday =
+    kst.getUTCFullYear() === todayKst.getUTCFullYear() &&
+    kst.getUTCMonth() === todayKst.getUTCMonth() &&
+    kst.getUTCDate() === todayKst.getUTCDate();
+
+  const hh = String(kst.getUTCHours()).padStart(2, "0");
+  const mm = String(kst.getUTCMinutes()).padStart(2, "0");
+  const dayLabel = isToday
+    ? "오늘"
+    : `${String(kst.getUTCMonth() + 1).padStart(2, "0")}.${String(kst.getUTCDate()).padStart(2, "0")}`;
+
+  return { dayLabel, time: `${hh}:${mm}` };
+}
+
+// institutional_holdings.institution_name / macro_indicators.indicator_name distinct 개수는
+// PostgREST에 distinct count가 없어 값 컬럼만 전체 조회(range 페이지네이션) 후 클라이언트에서 집계
+async function fetchDistinctCount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  table: "institutional_holdings" | "macro_indicators",
+  column: "institution_name" | "indicator_name"
+): Promise<number> {
+  const names = new Set<string>();
+  const PAGE = 1000;
+  let from = 0;
+
+  while (true) {
+    const { data } = await supabase.from(table).select(column).range(from, from + PAGE - 1);
+    if (!data || data.length === 0) break;
+    for (const row of data as unknown as Record<string, string | null>[]) {
+      const v = row[column];
+      if (v) names.add(v);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  return names.size;
+}
+
+async function DataStatusContent() {
+  const supabase = await createClient();
+  const todayStart = todayKstStartUtcIso();
+
+  const [
+    { count: tickersCount },
+    { count: filingsCount },
+    { count: newsCount },
+    { count: insiderCount },
+    { count: todayFilings },
+    { count: todayNews },
+    { count: todayInsider },
+    { data: lastFiling },
+    { data: lastNews },
+    { data: lastInsider },
+    macroIndicatorCount,
+    institutionCount,
+  ] = await Promise.all([
+    supabase.from("tickers").select("*", { count: "exact", head: true }),
+    supabase.from("filings").select("*", { count: "exact", head: true }),
+    supabase.from("news").select("*", { count: "exact", head: true }),
+    supabase.from("insider_trades").select("*", { count: "exact", head: true }),
+    supabase.from("filings").select("*", { count: "exact", head: true }).gte("filed_at", todayStart),
+    supabase.from("news").select("*", { count: "exact", head: true }).gte("published_at", todayStart),
+    supabase.from("insider_trades").select("*", { count: "exact", head: true }).gte("filed_at", todayStart),
+    supabase.from("filings").select("filed_at").order("filed_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("news").select("published_at").order("published_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("insider_trades").select("filed_at").order("filed_at", { ascending: false }).limit(1).maybeSingle(),
+    fetchDistinctCount(supabase, "macro_indicators", "indicator_name"),
+    fetchDistinctCount(supabase, "institutional_holdings", "institution_name"),
+  ]);
+
+  const lastTimestamps = [lastFiling?.filed_at, lastNews?.published_at, lastInsider?.filed_at].filter(
+    (v): v is string => Boolean(v)
+  );
+  const latestIso = lastTimestamps.length > 0
+    ? lastTimestamps.reduce((a, b) => (a > b ? a : b))
+    : null;
+  const { dayLabel, time } = formatLastUpdated(latestIso);
+
+  return (
+    <DataStatusCard
+      metrics={[
+        { label: "모니터링 기업", value: tickersCount ?? 0, unit: "개", color: "#60a5fa" },
+        { label: "수집 공시", value: filingsCount ?? 0, unit: "건", color: "#a78bfa" },
+        { label: "수집 뉴스", value: newsCount ?? 0, unit: "건", color: "#34d399" },
+        { label: "경제지표", value: macroIndicatorCount, unit: "개", color: "#fbbf24" },
+        { label: "내부자 거래", value: insiderCount ?? 0, unit: "건", color: "#f87171" },
+        { label: "기관 수급 데이터", value: institutionCount, unit: "개 기관 추적 중", color: "#22d3ee" },
+      ]}
+      todayMetrics={[
+        { label: "공시", value: todayFilings ?? 0, color: "#a78bfa" },
+        { label: "뉴스", value: todayNews ?? 0, color: "#34d399" },
+        { label: "내부자 거래", value: todayInsider ?? 0, color: "#f87171" },
+      ]}
+      lastUpdatedDayLabel={dayLabel}
+      lastUpdatedTime={time}
+    />
+  );
+}
+
 // ─── 기업 동향 스켈레톤 ─────────────────────────────────────────────────────────
 
 function TrendingSkeleton() {
@@ -395,6 +524,9 @@ export default function WatchlistPage() {
       <DashboardHeader title="와치리스트" />
       <Suspense fallback={<WatchlistSkeleton />}>
         <WatchlistContent />
+      </Suspense>
+      <Suspense fallback={<DataStatusSkeleton />}>
+        <DataStatusContent />
       </Suspense>
       <Suspense fallback={<TrendingSkeleton />}>
         <TrendingContent />
