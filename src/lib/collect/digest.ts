@@ -455,16 +455,40 @@ export async function runDigestCollect(): Promise<CollectResult> {
   };
 
   // 12. HTML 생성 및 발송
+  // Resend 기본 rate limit(2req/s)을 준수하기 위해 발송 간 550ms 간격을 둔다.
+  // 간격 없이 연속 호출하면 수신자가 많을 때 rate_limit_exceeded가 발생해
+  // 실제로는 일시적인 현상인데도 발송 실패로 집계되는 문제가 있었다.
+  // rate_limit_exceeded는 1회 재시도 후에도 실패한 경우에만 진짜 오류로 센다.
   const html    = dailyDigestEmail(digestData);
   const subject = `TickerFlow Pro 데일리 다이제스트 · ${kstSubjectDate()} KST`;
   let sent   = 0;
   let errors = 0;
+  let lastErrorDetail: string | null = null;
 
-  for (const email of targetEmails) {
-    const { error } = await resend.emails.send({ from: DIGEST_FROM, to: email, subject, html });
-    if (error) errors++;
-    else sent++;
+  for (let i = 0; i < targetEmails.length; i++) {
+    const email = targetEmails[i];
+    if (i > 0) await new Promise((r) => setTimeout(r, 550));
+
+    let { error } = await resend.emails.send({ from: DIGEST_FROM, to: email, subject, html });
+
+    if (error?.name === "rate_limit_exceeded") {
+      await new Promise((r) => setTimeout(r, 1100));
+      ({ error } = await resend.emails.send({ from: DIGEST_FROM, to: email, subject, html }));
+    }
+
+    if (error) {
+      errors++;
+      lastErrorDetail = `${error.name}: ${error.message}`;
+    } else {
+      sent++;
+    }
   }
 
-  return { ok: true, sent, errors, total: targetEmails.length };
+  return {
+    ok: true,
+    sent,
+    errors,
+    total: targetEmails.length,
+    ...(errors > 0 && lastErrorDetail ? { firstError: lastErrorDetail } : {}),
+  };
 }
