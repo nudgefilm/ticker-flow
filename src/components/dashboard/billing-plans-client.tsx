@@ -15,14 +15,17 @@ const FREE_FEATURES = [
   "경제지표",
 ]
 
-const PRO_FEATURES = [
-  "Free 기능 전체 포함",
-  "와치리스트 종목 수 무제한",
-  "공시 인사이트",
-  "어닝콜 요약",
-  "내부자 거래",
-  "섹터 히트맵",
-  "알림 설정",
+type ProFeature = { label: string; desc?: string }
+
+const PRO_FEATURES: ProFeature[] = [
+  { label: "Free 기능 전체 포함" },
+  { label: "와치리스트 종목 수 무제한" },
+  { label: "공시 인사이트" },
+  { label: "어닝콜 요약" },
+  { label: "내부자 거래" },
+  { label: "섹터 히트맵" },
+  { label: "알림 설정" },
+  { label: "데일리 다이제스트", desc: "매일 아침 주요 기업동향과 시장 변화를 이메일로 받아보세요." },
 ]
 
 export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
@@ -59,6 +62,9 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
               </li>
             ))}
           </ul>
+          <p className="mt-4 text-xs text-[#a6a6a6]">
+            가입 후 7일간 무료 체험
+          </p>
           <div className="mt-auto pt-6">
             <button
               disabled
@@ -138,9 +144,12 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
         {/* 기능 목록 */}
         <ul className="mt-5 flex flex-col gap-2">
           {PRO_FEATURES.map((f) => (
-            <li key={f} className="flex items-center gap-2 text-sm text-[#cccccc]">
-              <IconCheck size={14} stroke={2} className="shrink-0 text-white" />
-              {f}
+            <li key={f.label} className="flex items-start gap-2 text-sm text-[#cccccc]">
+              <IconCheck size={14} stroke={2} className="mt-0.5 shrink-0 text-white" />
+              <div>
+                <p>{f.label}</p>
+                {f.desc && <p className="mt-0.5 text-xs text-[#a6a6a6]">{f.desc}</p>}
+              </div>
             </li>
           ))}
         </ul>

@@ -157,6 +157,9 @@ export default function MyPage() {
             <>
               <InfoRow label="현재 플랜">Free</InfoRow>
               <div className="px-5 py-4">
+                <p className="mb-3 text-xs text-[#a6a6a6]">
+                  가입 후 7일간 데일리 다이제스트를 무료로 받아보실 수 있습니다.
+                </p>
                 <Link
                   href="/billing"
                   className="inline-flex items-center gap-1.5 rounded-[6px] bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-white/90"

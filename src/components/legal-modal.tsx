@@ -43,6 +43,10 @@ const TERMS_SECTIONS = [
     content: `본 서비스는 공개된 정보를 기반으로 시장 흐름을 시각화한 참고용 도구입니다. 특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다. 투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다. 언폴드랩은 서비스 내 정보의 정확성·완전성을 보장하지 않으며, 이로 인한 손실에 대해 법적 책임을 지지 않습니다.`,
   },
   {
+    title: "알림 및 이메일 발송",
+    content: `· 서비스 가입 시 서비스 관련 이메일 수신에 동의한 것으로 간주합니다.\n· 가입 후 7일간 데일리 다이제스트를 무료로 발송합니다.\n· Pro 플랜 이용 중에는 데일리 다이제스트가 매일 발송됩니다.\n· 수신을 원하지 않으시면 이메일 하단의 수신 거부 링크를 통해 언제든지 거부할 수 있습니다.`,
+  },
+  {
     title: "구독 및 결제",
     content: `· Free 플랜은 무료로 이용할 수 있습니다.\n· Pro 플랜은 월 ₩14,900 또는 연 ₩142,800으로 이용할 수 있습니다.\n· 구독은 언제든지 해지할 수 있으며, 해지 후에도 결제 기간 만료일까지 이용 가능합니다.`,
   },
@@ -62,7 +66,7 @@ const TERMS_SECTIONS = [
 
 const MODAL_CONFIG: Record<"terms" | "privacy", { title: string; updated: string; sections: { title: string; content: string }[] }> = {
   privacy: { title: "개인정보처리방침", updated: "2026년 6월 24일", sections: PRIVACY_SECTIONS },
-  terms:   { title: "이용약관",         updated: "2026년 6월 24일", sections: TERMS_SECTIONS },
+  terms:   { title: "이용약관",         updated: "2026년 7월 3일", sections: TERMS_SECTIONS },
 };
 
 export type LegalType = "terms" | "privacy";
