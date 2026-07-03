@@ -159,6 +159,16 @@ const TRIGGERS: Trigger[] = [
     label: "BRIEF 백필 (Pro 와치리스트 전체)",
     desc: "Pro 유저 와치리스트 전체 종목 중 stock_briefs가 없는 종목에 대해 BRIEF를 일괄 생성합니다. 최초 1회 또는 누락 종목 보충 시 실행하세요. 건당 500ms 딜레이 포함.",
   },
+  {
+    id: "weekly-brief",
+    label: "주간 BRIEF 생성",
+    desc: "최근 7일 기업동향·시장변화·섹터동향 등을 집계하고 Claude Haiku로 요약해 weekly_briefs 테이블에 저장합니다.",
+  },
+  {
+    id: "monthly-brief",
+    label: "월간 BRIEF 생성",
+    desc: "최근 30일 기업동향·시장변화·섹터동향·경제지표 등을 집계하고 Claude Haiku로 요약해 monthly_briefs 테이블에 저장합니다.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -393,6 +403,8 @@ export default function TriggerPage() {
             { name: "공시 수집",           schedule: "매시간 17분",              path: "/api/collect/filings"          },
             { name: "뉴스 수집",           schedule: "매시간 23분",              path: "/api/collect/news"             },
             { name: "번역 (Claude Haiku)", schedule: "매시간 07·27·47분",        path: "/api/translate"                },
+            { name: "주간 BRIEF 생성",      schedule: "매주 월 00:00 UTC (09:00 KST)", path: "/api/collect/weekly-brief"  },
+            { name: "월간 BRIEF 생성",      schedule: "매월 1일 00:00 UTC (09:00 KST)", path: "/api/collect/monthly-brief" },
             { name: "실적 캘린더",          schedule: "매일 00:07 UTC (09:07 KST)", path: "/api/collect/earnings"       },
             { name: "경제지표",            schedule: "매일 00:13 UTC (09:13 KST)", path: "/api/collect/macro"          },
             { name: "내부자 거래",          schedule: "매일 00:20 UTC (09:20 KST)", path: "/api/collect/insider"        },

@@ -25,6 +25,8 @@ import {
   runPriceTargetsCollect,
   runTop30Select,
   runBriefBackfill,
+  runWeeklyBriefCollect,
+  runMonthlyBriefCollect,
 } from "@/lib/collect";
 import { runTelegramNotify } from "@/lib/notify/telegram";
 import { runTelegramDigest } from "@/lib/notify/telegram-digest";
@@ -54,6 +56,8 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "telegram":          runTelegramNotify,
   "telegram-digest":   runTelegramDigest,
   "brief-backfill":    runBriefBackfill,
+  "weekly-brief":      runWeeklyBriefCollect,
+  "monthly-brief":     runMonthlyBriefCollect,
 };
 
 export async function GET(req: NextRequest) {

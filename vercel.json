@@ -9,6 +9,14 @@
       "schedule": "23 * * * *"
     },
     {
+      "path": "/api/collect/weekly-brief",
+      "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/collect/monthly-brief",
+      "schedule": "0 0 1 * *"
+    },
+    {
       "path": "/api/collect/earnings",
       "schedule": "7 0 * * *"
     },

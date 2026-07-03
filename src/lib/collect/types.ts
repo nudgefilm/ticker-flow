@@ -29,6 +29,8 @@ export const COLLECT_JOBS = [
   "telegram",
   "telegram-digest",
   "brief-backfill",
+  "weekly-brief",
+  "monthly-brief",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

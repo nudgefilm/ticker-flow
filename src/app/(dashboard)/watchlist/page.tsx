@@ -8,6 +8,8 @@ import TrendingCarousel from "@/components/dashboard/trending-carousel";
 import type { TrendingItem } from "@/components/dashboard/trending-carousel";
 import WeeklySummaryCard, { type SummaryMetric } from "@/components/dashboard/weekly-summary-card";
 import DataStatusCard from "@/components/dashboard/data-status-card";
+import WeeklyBrief from "@/components/dashboard/weekly-brief";
+import MonthlyBrief from "@/components/dashboard/monthly-brief";
 
 export const dynamic = "force-dynamic";
 
@@ -360,6 +362,43 @@ async function DataStatusContent() {
   );
 }
 
+// ─── 주간/월간 BRIEF 스켈레톤 ───────────────────────────────────────────────────
+
+function BriefSkeleton() {
+  return (
+    <div className="mt-6 h-40 animate-pulse rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]" />
+  );
+}
+
+// ─── 주간 BRIEF (Pro 여부 확인 후 위임) ─────────────────────────────────────────
+
+async function WeeklyBriefSection() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let isPro = false;
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle();
+    isPro = profile?.plan === "pro";
+  }
+
+  return (
+    <div className="mt-6">
+      <WeeklyBrief isPro={isPro} />
+    </div>
+  );
+}
+
+// ─── 월간 BRIEF ────────────────────────────────────────────────────────────────
+
+function MonthlyBriefSection() {
+  return (
+    <div className="mt-6">
+      <MonthlyBrief />
+    </div>
+  );
+}
+
 // ─── 기업 동향 스켈레톤 ─────────────────────────────────────────────────────────
 
 function TrendingSkeleton() {
@@ -526,14 +565,20 @@ export default function WatchlistPage() {
   return (
     <div className="flex h-full flex-col">
       <DashboardHeader title="와치리스트" />
-      <Suspense fallback={<WatchlistSkeleton />}>
-        <WatchlistContent />
-      </Suspense>
       <Suspense fallback={<DataStatusSkeleton />}>
         <DataStatusContent />
       </Suspense>
+      <Suspense fallback={<BriefSkeleton />}>
+        <WeeklyBriefSection />
+      </Suspense>
+      <Suspense fallback={<BriefSkeleton />}>
+        <MonthlyBriefSection />
+      </Suspense>
       <Suspense fallback={<TrendingSkeleton />}>
         <TrendingContent />
+      </Suspense>
+      <Suspense fallback={<WatchlistSkeleton />}>
+        <WatchlistContent />
       </Suspense>
       <DashboardDisclaimer />
     </div>
