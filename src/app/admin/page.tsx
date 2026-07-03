@@ -5,8 +5,6 @@ import {
   IconCurrencyDollar,
   IconEye,
   IconTrendingUp,
-  IconCircleCheck,
-  IconAlertCircle,
 } from "@tabler/icons-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
@@ -81,31 +79,33 @@ type Top30Row = {
   final_score: number | null;
   reason_tags: string[] | null;
   metadata: ScreenerMetadata | null;
+  date: string;
 };
-
-function todayDateStr(): string {
-  // top30.ts가 저장 시 사용하는 날짜 포맷(UTC 기준)과 동일하게 맞춘다.
-  return new Date().toISOString().slice(0, 10);
-}
 
 async function AdminWatchSection() {
   const admin = createAdminClient();
 
+  // 오늘 날짜로 고정 조회하면 당일 Cron(TOP30 선정) 실행 전에는 항상 비어 보인다.
+  // 가장 최근 저장된 날짜의 TOP30을 표시하도록 date DESC, rank ASC 순으로 가져온다.
   const { data: rows } = await admin
     .from("top30_daily")
-    .select("ticker, rank, final_score, reason_tags, metadata")
-    .eq("date", todayDateStr())
-    .order("rank", { ascending: true });
+    .select("ticker, rank, final_score, reason_tags, metadata, date")
+    .order("date", { ascending: false })
+    .order("rank", { ascending: true })
+    .limit(30);
 
   if (!rows || rows.length === 0) {
     return (
       <p className="text-sm text-[#a6a6a6]">
-        오늘 스크리너 데이터가 없습니다. 트리거 페이지에서 &apos;TOP30 선정&apos;을 실행해 주세요.
+        스크리너 데이터가 없습니다. 트리거 페이지에서 &apos;TOP30 선정&apos;을 실행해 주세요.
       </p>
     );
   }
 
-  const candidates = rows as unknown as Top30Row[];
+  // limit(30)이 최근 날짜의 row 수가 30개 미만일 때 전날 데이터까지 끌어올 수 있으므로
+  // 가장 최근 날짜(첫 row 기준)로 한 번 더 필터링해 날짜 혼재를 방지한다.
+  const latestDate = (rows[0] as unknown as Top30Row).date;
+  const candidates = (rows as unknown as Top30Row[]).filter((r) => r.date === latestDate);
 
   const { data: tickerRows } = await admin
     .from("tickers")
@@ -190,15 +190,12 @@ function AdminWatchSkeleton() {
 
 function formatCollectionTime(iso: string): string {
   const d = new Date(iso);
-  const utcHH = String(d.getUTCHours()).padStart(2, "0");
-  const utcMM = String(d.getUTCMinutes()).padStart(2, "0");
   const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
   const kstHH = String(kst.getUTCHours()).padStart(2, "0");
   const kstMM = String(kst.getUTCMinutes()).padStart(2, "0");
-  const y   = kst.getUTCFullYear();
   const m   = String(kst.getUTCMonth() + 1).padStart(2, "0");
   const day = String(kst.getUTCDate()).padStart(2, "0");
-  return `[ KST ${kstHH}:${kstMM}, ${y}. ${m}. ${day} | UTC ${utcHH}:${utcMM} ]`;
+  return `${m}. ${day} · KST ${kstHH}:${kstMM}`;
 }
 
 async function CollectionTimeBadge() {
@@ -206,10 +203,11 @@ async function CollectionTimeBadge() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
+  // 오늘 날짜 고정 조회 대신 가장 최근 저장된 날짜 기준으로 조회
   const { data } = await admin
     .from("top30_daily")
     .select("updated_at")
-    .eq("date", todayDateStr())
+    .order("date", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(1);
 
@@ -223,6 +221,76 @@ async function CollectionTimeBadge() {
   );
 }
 
+// ─── 수집 현황 (collect_runs 기준) ──────────────────────────────────────────────
+// collect_runs는 어드민 트리거 페이지에서 수동 실행한 기록만 남는다. Vercel Cron
+// 자동 실행은 이 테이블에 기록되지 않으므로, 자동으로는 정상 동작 중이어도
+// 그날 관리자가 버튼을 누르지 않았다면 "미실행"으로 표시될 수 있다.
+
+type JobSpec = { job: string; label: string };
+
+const DAILY_JOBS: JobSpec[] = [
+  { job: "filings",           label: "공시 수집 (SEC EDGAR)" },
+  { job: "news",               label: "뉴스 수집 (Finnhub)" },
+  { job: "translate",          label: "번역 재실행 (Haiku)" },
+  { job: "earnings",           label: "실적 캘린더" },
+  { job: "macro",              label: "경제지표" },
+  { job: "calls",              label: "어닝콜 요약" },
+  { job: "analyst",            label: "애널리스트 추천" },
+  { job: "prices",             label: "주가 히스토리" },
+  { job: "earnings-actual",    label: "실적 어닝서프라이즈" },
+  { job: "classify-filings",   label: "공시 이벤트 자동 분류" },
+  { job: "top30",              label: "TOP30 스크리너 선정" },
+  { job: "digest",             label: "이메일 다이제스트 발송" },
+];
+
+const WEEKLY_JOBS: JobSpec[] = [
+  { job: "13f",             label: "13F 기관 보유" },
+  { job: "short-interest",  label: "Short Interest" },
+  { job: "price-targets",   label: "Price Target" },
+  { job: "profile",         label: "종목 프로필" },
+];
+
+type RunInfo = { job_type: string; status: string; started_at: string; finished_at: string | null };
+
+function formatRunTimeKst(iso: string): string {
+  const kst = new Date(new Date(iso).getTime() + 9 * 60 * 60 * 1000);
+  const m  = String(kst.getUTCMonth() + 1).padStart(2, "0");
+  const d  = String(kst.getUTCDate()).padStart(2, "0");
+  const hh = String(kst.getUTCHours()).padStart(2, "0");
+  const mm = String(kst.getUTCMinutes()).padStart(2, "0");
+  return `${m}/${d} ${hh}:${mm} KST`;
+}
+
+function classifyRunStatus(run: RunInfo | undefined, isRecentEnough: boolean): { label: string; className: string } {
+  if (!run || !isRecentEnough) {
+    return { label: "미실행", className: "bg-white/[0.06] text-[#a6a6a6] border border-white/[0.08]" };
+  }
+  if (run.status === "error") {
+    return { label: "실패", className: "bg-red-500/10 text-red-400 border border-red-500/20" };
+  }
+  if (run.status === "running") {
+    return { label: "실행중", className: "bg-blue-500/10 text-blue-400 border border-blue-500/20" };
+  }
+  return { label: "성공", className: "bg-green-500/10 text-green-400 border border-green-500/20" };
+}
+
+function CollectStatusRow({ label, run, isRecentEnough }: { label: string; run: RunInfo | undefined; isRecentEnough: boolean }) {
+  const status = classifyRunStatus(run, isRecentEnough);
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-[6px] border border-white/[0.06] bg-[#0f0f0f] px-3 py-2">
+      <div className="min-w-0">
+        <p className="truncate text-sm text-white">{label}</p>
+        <p className="mt-0.5 text-[11px] text-[#a6a6a6]">
+          {run ? formatRunTimeKst(run.started_at) : "기록 없음"}
+        </p>
+      </div>
+      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", status.className)}>
+        {status.label}
+      </span>
+    </div>
+  );
+}
+
 // ─── 페이지 ────────────────────────────────────────────────────────────────────
 
 export default async function AdminPage() {
@@ -232,18 +300,27 @@ export default async function AdminPage() {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
 
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const allJobTypes = [...DAILY_JOBS, ...WEEKLY_JOBS].map((j) => j.job);
+
   const [
     { count: totalCount },
     { count: proCount },
     { count: newTodayCount },
-    { count: filingsTodayCount },
-    { count: newsTodayCount },
+    { data: runRows },
+    { data: signupRows },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }),
     admin.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
     admin.from("profiles").select("*", { count: "exact", head: true }).gte("created_at", todayISO),
-    admin.from("filings").select("*", { count: "exact", head: true }).gte("filed_at", todayISO),
-    admin.from("news").select("*", { count: "exact", head: true }).gte("published_at", todayISO),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any)
+      .from("collect_runs")
+      .select("job_type, status, started_at, finished_at")
+      .in("job_type", allJobTypes)
+      .gte("started_at", sevenDaysAgoIso)
+      .order("started_at", { ascending: false }) as Promise<{ data: RunInfo[] | null }>,
+    admin.from("profiles").select("created_at").gte("created_at", sevenDaysAgoIso),
   ]);
 
   const total    = totalCount ?? 0;
@@ -252,14 +329,33 @@ export default async function AdminPage() {
   const convRate = total > 0 ? ((pro / total) * 100).toFixed(1) : "—";
   const freePct  = total > 0 ? (free / total) * 100 : 0;
 
-  const activityItems = [
-    { label: "오늘 신규 가입",       value: `${newTodayCount ?? 0}명` },
-    { label: "오늘 공시 수집",       value: `${(filingsTodayCount ?? 0).toLocaleString("ko-KR")}건` },
-    { label: "오늘 뉴스 수집",       value: `${(newsTodayCount ?? 0).toLocaleString("ko-KR")}건` },
-    { label: "수집 오류",           value: "준비 중" },
-    { label: "Claude API 오늘 비용", value: "준비 중" },
-    { label: "마지막 수집",          value: "준비 중" },
-  ];
+  // job_type별 가장 최근 실행 1건만 유지 (started_at desc 정렬 결과이므로 첫 등장이 최신)
+  const latestRunByJob = new Map<string, RunInfo>();
+  for (const row of runRows ?? []) {
+    if (!latestRunByJob.has(row.job_type)) latestRunByJob.set(row.job_type, row);
+  }
+
+  // 최근 7일 일별 신규 가입 집계 (Vercel Analytics 미연동 — 방문자 대신 신규 가입으로 대체)
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const signupMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    signupMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = 0;
+  }
+  for (const row of signupRows ?? []) {
+    if (!row.created_at) continue;
+    const d = new Date(row.created_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (key in signupMap) signupMap[key]++;
+  }
+  const dailySignups = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+    return {
+      day:   dayNames[d.getDay()],
+      value: signupMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0,
+    };
+  });
+  const maxSignup = Math.max(...dailySignups.map((d) => d.value), 1);
 
   return (
     <div className="space-y-6">
@@ -317,29 +413,55 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* 오늘 현황 */}
-        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
-          <h2 className="mb-4 text-sm font-medium text-white">오늘 현황</h2>
-          <div className="space-y-3">
-            {activityItems.map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <IconCircleCheck size={14} stroke={1.5} className="text-green-400" />
-                  <span className="text-sm text-[#a6a6a6]">{item.label}</span>
-                </div>
-                <span className="text-sm font-medium text-white">{item.value}</span>
-              </div>
-            ))}
-          </div>
+      {/* 오늘 현황 — 수집 파이프라인 실행 상태 (collect_runs 기준) */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-medium text-white">오늘 현황</h2>
+          <p className="text-[11px] text-[#666666]">
+            관리자 수동 실행 기록 기준 — Cron 자동 실행은 별도 기록되지 않습니다
+          </p>
         </div>
 
-        {/* 일별 방문자 (준비 중) */}
-        <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
-          <h2 className="mb-4 text-sm font-medium text-white">일별 방문자 (7일)</h2>
-          <div className="flex h-28 items-center justify-center">
-            <p className="text-sm text-[#a6a6a6]">준비 중</p>
-          </div>
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">매일 수집</p>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          {DAILY_JOBS.map(({ job, label }) => {
+            const run = latestRunByJob.get(job);
+            const isRecentEnough = !!run && run.started_at >= todayISO;
+            return <CollectStatusRow key={job} label={label} run={run} isRecentEnough={isRecentEnough} />;
+          })}
+        </div>
+
+        <p className="mb-2 mt-5 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">매주 수집 (최근 7일)</p>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          {WEEKLY_JOBS.map(({ job, label }) => {
+            const run = latestRunByJob.get(job);
+            return <CollectStatusRow key={job} label={label} run={run} isRecentEnough={!!run} />;
+          })}
+        </div>
+      </div>
+
+      {/* 일별 신규 가입 (7일) — Vercel Analytics 미연동으로 방문자 대신 신규 가입 수 표시 */}
+      <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-5">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-sm font-medium text-white">일별 신규 가입 (7일)</h2>
+          <p className="text-[11px] text-[#666666]">방문자 통계 미연동 — 신규 가입 수로 대체 표시</p>
+        </div>
+        <div className="flex h-28 items-end justify-between gap-2">
+          {dailySignups.map((d, i) => {
+            const isLatest = i === dailySignups.length - 1;
+            return (
+              <div key={i} className="flex h-full flex-1 flex-col items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-white">{d.value}</span>
+                <div className="flex w-full flex-1 items-end">
+                  <div
+                    className={cn("w-full rounded-t-sm", isLatest ? "bg-blue-500" : "bg-blue-500/35")}
+                    style={{ height: `${(d.value / maxSignup) * 100}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-[#a6a6a6]">{d.day}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
