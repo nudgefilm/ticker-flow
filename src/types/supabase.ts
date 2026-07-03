@@ -273,6 +273,7 @@ export type Database = {
           fiscal_quarter: number
           fiscal_year: number
           guidance_direction: string | null
+          guidance_history: Json
           guidance_previous: string | null
           guidance_summary: string | null
           has_earnings_release: boolean | null
@@ -305,6 +306,7 @@ export type Database = {
           fiscal_quarter: number
           fiscal_year: number
           guidance_direction?: string | null
+          guidance_history?: Json
           guidance_previous?: string | null
           guidance_summary?: string | null
           has_earnings_release?: boolean | null
@@ -337,6 +339,7 @@ export type Database = {
           fiscal_quarter?: number
           fiscal_year?: number
           guidance_direction?: string | null
+          guidance_history?: Json
           guidance_previous?: string | null
           guidance_summary?: string | null
           has_earnings_release?: boolean | null
@@ -525,6 +528,27 @@ export type Database = {
           released_at?: string
           source?: string | null
           value?: number | null
+        }
+        Relationships: []
+      }
+      monthly_briefs: {
+        Row: {
+          data: Json
+          generated_at: string | null
+          id: string
+          month_start: string
+        }
+        Insert: {
+          data: Json
+          generated_at?: string | null
+          id?: string
+          month_start: string
+        }
+        Update: {
+          data?: Json
+          generated_at?: string | null
+          id?: string
+          month_start?: string
         }
         Relationships: []
       }
@@ -890,6 +914,27 @@ export type Database = {
             referencedColumns: ["ticker"]
           },
         ]
+      }
+      weekly_briefs: {
+        Row: {
+          data: Json
+          generated_at: string | null
+          id: string
+          week_start: string
+        }
+        Insert: {
+          data: Json
+          generated_at?: string | null
+          id?: string
+          week_start: string
+        }
+        Update: {
+          data?: Json
+          generated_at?: string | null
+          id?: string
+          week_start?: string
+        }
+        Relationships: []
       }
     }
     Views: {
