@@ -6,6 +6,35 @@
 
 ---
 
+## 2026-07-03 · 세션 76
+
+### 와치리스트 주간/월간 BRIEF 신규 기능 — 실시간 계산 → 캐시 전환, 어코디언 UI 개편
+
+**주간/월간 BRIEF 실시간 계산 (1단계) — `src/lib/watchlist-brief.ts` 신규, `brief-sections.tsx` 신규, `watchlist/page.tsx`**
+- 워치리스트 페이지에 최근 7일/30일 기업동향·시장변화·섹터동향·공시·실적·경제지표를 집계해 Haiku로 요약하는 BRIEF 섹션 신규 추가
+- 공유 UI 프리미티브(`BriefCard`, `BriefCompanyList`, `BriefChangeBadges`, `BriefSectorList`, `BriefFilingList`, `BriefEarningsList`, `BriefMacroList`, `BriefTagLeaders`, `BriefSummaryText` 등) `brief-sections.tsx`에 정리
+- 작업 중 `top30_daily`/`price_targets` RLS 갭 발견(institutional_holdings와 동일 유형) — `supabase/add_top30_price_targets_rls.sql` 제공
+
+**캐시 기반 전환 (2단계) — `collect/weekly-brief.ts`, `collect/monthly-brief.ts` 신규**
+- CLAUDE.md 17항 서비스 계층 분리 원칙에 따라 집계+Haiku 요약+upsert 로직을 `src/lib/collect/weekly-brief.ts`/`monthly-brief.ts`로 이동, `watchlist-brief.ts`는 캐시 읽기 함수(`getLatestWeeklyBrief`/`getLatestMonthlyBrief`)만 담당하도록 재편
+- `api/collect/weekly-brief`, `monthly-brief` thin wrapper 라우트 신규, `vercel.json` Cron 등록(매주 월 00:00 UTC / 매월 1일 00:00 UTC), `admin/run` COLLECT_MAP·`collect/types` COLLECT_JOBS 등록, `admin/system/trigger`에 수동 트리거 버튼 2개 추가
+- `weekly_briefs`/`monthly_briefs` 캐시 테이블 SQL 제공(`supabase/create_brief_cache_tables.sql`) — 사용자가 Supabase에서 직접 실행
+
+**Supabase 타입 재생성 및 권한 문제 트러블슈팅**
+- `pnpm gen:types` 실행 후 `weekly_briefs`/`monthly_briefs` 타입 반영 확인, 첫 줄 `export type Json =` 확인 후 커밋
+- 실제 트리거 실행 시 "permission denied for table weekly_briefs"(service_role GRANT 누락), "Could not find the table 'public.monthly_briefs'"(PostgREST 스키마 캐시 미갱신) 두 가지 에러 발생 → `supabase/fix_brief_cache_tables.sql` 신규 제공(`GRANT ALL ... TO service_role`, RLS 정책 재생성, `NOTIFY pgrst, 'reload schema'`) — 실행 후 양쪽 정상 완료 확인
+
+**주간/월간 BRIEF UI 개편 — 어코디언 + 색상 차별화 + 2열 그리드**
+- `src/components/dashboard/brief-accordion.tsx` 신규 — `BriefAccordion` 클라이언트 컴포넌트. 기본 접힘, 헤더 클릭 시 펼침, 우측 `IconChevronDown` 회전 아이콘, 타이틀 옆 기간 배지 표시
+- 내부 개별 섹션(①②③...)은 요청에 따라 어코디언 없이 그대로 유지(내부까지 어코디언 적용 시 "혼잡해짐" 피드백 반영)
+- 주간 BRIEF는 파랑(`#60a5fa`, `bg-blue-500/[0.05]`), 월간 BRIEF는 보라(`#a78bfa`, `bg-purple-500/[0.05]`)로 타이틀·배지·섹터/태그리더 진행바 색상 차별화
+- "TOP10/20 기업동향"+"시장 변화", "신규 진입 기업"+"섹터 동향"(월간은 "가장 많이 관측된 변화"+"경제지표" 추가)을 `md:grid-cols-2` 2열 배치, `BriefChangeBadges` 그리드를 6열→3열로 조정해 半폭에 맞춤
+- 캐시 없을 때 문구를 "데이터 준비 중입니다."(서비스 미완성으로 오인될 수 있음) → 주간 "매주 월요일 업데이트됩니다.", 월간 "매월 1일 업데이트됩니다."로 수정
+
+**빌드 검증**: 매 단계 `pnpm build` 성공, 에러 0건.
+
+---
+
 ## 2026-07-02 · 세션 75
 
 ### 파비콘/OG 이미지 교체, BRIEF 회계연도 오기재 수정, 종목 스냅샷 BRIEF 대개편, 로그인 모달 해파리 배경

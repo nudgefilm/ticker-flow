@@ -79,7 +79,7 @@ const CHANGE_BADGE_SPEC: {
 
 export function BriefChangeBadges({ stats }: { stats: MarketChangeStats }) {
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {CHANGE_BADGE_SPEC.map((spec) => (
         <div
           key={spec.key}
@@ -152,7 +152,13 @@ export function BriefPeriodChange({
 
 // ── 섹터 동향 ──────────────────────────────────────────────────────────────────
 
-export function BriefSectorList({ sectors }: { sectors: SectorTrend[] }) {
+export function BriefSectorList({
+  sectors,
+  accentColor = "#60a5fa",
+}: {
+  sectors: SectorTrend[];
+  accentColor?: string;
+}) {
   if (sectors.length === 0) return <BriefEmpty />;
   const max = Math.max(...sectors.map((s) => s.total), 1);
   return (
@@ -164,7 +170,7 @@ export function BriefSectorList({ sectors }: { sectors: SectorTrend[] }) {
             <span className="text-xs text-[#a6a6a6]">공시 {s.filingsCount}건 · 내부자 매수 {s.insiderCount}건</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
-            <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${(s.total / max) * 100}%` }} />
+            <div className="h-full rounded-full" style={{ width: `${(s.total / max) * 100}%`, backgroundColor: accentColor }} />
           </div>
         </div>
       ))}
@@ -247,7 +253,13 @@ export function BriefMacroList({ items }: { items: MacroSnapshot[] }) {
 
 // ── 가장 많이 관측된 변화 (월간 전용) ───────────────────────────────────────────
 
-export function BriefTagLeaders({ items }: { items: TagLeader[] }) {
+export function BriefTagLeaders({
+  items,
+  accentColor = "#60a5fa",
+}: {
+  items: TagLeader[];
+  accentColor?: string;
+}) {
   if (items.length === 0) return <BriefEmpty />;
   const max = Math.max(...items.map((i) => i.count), 1);
   return (
@@ -256,7 +268,7 @@ export function BriefTagLeaders({ items }: { items: TagLeader[] }) {
         <div key={item.label} className="flex items-center gap-3">
           <span className="w-40 shrink-0 text-sm text-[#cccccc]">{item.label}</span>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-            <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${(item.count / max) * 100}%` }} />
+            <div className="h-full rounded-full" style={{ width: `${(item.count / max) * 100}%`, backgroundColor: accentColor }} />
           </div>
           <span className="w-10 shrink-0 text-right text-xs text-[#a6a6a6]">{item.count}건</span>
         </div>

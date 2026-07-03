@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconArrowRight } from "@tabler/icons-react";
 import { createClient } from "@/lib/supabase/server";
 import { getLatestWeeklyBrief } from "@/lib/watchlist-brief";
+import { BriefAccordion } from "./brief-accordion";
 import {
   BriefCard,
   BriefCompanyList,
@@ -12,6 +13,9 @@ import {
   BriefEarningsList,
   BriefSummaryText,
 } from "./brief-sections";
+
+const WEEKLY_ACCENT = "#60a5fa";
+const WEEKLY_HEADER_BG = "bg-blue-500/[0.05]";
 
 const WEEKLY_SECTION_TITLES = [
   "이번 주 기업동향 TOP10",
@@ -53,7 +57,7 @@ function WeeklyBriefLocked() {
 function WeeklyBriefPending() {
   return (
     <BriefCard title="주간 BRIEF">
-      <p className="text-sm text-[#a6a6a6]">데이터 준비 중입니다.</p>
+      <p className="text-sm text-[#a6a6a6]">매주 월요일 업데이트됩니다.</p>
     </BriefCard>
   );
 }
@@ -70,35 +74,38 @@ export default async function WeeklyBrief({ isPro }: { isPro: boolean }) {
     cache.data;
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm font-semibold text-white">
-        주간 BRIEF <span className="ml-1 text-xs font-normal text-[#a6a6a6]">최근 7일 · {cache.weekStart} 기준</span>
-      </p>
-
-      <BriefCard title="이번 주 기업동향 TOP10">
-        <BriefCompanyList items={topCompanies} />
-      </BriefCard>
-
+    <BriefAccordion
+      title="주간 BRIEF"
+      badge={`최근 7일 · ${cache.weekStart} 기준`}
+      accent={WEEKLY_ACCENT}
+      headerBg={WEEKLY_HEADER_BG}
+    >
       {summary && (
         <BriefCard title="이번 주 시장 요약">
           <BriefSummaryText text={summary} />
         </BriefCard>
       )}
 
-      <BriefCard title="이번 주 시장 변화">
-        <BriefChangeBadges stats={marketStats} />
-      </BriefCard>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <BriefCard title="이번 주 기업동향 TOP10">
+          <BriefCompanyList items={topCompanies} />
+        </BriefCard>
+        <BriefCard title="이번 주 시장 변화">
+          <BriefChangeBadges stats={marketStats} />
+        </BriefCard>
+      </div>
 
-      <BriefCard title="이번 주 처음 TOP30에 진입한 기업">
-        <BriefCompanyList items={newEntrants} />
-      </BriefCard>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <BriefCard title="이번 주 처음 TOP30에 진입한 기업">
+          <BriefCompanyList items={newEntrants} />
+        </BriefCard>
+        <BriefCard title="이번 주 섹터 동향">
+          <BriefSectorList sectors={sectors} accentColor={WEEKLY_ACCENT} />
+        </BriefCard>
+      </div>
 
       <BriefCard title="지난주 대비 변화">
         <BriefPeriodChange dropped={dropped} movers={movers} />
-      </BriefCard>
-
-      <BriefCard title="이번 주 섹터 동향">
-        <BriefSectorList sectors={sectors} />
       </BriefCard>
 
       <BriefCard title="이번 주 주요 공시">
@@ -113,6 +120,6 @@ export default async function WeeklyBrief({ isPro }: { isPro: boolean }) {
         본 콘텐츠는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 자료입니다.
         특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.
       </p>
-    </div>
+    </BriefAccordion>
   );
 }
