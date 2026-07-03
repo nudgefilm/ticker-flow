@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { IconChevronDown } from "@tabler/icons-react";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 
 export function BriefAccordion({
   title,
@@ -51,6 +51,15 @@ export function BriefAccordion({
       {open && (
         <div className="flex flex-col gap-4 px-5 pb-5 pt-4" style={{ borderTop: `1px solid ${accent}33` }}>
           {children}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center justify-center gap-1.5 rounded-[6px] py-2.5 text-xs font-medium transition-colors hover:bg-white/[0.04]"
+            style={{ color: accent, border: `1px solid ${accent}33` }}
+          >
+            접기
+            <IconChevronUp size={14} stroke={2} />
+          </button>
         </div>
       )}
     </div>
