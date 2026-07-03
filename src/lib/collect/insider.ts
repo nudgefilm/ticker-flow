@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runStockBriefCollect } from "./brief";
+import { createInsiderTitleLookup } from "./insider-form4";
 import type { CollectResult } from "./types";
 
 // ─── Finnhub 응답 타입 ─────────────────────────────────────────────────────────
@@ -48,6 +49,9 @@ async function collectForTicker(
   let inserted = 0;
   let skipped = 0;
 
+  // Finnhub 응답에 title이 없는 경우(현재 플랜 기준 항상 없음) SEC Form 4 원문에서 조회
+  const lookupTitle = createInsiderTitleLookup(ticker);
+
   for (const tx of transactions) {
     const transactionType = mapTransactionType(tx.transactionCode);
     // P(매수)/S(매도)만, 파생상품 제외
@@ -56,12 +60,17 @@ async function collectForTicker(
     const value =
       tx.share && tx.transactionPrice ? tx.share * tx.transactionPrice : null;
 
+    let title = tx.title || null;
+    if (!title && tx.name && tx.filingDate) {
+      title = await lookupTitle(tx.name, tx.filingDate);
+    }
+
     const { error } = await (adminClient as any)
       .from("insider_trades")
       .insert({
         ticker,
         name: tx.name || null,
-        title: tx.title || null,
+        title,
         transaction_type: transactionType,
         shares: tx.share || null,
         price: tx.transactionPrice || null,

@@ -347,6 +347,35 @@ async function collectForTicker(
 
   const callDate = transcript.date ?? `${fiscalY}-12-31`;
 
+  // ⑤-2 직전 분기 가이던스 조회 — guidance_previous에 실제 이전 분기 값을 채우고
+  // guidance_history에 지금까지의 분기별 가이던스 이력을 누적한다.
+  const { data: prevGuidanceRow } = await (adminClient as any)
+    .from("earnings_calls")
+    .select("quarter, call_date, guidance_direction, guidance_history")
+    .eq("ticker", ticker)
+    .neq("quarter", quarter)
+    .order("fiscal_year", { ascending: false })
+    .order("fiscal_quarter", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const guidancePrevious: "up" | "maintain" | "down" =
+    (prevGuidanceRow?.guidance_direction as "up" | "maintain" | "down" | undefined) ?? "maintain";
+
+  const priorGuidanceHistory: { quarter: string; direction: string; call_date: string | null }[] =
+    Array.isArray(prevGuidanceRow?.guidance_history) ? prevGuidanceRow.guidance_history : [];
+
+  const guidanceHistory = prevGuidanceRow
+    ? [
+        ...priorGuidanceHistory,
+        {
+          quarter: prevGuidanceRow.quarter,
+          direction: prevGuidanceRow.guidance_direction ?? "maintain",
+          call_date: prevGuidanceRow.call_date ?? null,
+        },
+      ]
+    : [];
+
   const keyPoints = {
     revenue_actual: revenueActual,
     revenue_estimate: revenueEstimate,
@@ -354,7 +383,7 @@ async function collectForTicker(
     eps_estimate: epsEstimate,
     surprise_percent: surprisePercent,
     guidance_direction: analysis.guidance_direction,
-    guidance_previous: "maintain",
+    guidance_previous: guidancePrevious,
     guidance_summary: analysis.guidance_summary,
     keywords: analysis.keywords,
     key_statements: analysis.key_statements,
@@ -374,7 +403,8 @@ async function collectForTicker(
     call_date: callDate,
     headline_summary: analysis.headline_summary,
     guidance_direction: analysis.guidance_direction,
-    guidance_previous: "maintain",
+    guidance_previous: guidancePrevious,
+    guidance_history: guidanceHistory,
     guidance_summary: analysis.guidance_summary,
     revenue_actual: revenueActual,
     revenue_estimate: revenueEstimate,
