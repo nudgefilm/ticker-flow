@@ -148,9 +148,26 @@ async function generateMarketNarrative(params: {
 [SUMMARY]
 (오늘 시장 전반의 동향을 3~4문장으로 사실 기반 서술)
 
-규칙
-- 투자 권유, 매수, 매도, 추천, 강세, 약세 표현 금지
-- 사실 기반 서술체만 사용 (예: "~가 관측되었습니다", "~가 두드러졌습니다")
+원칙
+- 사실 기반 서술만 사용할 것
+- 투자 권유·관심 유도 표현을 배제할 것
+- 애널리스트 코멘트 형식을 배제할 것
+
+금지 표현 (아래 표현 및 이와 유사한 관심·기대 유도 표현 사용 금지)
+- 주목할 만한, 눈여겨볼, 관심이 집중된
+- 두드러진 움직임, 이목을 끄는, 눈에 띄는 변화, 활발한 움직임
+- 강세, 약세, 상승 기대, 하락 우려
+- 투자 매력, 긍정적 신호, 부정적 신호
+- 투자 권유, 매수, 매도, 추천 표현
+
+허용 표현 예시
+- ~가 관측됐습니다
+- ~가 확인됐습니다
+- ~공시가 제출됐습니다
+- ~건이 집계됐습니다
+- ~변화가 있었습니다
+
+기타 규칙
 - 점수, 가중치, 알고리즘, 스코어링 로직 언급 금지
 - 기관명·개인명 비노출
 - plain text로만 작성, 마크다운 기호(#, **, - 등) 금지
@@ -376,13 +393,13 @@ export async function runDigestCollect(): Promise<CollectResult> {
   const maxSig = Math.max(marketChange.institutionalCount, marketChange.insiderCount, marketChange.earningsBeatCount);
   let fallbackMood: string;
   if (maxSig === 0) {
-    fallbackMood = "오늘은 다양한 기업 변화가 고르게 관측되었습니다.";
+    fallbackMood = "오늘은 다양한 기업 변화가 고르게 관측됐습니다.";
   } else if (marketChange.institutionalCount === maxSig) {
-    fallbackMood = "오늘은 기관 수급 변화가 두드러졌습니다.";
+    fallbackMood = "오늘은 기관 수급 관련 공시가 다수 확인됐습니다.";
   } else if (marketChange.insiderCount === maxSig) {
-    fallbackMood = "오늘은 내부자 거래가 두드러졌습니다.";
+    fallbackMood = "오늘은 내부자 거래 공시가 다수 확인됐습니다.";
   } else {
-    fallbackMood = "오늘은 실적 발표 이후 변화가 두드러졌습니다.";
+    fallbackMood = "오늘은 실적 발표 이후 관련 공시가 다수 확인됐습니다.";
   }
 
   const fallbackSummary = `오늘은 관련 공시 ${marketChange.filingsCount}건, 실적 발표 ${earningsToday.length}건(예상치 상회 ${marketChange.earningsBeatCount}건)이 집계되었습니다. TOP30 신규 진입은 ${newEntrantRows.length}건입니다.`;
