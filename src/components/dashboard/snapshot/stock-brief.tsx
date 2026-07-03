@@ -104,7 +104,7 @@ export function StockBrief({
                 {content}
               </p>
               <p className="mt-3 text-[11px] text-[#cccccc]">
-                최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
+                📌 최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
                 {periodStart && periodEnd
                   ? ` (기준 기간: ${shortDate(periodStart)} ~ ${shortDate(periodEnd)})`
                   : null}
@@ -127,7 +127,7 @@ export function StockBrief({
                   세부 항목은 공시, 내부자 거래, 실적, 뉴스 순으로 정리되어 제공됩니다.
                 </p>
                 <p className="mt-3 text-[11px] text-[#cccccc]">
-                  최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
+                  📌 최근 30일 공시·뉴스·내부자 거래·실적 정보를 바탕으로 제공됩니다. 투자 판단의 근거로 사용하지 마세요.
                 </p>
               </div>
 

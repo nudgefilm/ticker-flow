@@ -38,7 +38,7 @@ export default function DataSourcesPage() {
         ))}
 
         <p className="mt-12 text-sm leading-relaxed text-muted-foreground border-t border-border pt-8">
-          본 서비스는 공개된 정보를 수집·정리·시각화하여 제공하며, 투자 판단의
+          📌 본 서비스는 공개된 정보를 수집·정리·시각화하여 제공하며, 투자 판단의
           근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.
         </p>
       </main>

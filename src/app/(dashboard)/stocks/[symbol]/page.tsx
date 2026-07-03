@@ -304,7 +304,7 @@ export default async function StockPage({
       </div>
 
       <SnapshotFilings filings={filings} ticker={ticker} />
-      <SnapshotNews news={news} />
+      <SnapshotNews news={news} ticker={ticker} />
 
       <EarningsFlow earnings={earnings} />
 

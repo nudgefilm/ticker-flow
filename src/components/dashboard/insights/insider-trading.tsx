@@ -101,7 +101,7 @@ export default function InsiderTrading({ insider }: { insider: InsiderSummary })
         </>
       )}
 
-      <p className="mt-3 text-[10px] text-[#a6a6a6]">출처: SEC Form 4 공시</p>
+      <p className="mt-3 text-[10px] text-[#a6a6a6]">📌 출처: SEC Form 4 공시</p>
     </SectionCard>
     </div>
   );

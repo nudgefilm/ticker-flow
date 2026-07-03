@@ -8,6 +8,7 @@ import { FeedScrollAnchor } from "@/components/dashboard/feed-scroll-anchor";
 import NewsSourceChart from "@/components/dashboard/news-source-chart";
 import NewsTrendChart from "@/components/dashboard/news-trend-chart";
 import NewsSectorChart from "@/components/dashboard/news-sector-chart";
+import { NewsTickerEmptyNotice } from "@/components/dashboard/news-ticker-empty-notice";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSector } from "@/lib/sectors";
 import DataSources from "@/components/dashboard/insights/data-sources";
@@ -82,15 +83,21 @@ function NewsFeedSkeleton() {
 
 // ─── 실 데이터 피드 ────────────────────────────────────────────────────────────
 
-async function NewsFeedList({ page }: { page: number }) {
+async function NewsFeedList({ page, ticker }: { page: number; ticker?: string }) {
   const supabase = await createClient();
   const offset = (page - 1) * PAGE_SIZE;
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from("news")
     .select("id, ticker, headline, source, published_at, url, summary_kr", { count: "exact" })
     .order("published_at", { ascending: false })
     .range(offset, offset + PAGE_SIZE - 1);
+
+  if (ticker) {
+    query = query.eq("ticker", ticker);
+  }
+
+  const { data, count, error } = await query;
 
   if (error) {
     return (
@@ -104,6 +111,9 @@ async function NewsFeedList({ page }: { page: number }) {
   const lastPage = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE));
 
   if (items.length === 0) {
+    if (ticker) {
+      return <NewsTickerEmptyNotice ticker={ticker} />;
+    }
     return (
       <p className="py-10 text-center text-sm text-[#a6a6a6]">
         수집된 뉴스가 없습니다.
@@ -127,7 +137,7 @@ async function NewsFeedList({ page }: { page: number }) {
         ))}
       </div>
       <div className="mt-6">
-        <FeedPagination page={page} lastPage={lastPage} />
+        <FeedPagination page={page} lastPage={lastPage} ticker={ticker} />
       </div>
     </>
   );
@@ -138,10 +148,11 @@ async function NewsFeedList({ page }: { page: number }) {
 export default async function NewsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; ticker?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, ticker: tickerParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? "1") || 1);
+  const ticker = tickerParam?.trim().toUpperCase() || undefined;
 
   // ── 차트용 집계 데이터 ──────────────────────────────────────────────────────
   const supabase = await createClient();
@@ -244,11 +255,11 @@ export default async function NewsPage({
       </section>
 
       <div className="mt-6">
-        <NewsFilterBar />
+        <NewsFilterBar activeTicker={ticker} />
       </div>
       <div className="mt-5">
-        <Suspense fallback={<NewsFeedSkeleton />}>
-          <NewsFeedList page={page} />
+        <Suspense fallback={<NewsFeedSkeleton />} key={ticker ?? "all"}>
+          <NewsFeedList page={page} ticker={ticker} />
         </Suspense>
       </div>
       <div className="mt-6">

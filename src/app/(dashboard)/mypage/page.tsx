@@ -281,7 +281,7 @@ export default function MyPage() {
               ))}
             </div>
             <p className="mt-3 text-xs leading-relaxed text-[#a6a6a6]">
-              투자 판단의 근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.
+              📌 투자 판단의 근거로 사용하기 전 원문 출처를 직접 확인하시기 바랍니다.
             </p>
           </div>
         </SectionCard>

@@ -23,9 +23,10 @@ function buildPages(current: number, last: number): PageEntry[] {
   return pages;
 }
 
-function pageHref(p: number, type?: string) {
+function pageHref(p: number, type?: string, ticker?: string) {
   const params = new URLSearchParams();
   if (type) params.set("type", type);
+  if (ticker) params.set("ticker", ticker);
   params.set("page", String(p));
   return `?${params.toString()}`;
 }
@@ -34,10 +35,12 @@ export default function FeedPagination({
   page = 1,
   lastPage = 1,
   type,
+  ticker,
 }: {
   page?: number;
   lastPage?: number;
   type?: string;
+  ticker?: string;
 }) {
   if (lastPage <= 1) return null;
 
@@ -46,7 +49,7 @@ export default function FeedPagination({
   return (
     <div className="flex items-center justify-center gap-1">
       <Link
-        href={pageHref(Math.max(1, page - 1), type)}
+        href={pageHref(Math.max(1, page - 1), type, ticker)}
         scroll={false}
         aria-disabled={page === 1}
         onClick={markFeedScroll}
@@ -66,7 +69,7 @@ export default function FeedPagination({
         ) : (
           <Link
             key={p}
-            href={pageHref(p, type)}
+            href={pageHref(p, type, ticker)}
             scroll={false}
             onClick={markFeedScroll}
             className={cn(
@@ -82,7 +85,7 @@ export default function FeedPagination({
       )}
 
       <Link
-        href={pageHref(Math.min(lastPage, page + 1), type)}
+        href={pageHref(Math.min(lastPage, page + 1), type, ticker)}
         scroll={false}
         aria-disabled={page === lastPage}
         onClick={markFeedScroll}

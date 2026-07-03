@@ -117,7 +117,7 @@ export default async function WeeklyBrief({ isPro }: { isPro: boolean }) {
       </BriefCard>
 
       <p className="text-[11px] text-[#666666]">
-        본 콘텐츠는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 자료입니다.
+        📌 본 콘텐츠는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 자료입니다.
         특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.
       </p>
     </BriefAccordion>

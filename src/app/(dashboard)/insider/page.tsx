@@ -109,7 +109,7 @@ function InstitutionalHoldings({
         </tbody>
       </table>
       <p className="border-t border-white/[0.06] bg-[#111111] px-5 py-2.5 text-right text-[10px] text-[#a6a6a6]">
-        출처: SEC 13F 공시 기반. 참고 정보로만 활용하세요.
+        📌 출처: SEC 13F 공시 기반. 참고 정보로만 활용하세요.
       </p>
     </div>
   );

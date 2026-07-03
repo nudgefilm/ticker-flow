@@ -181,7 +181,7 @@ export default function CallsBoard({ calls, isPro: _isPro }: Props) {
       {/* 데이터 출처 */}
       <div className="mt-10 rounded-[8px] border border-white/[0.06] bg-[#1a1a1a] p-5">
         <p className="text-xs text-[#a6a6a6]">
-          데이터 출처: 공개된 SEC 공시 및 시장 데이터를 기반으로 제공합니다.
+          📌 데이터 출처: 공개된 SEC 공시 및 시장 데이터를 기반으로 제공합니다.
         </p>
       </div>
     </div>

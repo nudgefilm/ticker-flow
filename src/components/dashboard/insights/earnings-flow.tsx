@@ -125,7 +125,7 @@ export default function EarningsFlow({ earnings }: { earnings: EarningsRow[] }) 
         </>
       )}
       <p className="mt-3 text-[10px] text-[#a6a6a6]">
-        EPS(주당순이익) 기준. 출처: Finnhub. 투자 판단의 근거로 사용하지 마세요.
+        📌 EPS(주당순이익) 기준. 출처: Finnhub. 투자 판단의 근거로 사용하지 마세요.
       </p>
     </SectionCard>
   );

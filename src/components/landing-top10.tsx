@@ -83,7 +83,7 @@ export default async function LandingTop10() {
         </div>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          본 정보는 공개된 데이터를 기반으로 한 참고용입니다.
+          📌 본 정보는 공개된 데이터를 기반으로 한 참고용입니다.
           투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.
         </p>
 
