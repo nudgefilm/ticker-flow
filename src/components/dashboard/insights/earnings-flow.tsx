@@ -65,7 +65,7 @@ export default function EarningsFlow({ earnings }: { earnings: EarningsRow[] }) 
   return (
     <SectionCard title="실적 흐름" description="최근 4분기">
       {earnings.length === 0 ? (
-        <p className="text-sm text-[#a6a6a6]">수집된 실적 데이터가 없습니다.</p>
+        <p className="text-sm text-[#a6a6a6]">이 종목의 실적 데이터가 없습니다.</p>
       ) : (
         <>
           <div className="mb-4">

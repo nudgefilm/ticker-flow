@@ -2,17 +2,44 @@ import Link from "next/link";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import type { Filing } from "@/lib/insights/types";
 import { SectionCard } from "@/components/dashboard/insights/ui";
+import { WatchlistAddButton } from "@/components/dashboard/snapshot/watchlist-add-button";
 
 interface Props {
   filings: Filing[];
   ticker: string;
+  showWatchlistButton?: boolean;
+  inWatchlist?: boolean;
+  atLimit?: boolean;
+  isPro?: boolean;
 }
 
-export function SnapshotFilings({ filings, ticker }: Props) {
+export function SnapshotFilings({
+  filings,
+  ticker,
+  showWatchlistButton = false,
+  inWatchlist = false,
+  atLimit = false,
+  isPro = false,
+}: Props) {
   return (
     <SectionCard title="최근 공시" description="최근 5건">
       {filings.length === 0 ? (
-        <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 공시가 없습니다.</p>
+        <div className="flex flex-col items-start gap-3">
+          <div>
+            <p className="text-sm text-[#a6a6a6]">이 종목의 최근 공시가 없습니다.</p>
+            <p className="mt-1 text-sm text-[#a6a6a6]">
+              변화 발생 시 확인하려면 와치리스트에 추가해 보세요.
+            </p>
+          </div>
+          {showWatchlistButton && !inWatchlist ? (
+            <WatchlistAddButton
+              ticker={ticker}
+              initiallyInWatchlist={inWatchlist}
+              atLimit={atLimit}
+              isPro={isPro}
+            />
+          ) : null}
+        </div>
       ) : (
         <ul className="divide-y divide-white/[0.06]">
           {filings.slice(0, 5).map((filing, i) => (

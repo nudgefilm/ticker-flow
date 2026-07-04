@@ -1,25 +1,43 @@
-import Link from "next/link";
-import { ExternalLink, ArrowRight } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { NewsItem } from "@/lib/insights/types";
 import { SectionCard } from "@/components/dashboard/insights/ui";
+import { WatchlistAddButton } from "@/components/dashboard/snapshot/watchlist-add-button";
 
 interface Props {
   news: NewsItem[];
   ticker: string;
+  showWatchlistButton?: boolean;
+  inWatchlist?: boolean;
+  atLimit?: boolean;
+  isPro?: boolean;
 }
 
-export function SnapshotNews({ news, ticker }: Props) {
+export function SnapshotNews({
+  news,
+  ticker,
+  showWatchlistButton = false,
+  inWatchlist = false,
+  atLimit = false,
+  isPro = false,
+}: Props) {
   return (
     <SectionCard title="최근 뉴스" description="최근 5건">
       {news.length === 0 ? (
-        <div>
-          <p className="text-sm text-[#a6a6a6]">최근 30일 내 수집된 뉴스가 없습니다.</p>
-          <Link
-            href={`/news?ticker=${ticker}`}
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-[#60a5fa] hover:text-[#93c5fd]"
-          >
-            뉴스 피드 보기 <ArrowRight className="h-4 w-4" />
-          </Link>
+        <div className="flex flex-col items-start gap-3">
+          <div>
+            <p className="text-sm text-[#a6a6a6]">이 종목의 최근 뉴스가 없습니다.</p>
+            <p className="mt-1 text-sm text-[#a6a6a6]">
+              변화 발생 시 확인하려면 와치리스트에 추가해 보세요.
+            </p>
+          </div>
+          {showWatchlistButton && !inWatchlist ? (
+            <WatchlistAddButton
+              ticker={ticker}
+              initiallyInWatchlist={inWatchlist}
+              atLimit={atLimit}
+              isPro={isPro}
+            />
+          ) : null}
         </div>
       ) : (
         <ul className="divide-y divide-white/[0.06]">

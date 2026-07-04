@@ -6,8 +6,6 @@ export type StockBriefState = "ready" | "pending" | "gated";
 interface StockBriefProps {
   ticker: string;
   state: StockBriefState;
-  descriptionKr?: string | null;
-  companyImage?: string | null;
   content?: string | null;
   generatedAt?: string | null;
   periodStart?: string | null;
@@ -26,7 +24,7 @@ function shortDate(iso: string): string {
   return iso.slice(0, 10).replaceAll("-", ".");
 }
 
-function CompanyGlance({
+export function CompanyGlanceCard({
   ticker,
   descriptionKr,
   companyImage,
@@ -36,11 +34,13 @@ function CompanyGlance({
   companyImage?: string | null;
 }) {
   return (
-    <div>
-      <p className="mb-2 text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">
-        기업 한눈에
-      </p>
-      <div className="flex items-start gap-3">
+    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#111111]">
+      <div className="border-b border-white/[0.06] bg-[#1a1a1a] px-5 py-3.5">
+        <p className="text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">
+          기업 한눈에
+        </p>
+      </div>
+      <div className="flex items-start gap-3 px-5 py-4">
         {companyImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -60,8 +60,6 @@ function CompanyGlance({
 export function StockBrief({
   ticker,
   state,
-  descriptionKr,
-  companyImage,
   content,
   generatedAt,
   periodStart,
@@ -88,13 +86,7 @@ export function StockBrief({
 
       {/* 본문 */}
       <div className="px-5 py-4">
-        {descriptionKr ? (
-          <div className="border-b border-white/[0.06] pb-4">
-            <CompanyGlance ticker={ticker} descriptionKr={descriptionKr} companyImage={companyImage} />
-          </div>
-        ) : null}
-
-        <div className={descriptionKr ? "pt-4" : ""}>
+        <div>
           {state === "ready" && content ? (
             <>
               <p className="mb-2 text-xs font-medium uppercase tracking-widest text-[#a6a6a6]">

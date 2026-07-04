@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
-import { StockBrief, type StockBriefState } from "@/components/dashboard/snapshot/stock-brief";
+import { StockBrief, CompanyGlanceCard, type StockBriefState } from "@/components/dashboard/snapshot/stock-brief";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
 import { SnapshotFilings } from "@/components/dashboard/snapshot/snapshot-filings";
@@ -303,16 +303,36 @@ export default async function StockPage({
         <SnapshotInsider className="h-full" trades={trades} />
       </div>
 
-      <SnapshotFilings filings={filings} ticker={ticker} />
-      <SnapshotNews news={news} ticker={ticker} />
+      <SnapshotFilings
+        filings={filings}
+        ticker={ticker}
+        showWatchlistButton={!!user}
+        inWatchlist={inWatchlist}
+        atLimit={watchlistAtLimit}
+        isPro={isPro}
+      />
+      <SnapshotNews
+        news={news}
+        ticker={ticker}
+        showWatchlistButton={!!user}
+        inWatchlist={inWatchlist}
+        atLimit={watchlistAtLimit}
+        isPro={isPro}
+      />
 
       <EarningsFlow earnings={earnings} />
+
+      {info?.description_kr ? (
+        <CompanyGlanceCard
+          ticker={ticker}
+          descriptionKr={info.description_kr}
+          companyImage={info?.image ?? null}
+        />
+      ) : null}
 
       <StockBrief
         ticker={ticker}
         state={briefState}
-        descriptionKr={info?.description_kr ?? null}
-        companyImage={info?.image ?? null}
         content={briefContent}
         generatedAt={briefGeneratedAt}
         periodStart={briefPeriodStart}
