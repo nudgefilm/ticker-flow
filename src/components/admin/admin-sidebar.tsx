@@ -18,6 +18,7 @@ import {
   IconKey,
   IconRefresh,
   IconLogout,
+  IconBrandYoutube,
 } from "@tabler/icons-react";
 import Logo from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,7 @@ const adminNavGroups: NavGroup[] = [
       { href: "/admin/ops/filings", label: "공시 관리", icon: IconClipboardList },
       { href: "/admin/ops/notices", label: "공지사항 관리", icon: IconSpeakerphone },
       { href: "/admin/ops/reports", label: "문의·신고 목록", icon: IconAlertTriangle },
+      { href: "/admin/youtube", label: "유튜브 채널", icon: IconBrandYoutube },
     ],
   },
   {

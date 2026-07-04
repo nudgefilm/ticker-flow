@@ -31,6 +31,7 @@ export const COLLECT_JOBS = [
   "brief-backfill",
   "weekly-brief",
   "monthly-brief",
+  "youtube-channels",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

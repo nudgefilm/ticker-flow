@@ -325,3 +325,30 @@ GRANT SELECT ON public.analysis_reports TO authenticated;
 -- 유저 데이터 — 전체 권한
 GRANT SELECT, INSERT, DELETE           ON public.watchlist TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE   ON public.alerts    TO authenticated;
+
+
+-- ============================================================
+-- 12. youtube_channels — 유튜브 채널 협업 후보 관리 (어드민 전용)
+-- ============================================================
+-- 실행용 SQL은 supabase/youtube_channels.sql 참고 (RLS 정책 admin 이메일: nudgefilm@gmail.com)
+CREATE TABLE IF NOT EXISTS public.youtube_channels (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id        TEXT        NOT NULL UNIQUE,
+  channel_name      TEXT        NOT NULL,
+  channel_url       TEXT        NOT NULL,
+  description       TEXT,
+  subscriber_count  INTEGER,
+  video_count       INTEGER,
+  thumbnail_url     TEXT,
+  email_sent        BOOLEAN     DEFAULT false,
+  memo              TEXT,
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  updated_at        TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.youtube_channels ENABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON TABLE public.youtube_channels TO service_role;
+
+-- authenticated는 어드민 계정만 접근 가능 (RLS로 이메일 제한, 정책은 youtube_channels.sql 참고)
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.youtube_channels TO authenticated;

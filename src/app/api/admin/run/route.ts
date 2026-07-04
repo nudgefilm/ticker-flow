@@ -27,6 +27,7 @@ import {
   runBriefBackfill,
   runWeeklyBriefCollect,
   runMonthlyBriefCollect,
+  runYoutubeChannelsCollect,
 } from "@/lib/collect";
 import { runTelegramNotify } from "@/lib/notify/telegram";
 import { runTelegramDigest } from "@/lib/notify/telegram-digest";
@@ -58,6 +59,7 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "brief-backfill":    runBriefBackfill,
   "weekly-brief":      runWeeklyBriefCollect,
   "monthly-brief":     runMonthlyBriefCollect,
+  "youtube-channels":  runYoutubeChannelsCollect,
 };
 
 export async function GET(req: NextRequest) {

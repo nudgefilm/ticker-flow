@@ -169,6 +169,11 @@ const TRIGGERS: Trigger[] = [
     label: "월간 BRIEF 생성",
     desc: "최근 30일 기업동향·시장변화·섹터동향·경제지표 등을 집계하고 Claude Haiku로 요약해 monthly_briefs 테이블에 저장합니다.",
   },
+  {
+    id: "youtube-channels",
+    label: "유튜브 채널 수집",
+    desc: "키워드(미국주식·나스닥·미국증시 등)로 YouTube Data API를 검색해 구독자 1,000명 이상 채널을 youtube_channels 테이블에 저장합니다. API 할당량 절약을 위해 Cron 없이 수동 실행만 지원합니다.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {

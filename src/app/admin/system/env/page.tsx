@@ -41,6 +41,11 @@ export default function EnvPage() {
       set: !!process.env.ANTHROPIC_API_KEY,
     },
     {
+      name: "YOUTUBE_API_KEY",
+      category: "외부 API",
+      set: !!process.env.YOUTUBE_API_KEY,
+    },
+    {
       name: "ADMIN_EMAIL",
       category: "앱",
       set: !!process.env.ADMIN_EMAIL,
