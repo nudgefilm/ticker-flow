@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { IconExternalLink } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { TickerBadges } from "@/components/dashboard/ticker-badge";
+import type { TickerBadgeReason } from "@/lib/collect/target-tickers";
 
 export interface Filing {
   id: string;
@@ -46,7 +48,15 @@ function formatFiledAt(filedAt: string): string {
   return `${filed.getMonth() + 1}월 ${filed.getDate()}일`;
 }
 
-export default function FilingFeedCard({ filing, className }: { filing: Filing; className?: string }) {
+export default function FilingFeedCard({
+  filing,
+  badges,
+  className,
+}: {
+  filing: Filing;
+  badges?: TickerBadgeReason[];
+  className?: string;
+}) {
   const { ticker, form_type, title, summary_kr, filed_at, url } = filing;
   const { color, label } = getBadge(form_type);
   const content = summary_kr ?? title ?? "";
@@ -66,6 +76,7 @@ export default function FilingFeedCard({ filing, className }: { filing: Filing; 
         <Link href={`/stocks/${ticker}`} className="text-sm font-medium text-white">
           {ticker}
         </Link>
+        <TickerBadges reasons={badges} />
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-[#a6a6a6]">{formatFiledAt(filed_at)}</span>
           {url && (

@@ -12,6 +12,7 @@ import { NewsTickerEmptyNotice } from "@/components/dashboard/news-ticker-empty-
 import { createClient } from "@/lib/supabase/server";
 import { normalizeSector } from "@/lib/sectors";
 import DataSources from "@/components/dashboard/insights/data-sources";
+import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +122,8 @@ async function NewsFeedList({ page, ticker }: { page: number; ticker?: string })
     );
   }
 
+  const badgeSets = await getTargetTickerSets();
+
   return (
     <>
       <FeedScrollAnchor />
@@ -129,6 +132,7 @@ async function NewsFeedList({ page, ticker }: { page: number; ticker?: string })
           <NewsFeedCard
             key={item.id}
             news={item}
+            badges={item.ticker ? getBadgeReasons(item.ticker, badgeSets) : undefined}
             className={[
               i % 2 === 0 ? "bg-[#111820]" : "",
               items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : "",

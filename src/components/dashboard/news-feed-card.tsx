@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { IconExternalLink } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { TickerBadges } from "@/components/dashboard/ticker-badge";
+import type { TickerBadgeReason } from "@/lib/collect/target-tickers";
 
 export interface NewsItem {
   id: string;
@@ -25,7 +27,15 @@ function formatPublishedAt(publishedAt: string): string {
   return `${published.getMonth() + 1}월 ${published.getDate()}일`;
 }
 
-export default function NewsFeedCard({ news, className }: { news: NewsItem; className?: string }) {
+export default function NewsFeedCard({
+  news,
+  badges,
+  className,
+}: {
+  news: NewsItem;
+  badges?: TickerBadgeReason[];
+  className?: string;
+}) {
   const { ticker, headline, source, published_at, url, summary_kr } = news;
   const content = summary_kr ?? headline;
 
@@ -52,9 +62,12 @@ export default function NewsFeedCard({ news, className }: { news: NewsItem; clas
       {/* Row 4: 티커 태그 + 원문 보기 */}
       <div className="mt-3 flex items-center justify-between">
         {ticker ? (
-          <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#262626] px-2 py-1 text-xs text-[#a6a6a6]">
-            {ticker}
-          </Link>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link href={`/stocks/${ticker}`} className="rounded-[4px] bg-[#262626] px-2 py-1 text-xs text-[#a6a6a6]">
+              {ticker}
+            </Link>
+            <TickerBadges reasons={badges} />
+          </div>
         ) : (
           <span />
         )}

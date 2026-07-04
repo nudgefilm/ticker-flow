@@ -23,6 +23,7 @@ import type {
   EarningsRow,
 } from "@/lib/insights/types";
 import { fetchPastEarnings } from "@/lib/insights/earnings";
+import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
 
 export const dynamic = "force-dynamic";
 
@@ -114,7 +115,7 @@ export default async function StockPage({
   const watchlistLimit = isPro ? 30 : 5;
   const watchlistAtLimit = watchlistCount >= watchlistLimit;
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, insiderRecentCountRes, earnings, nextEarningsRes, splitsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, insiderRecentCountRes, earnings, nextEarningsRes, splitsRes, badgeSets] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -168,6 +169,7 @@ export default async function StockPage({
         .select("id, split_date, numerator, denominator")
         .eq("ticker", ticker)
         .order("split_date", { ascending: false }),
+      getTargetTickerSets(),
     ]);
 
   const info            = tickerRes.data;
@@ -177,6 +179,7 @@ export default async function StockPage({
   const insiderRows     = insiderRes.data ?? [];
   const nextEarningsRow = nextEarningsRes.data;
   const splitRows       = splitsRes.data ?? [];
+  const badges          = getBadgeReasons(ticker, badgeSets);
 
   // ── Quote ────────────────────────────────────────────────────────────────
   let quote: Quote | null = null;
@@ -322,6 +325,7 @@ export default async function StockPage({
         inWatchlist={inWatchlist}
         atLimit={watchlistAtLimit}
         isPro={isPro}
+        badges={badges}
       />
 
       <PriceCard quote={quote} />

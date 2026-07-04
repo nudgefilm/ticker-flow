@@ -10,6 +10,7 @@ import WeeklySummaryCard, { type SummaryMetric } from "@/components/dashboard/we
 import DataStatusCard from "@/components/dashboard/data-status-card";
 import WeeklyBrief from "@/components/dashboard/weekly-brief";
 import MonthlyBrief from "@/components/dashboard/monthly-brief";
+import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
 
 export const dynamic = "force-dynamic";
 
@@ -86,8 +87,8 @@ async function WatchlistContent() {
     futureKeys.push(new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10));
   }
 
-  // 1. watchlist + 회사명 + plan 병렬 조회
-  const [{ data: wl }, { data: profile }] = await Promise.all([
+  // 1. watchlist + 회사명 + plan + 뱃지 판정용 티커 풀 병렬 조회
+  const [{ data: wl }, { data: profile }, badgeSets] = await Promise.all([
     supabase
       .from("watchlist")
       .select("ticker, tickers(name_kr, name_en)")
@@ -98,6 +99,7 @@ async function WatchlistContent() {
       .select("plan")
       .eq("id", user.id)
       .single(),
+    getTargetTickerSets(),
   ]);
 
   const isPro = profile?.plan === "pro";
@@ -170,6 +172,7 @@ async function WatchlistContent() {
           newFilings: filingsRes.count ?? 0,
           newNews: newsRes.count ?? 0,
           earningsDday: formatDday(earningsRes.data?.report_date ?? null),
+          badges: getBadgeReasons(row.ticker, badgeSets),
         };
       })
     ),

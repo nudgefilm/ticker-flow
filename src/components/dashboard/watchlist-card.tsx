@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { IconTrash, IconLoader2, IconChevronRight } from "@tabler/icons-react";
+import { TickerBadges } from "@/components/dashboard/ticker-badge";
+import type { TickerBadgeReason } from "@/lib/collect/target-tickers";
 
 export interface WatchlistStock {
   ticker: string;
@@ -9,6 +11,7 @@ export interface WatchlistStock {
   newFilings: number;
   earningsDday: string;
   newNews: number;
+  badges?: TickerBadgeReason[];
 }
 
 export default function WatchlistCard({
@@ -20,14 +23,17 @@ export default function WatchlistCard({
   onDelete: () => void;
   isDeleting?: boolean;
 }) {
-  const { ticker, company, newFilings, earningsDday, newNews } = stock;
+  const { ticker, company, newFilings, earningsDday, newNews, badges } = stock;
 
   return (
     <article className="overflow-hidden rounded-[6px] border border-white/[0.15] bg-[#1a1a1a]">
       {/* 상단: 티커 + 회사명 + 삭제 */}
       <div className="flex items-center justify-between gap-3 bg-[#262626] px-4 py-3">
         <Link href={`/stocks/${ticker}`} className="min-w-0">
-          <p className="text-sm font-semibold text-white">{ticker}</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm font-semibold text-white">{ticker}</p>
+            <TickerBadges reasons={badges} />
+          </div>
           <p className="truncate text-xs text-[#60a5fa]">{company}</p>
         </Link>
         <button

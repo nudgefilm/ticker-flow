@@ -13,6 +13,7 @@ import { normalizeSector } from "@/lib/sectors";
 import { getMarketStatusMessage } from "@/lib/us-holidays";
 import { IconInfoCircle } from "@tabler/icons-react";
 import DataSources from "@/components/dashboard/insights/data-sources";
+import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,8 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
     );
   }
 
+  const badgeSets = await getTargetTickerSets();
+
   return (
     <>
       <FeedScrollAnchor />
@@ -132,6 +135,7 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
           <FilingFeedCard
             key={filing.id}
             filing={filing}
+            badges={getBadgeReasons(filing.ticker, badgeSets)}
             className={[
               i % 2 === 0 ? "bg-[#111820]" : "",
               filings.length % 2 !== 0 && i === filings.length - 1 ? "col-span-2" : "",
