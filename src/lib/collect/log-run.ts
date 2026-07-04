@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
 
-export type RunSource = "cron" | "admin";
+export type RunSource = "cron" | "admin" | "user";
 
 // collect_runs는 생성된 Supabase 타입에 없는 테이블이라 any 캐스트 사용 (CLAUDE.md 16번 규칙)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,6 +18,23 @@ export async function createRunRecord(jobType: string, source: RunSource): Promi
     .single();
   if (error || !data) return null;
   return data.id as string;
+}
+
+/** withinMs 이내에 시작된 동일 job_type의 가장 최근 실행을 찾는다 (중복 트리거 방지용). */
+export async function findRecentRun(
+  jobType: string,
+  withinMs: number
+): Promise<{ id: string; status: string } | null> {
+  const since = new Date(Date.now() - withinMs).toISOString();
+  const { data } = await adminAny()
+    .from("collect_runs")
+    .select("id, status")
+    .eq("job_type", jobType)
+    .gte("started_at", since)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data ?? null;
 }
 
 /** collect_runs 행을 실행 결과로 마무리한다. */

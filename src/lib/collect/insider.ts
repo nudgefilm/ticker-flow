@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runStockBriefCollect } from "./brief";
 import { createInsiderTitleLookup } from "./insider-form4";
+import { getCollectTargetTickers } from "./target-tickers";
 import type { CollectResult } from "./types";
 
 // ─── Finnhub 응답 타입 ─────────────────────────────────────────────────────────
@@ -106,20 +107,19 @@ export async function runInsiderCollect(
   if (tickerParam) {
     tickers = [tickerParam.toUpperCase()];
   } else {
-    // 와치리스트 + 최근 7일 공시 종목 (최대 10개)
-    const [watchlistRes, filingRes] = await Promise.all([
-      adminClient.from("watchlist").select("ticker"),
+    // 와치리스트 + top30_daily 최근 TOP30 + 최근 7일 공시 종목 (중복 제거)
+    const [targetTickers, filingRes] = await Promise.all([
+      getCollectTargetTickers(),
       adminClient
         .from("filings")
         .select("ticker")
         .gte("filed_at", new Date(Date.now() - 7 * 86_400_000).toISOString()),
     ]);
 
-    const tickerSet = new Set<string>();
-    for (const r of watchlistRes.data ?? []) tickerSet.add(r.ticker);
+    const tickerSet = new Set<string>(targetTickers);
     for (const r of filingRes.data ?? []) tickerSet.add(r.ticker);
 
-    tickers = [...tickerSet].slice(0, 10);
+    tickers = [...tickerSet];
   }
 
   let totalInserted = 0;

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { runInsiderCollect } from "./insider";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
 const ALLOWED_FORMS = new Set(["8-K", "10-K", "10-Q", "4", "S-1", "DEF 14A", "DEF14A"]);
@@ -129,5 +130,20 @@ export async function collectTickerData(ticker: string): Promise<TickerData> {
     filings: filingsInserted,
     news: newsInserted,
     ...(cikNotFound && { cikNotFound }),
+  };
+}
+
+/** 공시(30일)+뉴스(7일)+내부자거래를 한 종목에 대해 함께 수집한다. */
+export async function collectTickerFull(
+  ticker: string
+): Promise<TickerData & { insider: number }> {
+  const [data, insiderResult] = await Promise.all([
+    collectTickerData(ticker),
+    runInsiderCollect(ticker),
+  ]);
+
+  return {
+    ...data,
+    insider: typeof insiderResult.inserted === "number" ? insiderResult.inserted : 0,
   };
 }

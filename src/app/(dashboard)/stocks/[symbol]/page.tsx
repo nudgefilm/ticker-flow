@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import DashboardHeader from "@/components/dashboard/dashboard-header";
 import { DashboardDisclaimer } from "@/components/dashboard/dashboard-disclaimer";
 import { SnapshotHeader } from "@/components/dashboard/snapshot/snapshot-header";
+import { SnapshotCollectModal } from "@/components/dashboard/snapshot/snapshot-collect-modal";
 import { StockBrief, CompanyGlanceCard, type StockBriefState } from "@/components/dashboard/snapshot/stock-brief";
 import { PriceCard } from "@/components/dashboard/snapshot/price-card";
 import { KeyMetrics } from "@/components/dashboard/snapshot/key-metrics";
@@ -113,7 +114,7 @@ export default async function StockPage({
   const watchlistLimit = isPro ? 30 : 5;
   const watchlistAtLimit = watchlistCount >= watchlistLimit;
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings, nextEarningsRes, splitsRes] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, insiderRecentCountRes, earnings, nextEarningsRes, splitsRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -148,6 +149,11 @@ export default async function StockPage({
         .eq("ticker", ticker)
         .order("transaction_date", { ascending: false })
         .limit(10),
+      supabase
+        .from("insider_trades")
+        .select("id", { count: "exact", head: true })
+        .eq("ticker", ticker)
+        .gte("transaction_date", d30.slice(0, 10)),
       fetchPastEarnings(supabase, ticker, today),
       supabase
         .from("earnings")
@@ -264,8 +270,45 @@ export default async function StockPage({
       })()
     : null;
 
+  // ── 종목 데이터 수집 이력 확인 (최근 30일 공시·뉴스·내부자거래) ────────────────
+  // 셋 다 없으면 첫 방문으로 보고 즉시 백그라운드 수집을 트리거한다.
+  const isStale =
+    filingRows.length === 0 &&
+    newsRows.length === 0 &&
+    (insiderRecentCountRes.count ?? 0) === 0;
+
+  let collectRunId: string | null = null;
+  if (isStale) {
+    const { findRecentRun, createRunRecord, finishRunRecord } = await import("@/lib/collect/log-run");
+    const jobType = `ticker-collect:${ticker}`;
+    // 동일 종목 1시간 이내 중복 트리거 방지 — 진행 중인 실행이 있으면 그대로 재사용
+    const recentRun = await findRecentRun(jobType, 60 * 60 * 1000);
+
+    if (recentRun) {
+      if (recentRun.status === "running") collectRunId = recentRun.id;
+      // done/error 상태의 최근 실행이 있으면 재트리거하지 않고 모달도 띄우지 않는다.
+    } else {
+      const runId = await createRunRecord(jobType, "user");
+      if (runId) {
+        collectRunId = runId;
+        after(async () => {
+          const { collectTickerFull } = await import("@/lib/collect/collect-ticker");
+          try {
+            const result = await collectTickerFull(ticker);
+            await finishRunRecord(runId, { ok: true, ...result });
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            await finishRunRecord(runId, null, message);
+          }
+        });
+      }
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <SnapshotCollectModal runId={collectRunId} />
+
       <DashboardHeader title="종목 스냅샷" />
 
       <SnapshotHeader
