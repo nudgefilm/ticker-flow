@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { IconExternalLink } from "@tabler/icons-react";
+import { IconExternalLink, IconTrash, IconLoader2 } from "@tabler/icons-react";
 
 export interface YoutubeChannel {
   id: string;
@@ -36,6 +36,15 @@ async function patchChannel(id: string, body: Record<string, unknown>): Promise<
   }
 }
 
+async function deleteChannel(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/admin/youtube-channels/${id}`, { method: "DELETE" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 function MemoCell({ id, initialMemo }: { id: string; initialMemo: string | null }) {
   const [value, setValue] = useState(initialMemo ?? "");
   const [saving, setSaving] = useState(false);
@@ -62,6 +71,7 @@ function MemoCell({ id, initialMemo }: { id: string; initialMemo: string | null 
 
 export function YoutubeChannelsTable({ channels }: { channels: YoutubeChannel[] }) {
   const [rows, setRows] = useState(channels);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function handleToggleEmailSent(id: string, current: boolean) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, email_sent: !current } : r)));
@@ -69,6 +79,16 @@ export function YoutubeChannelsTable({ channels }: { channels: YoutubeChannel[] 
     if (!ok) {
       // 실패 시 롤백
       setRows((prev) => prev.map((r) => (r.id === id ? { ...r, email_sent: current } : r)));
+    }
+  }
+
+  async function handleDelete(id: string, channelName: string) {
+    if (!window.confirm(`"${channelName}" 채널을 목록에서 삭제하시겠습니까?`)) return;
+    setDeletingId(id);
+    const ok = await deleteChannel(id);
+    setDeletingId(null);
+    if (ok) {
+      setRows((prev) => prev.filter((r) => r.id !== id));
     }
   }
 
@@ -92,6 +112,7 @@ export function YoutubeChannelsTable({ channels }: { channels: YoutubeChannel[] 
               <th className="px-4 py-3 text-center text-xs font-medium text-[#a6a6a6]">이메일 발송</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">메모</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">수집일</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -130,6 +151,21 @@ export function YoutubeChannelsTable({ channels }: { channels: YoutubeChannel[] 
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-[#a6a6a6]">
                   {new Date(c.created_at).toLocaleDateString("ko-KR")}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(c.id, c.channel_name)}
+                    disabled={deletingId === c.id}
+                    className="text-[#a6a6a6] transition-colors hover:text-red-400 disabled:opacity-50"
+                    aria-label="채널 삭제"
+                  >
+                    {deletingId === c.id ? (
+                      <IconLoader2 size={16} stroke={1.5} className="animate-spin" />
+                    ) : (
+                      <IconTrash size={16} stroke={1.5} />
+                    )}
+                  </button>
                 </td>
               </tr>
             ))}
