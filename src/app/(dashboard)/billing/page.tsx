@@ -82,7 +82,7 @@ export default async function BillingPage({
       <div className="mt-8">
         <p className="text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">플랜 비교</p>
         <div className="mt-4">
-          <BillingPlansClient isPro={isPro} />
+          <BillingPlansClient isPro={isPro} userEmail={user?.email ?? ""} />
         </div>
       </div>
 

@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { IconCheck } from "@tabler/icons-react"
 
-const MONTHLY_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_b4362962-9365-4bfb-be40-1f5ad65b45af"
-const ANNUAL_CHECKOUT_URL = "https://buy.polar.sh/polar_cl_046ffe47-7b01-4427-b69b-63202cf5ae85"
+// 정적 buy.polar.sh 체크아웃 링크는 만료/비활성화 시 polar.sh 메인으로 리다이렉트되므로,
+// /api/polar/checkout에서 매번 새 체크아웃 세션을 생성하는 방식을 사용한다.
+const MONTHLY_PRODUCT_ID = "b4362962-9365-4bfb-be40-1f5ad65b45af"
+const ANNUAL_PRODUCT_ID = "046ffe47-7b01-4427-b69b-63202cf5ae85"
 
 const FREE_FEATURES = [
   "와치리스트 (최대 5종목)",
@@ -28,8 +30,35 @@ const PRO_FEATURES: ProFeature[] = [
   { label: "데일리 다이제스트", desc: "매일 아침 주요 기업동향과 시장 변화를 이메일로 받아보세요." },
 ]
 
-export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
+export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolean; userEmail: string }) {
   const [tab, setTab] = useState<"monthly" | "annual">("monthly")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  async function handleCheckout() {
+    setLoading(true)
+    setError("")
+    try {
+      const res = await fetch("/api/polar/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: tab === "monthly" ? MONTHLY_PRODUCT_ID : ANNUAL_PRODUCT_ID,
+          userEmail,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.checkoutUrl) {
+        setError(data.error ?? "결제 페이지를 열 수 없습니다. 잠시 후 다시 시도해주세요.")
+        setLoading(false)
+        return
+      }
+      window.location.href = data.checkoutUrl
+    } catch {
+      setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -95,13 +124,13 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
         <div className="flex flex-1 flex-col p-5">
 
         {/* 탭 스위처 */}
-        <div className="flex rounded-[6px] bg-[#262626] p-0.5">
+        <div className="flex rounded-lg bg-[#111111] p-1">
           <button
             onClick={() => setTab("monthly")}
             className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${
               tab === "monthly"
-                ? "bg-[#2a2a2a] text-white"
-                : "text-[#a6a6a6] hover:text-white"
+                ? "bg-blue-500/[0.15] text-white font-medium"
+                : "bg-transparent text-[#a6a6a6] hover:text-white"
             }`}
           >
             월간
@@ -110,8 +139,8 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
             onClick={() => setTab("annual")}
             className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${
               tab === "annual"
-                ? "bg-[#2a2a2a] text-white"
-                : "text-[#a6a6a6] hover:text-white"
+                ? "bg-blue-500/[0.15] text-white font-medium"
+                : "bg-transparent text-[#a6a6a6] hover:text-white"
             }`}
           >
             <span className="flex items-center justify-center gap-1.5">
@@ -164,15 +193,15 @@ export default function BillingPlansClient({ isPro }: { isPro: boolean }) {
               현재 플랜
             </button>
           ) : (
-            <a
-              href={tab === "monthly" ? MONTHLY_CHECKOUT_URL : ANNUAL_CHECKOUT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90"
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작"}
-            </a>
+              {loading ? "처리 중..." : tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작"}
+            </button>
           )}
+          {error && <p className="mt-2 text-center text-xs text-red-400">{error}</p>}
         </div>
         </div>
       </div>
