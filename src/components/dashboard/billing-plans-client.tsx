@@ -38,6 +38,9 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
   async function handleCheckout() {
     setLoading(true)
     setError("")
+    // 팝업 차단 방지: fetch 완료 후 window.open을 호출하면 사용자 제스처가 소실되어
+    // 브라우저(특히 Safari)가 새 탭을 차단할 수 있으므로, 클릭 즉시 빈 탭을 먼저 연다.
+    const newTab = window.open("", "_blank")
     try {
       const res = await fetch("/api/polar/checkout", {
         method: "POST",
@@ -49,13 +52,19 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
       })
       const data = await res.json()
       if (!res.ok || !data.checkoutUrl) {
+        newTab?.close()
         setError(data.error ?? "결제 페이지를 열 수 없습니다. 잠시 후 다시 시도해주세요.")
-        setLoading(false)
         return
       }
-      window.location.href = data.checkoutUrl
+      if (newTab) {
+        newTab.location.href = data.checkoutUrl
+      } else {
+        window.open(data.checkoutUrl, "_blank")
+      }
     } catch {
+      newTab?.close()
       setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+    } finally {
       setLoading(false)
     }
   }
