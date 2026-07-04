@@ -74,7 +74,7 @@
 :root {
   --background:            hsl(0 0% 4%);      /* #0a0a0a */
   --foreground:            hsl(0 0% 100%);    /* #ffffff */
-  --card:                  hsl(0 0% 7%);      /* #111111 */
+  --card:                  hsl(0 0% 9%);      /* #171717 — 랜딩 카드 배경 (기존 #111111보다 밝게) */
   --card-foreground:       hsl(0 0% 100%);
   --popover:               hsl(0 0% 7%);
   --popover-foreground:    hsl(0 0% 100%);
@@ -109,7 +109,7 @@
 .dark {
   --background:            hsl(0 0% 4%);
   --foreground:            hsl(0 0% 100%);
-  --card:                  hsl(0 0% 7%);
+  --card:                  hsl(0 0% 9%);
   --card-foreground:       hsl(0 0% 100%);
   --popover:               hsl(0 0% 7%);
   --popover-foreground:    hsl(0 0% 100%);
