@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-07-05 · 세션 79
+
+### 빌링 탭 UI 정리, Polar 체크아웃 리다이렉트 사고 진단·수정, 환불정책 추가, Polar 결제 보류로 안내 모달 전환
+
+**빌링 페이지 Pro 탭 선택 상태 명확화 (`billing-plans-client.tsx`)**
+- 월간/연간 탭 선택 상태가 비선택 상태와 구분이 잘 안 되는 문제 → 선택 탭 배경을 Free 카드 "현재 플랜" 버튼과 동일한 `bg-blue-500/[0.15]`로 통일, 탭 컨테이너 `bg-[#262626]` → `bg-[#111111] rounded-lg p-1`로 변경
+
+**Polar 체크아웃 "polar.sh 메인으로 리다이렉트" 사고 진단 및 수정 (`billing-plans-client.tsx`, `billing/page.tsx`)**
+- 월간/연간 "구독 시작" 클릭 시 결제 페이지 대신 `polar.sh` 메인으로 이동하는 문제 확인 — `curl -I`로 하드코딩된 정적 `buy.polar.sh/polar_cl_...` 체크아웃 링크가 302로 `polar.sh` 메인 리다이렉트되는 것을 확인, Polar API(`/v1/products`, `/v1/checkouts`)로 상품 자체는 정상(미보관) 상태이고 체크아웃 링크만 만료된 것이 원인임을 검증
+- 정적 링크 상수를 product ID 상수로 교체하고, 기존에 다른 곳에 이미 구현돼 있던 `/api/polar/checkout`(매번 새 체크아웃 세션 생성) 방식으로 전환 — 재발 방지: 만료 가능한 "체크아웃 링크 ID" 대신 안정적인 "상품 ID" 사용
+- `BillingPlansClient`에 `userEmail` prop 추가, `billing/page.tsx`에서 전달
+
+**결제 버튼 새 탭 오픈 (`billing-plans-client.tsx`)**
+- 클릭 즉시 `window.open("", "_blank")`로 빈 탭을 먼저 열고, 체크아웃 URL 발급 후 해당 탭의 `location`을 갱신하는 방식 적용 — fetch 완료 후 `window.open`을 호출하면 사용자 제스처가 소실돼 Safari 등에서 팝업이 차단되는 문제 방지
+
+**환불정책 추가 (`legal-modal.tsx`, `footer.tsx`)**
+- 이용약관(`TERMS_SECTIONS`)에 "환불 정책" 조항 신규 추가(구독 취소/환불/문의)
+- 처음에 `/refund` 독립 페이지(한국어+영문 병기)로 구현했다가, "페이지 스크롤 대신 이용약관처럼 모달로" 피드백에 따라 독립 페이지·sitemap 항목을 제거하고 `LegalModal`에 `refund` 타입을 추가해 푸터 버튼이 기존 이용약관/개인정보처리방침과 동일한 모달(`no-scrollbar` 처리 재사용)로 열리도록 전환
+
+**Polar 결제 연동 보류 → 안내 모달로 전환 (`billing-plans-client.tsx`)**
+- Polar.sh 측에서 조직(UNFOLD LAB) 결제 활성화를 거부해 결제사 교체를 검토해야 하는 상황 발생
+- 월간/연간 결제 버튼 클릭 시 `/api/polar/checkout` 연동 대신 "결제 준비 중" 안내 모달(마이페이지 문의 유도) 표시로 임시 전환
+- 기존 `handleCheckout`(Polar 체크아웃 로직)은 삭제하지 않고 전체 주석 처리해 결제사 확정 후 재활성화 가능하도록 보존
+
+**빌드 검증**: 매 단계 `pnpm build` 성공, 에러 0건.
+
+---
+
 ## 2026-07-04 · 세션 78
 
 ### 랜딩 카드 배경 밝기 조정, 종목 스냅샷 기업소개/빈카드 UX 개선, 수집 대상 확장(TOP30·거래량·섹터) + 뱃지 표시, 자동 수집 트리거, 캐시 전략 조사
