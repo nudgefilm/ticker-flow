@@ -36,7 +36,7 @@ export function CtaCard() {
               공시부터 어닝콜까지, 하나의 화면에서 모니터링할 수 있습니다.
             </p>
             <Link
-              href="/dashboard"
+              href="/login"
               className="mt-6 inline-block rounded-full bg-white px-6 py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-white/90"
             >
               무료로 시작하기
