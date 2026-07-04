@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { IconX } from "@tabler/icons-react";
 import { LegalModal } from "@/components/legal-modal";
 
-type ModalType = "privacy" | "terms" | "data-sources" | null;
+type ModalType = "privacy" | "terms" | "refund" | "data-sources" | null;
 
 const DATA_SOURCES_SECTIONS = [
   { title: "공시 정보",   content: "미국 증권거래위원회(SEC EDGAR) 공식 데이터베이스" },
@@ -110,9 +110,13 @@ export default function Footer() {
               >
                 이용약관
               </button>
-              <Link href="/refund" className="transition-colors hover:text-foreground">
+              <button
+                type="button"
+                onClick={() => setModal("refund")}
+                className="transition-colors hover:text-foreground"
+              >
                 환불정책
-              </Link>
+              </button>
             </nav>
           </div>
 
@@ -148,7 +152,7 @@ export default function Footer() {
         <DataSourcesModal onClose={handleClose} />,
         document.body
       )}
-      {mounted && (modal === "terms" || modal === "privacy") && createPortal(
+      {mounted && (modal === "terms" || modal === "privacy" || modal === "refund") && createPortal(
         <LegalModal type={modal} onClose={handleClose} />,
         document.body
       )}
