@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 
 export function BriefAccordion({
@@ -17,9 +17,15 @@ export function BriefAccordion({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  function handleCollapse() {
+    setOpen(false);
+    containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
-    <div className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
+    <div ref={containerRef} className="overflow-hidden rounded-[6px] border border-white/[0.08] bg-[#1a1a1a]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -53,7 +59,7 @@ export function BriefAccordion({
           {children}
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={handleCollapse}
             className="flex w-full items-center justify-center gap-1.5 rounded-[6px] py-2.5 text-xs font-medium transition-colors hover:bg-white/[0.04]"
             style={{ color: accent, border: `1px solid ${accent}33` }}
           >

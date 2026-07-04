@@ -6,6 +6,41 @@
 
 ---
 
+## 2026-07-04 · 세션 78
+
+### 랜딩 카드 배경 밝기 조정, 종목 스냅샷 기업소개/빈카드 UX 개선, 수집 대상 확장(TOP30·거래량·섹터) + 뱃지 표시, 자동 수집 트리거, 캐시 전략 조사
+
+**랜딩 페이지 카드 배경 밝기 조정 (`src/app/globals.css`)**
+- `--card` 토큰 `hsl(0 0% 7%)`(`#111111`) → `hsl(0 0% 9%)`(`#171717`)로 상향
+- `--muted`(10%, `#1a1a1a`)와 값을 동일하게 맞추면 카드 위 `hover:bg-muted/30` 호버·FAQ 아코디언 호버·아이콘 박스가 배경과 구분이 안 되는 부작용이 있어, 9%로 절충해 밝기 개선과 기존 UI 구분을 동시에 확보
+- `bg-card` 클래스 사용처를 전수 확인한 결과 전부 랜딩/로그인 관련 파일뿐이라(대시보드는 HEX 직접 사용) 토큰 하나만 바꿔도 대시보드에 영향 없음 확인
+
+**종목 스냅샷 — 기업소개 상시 노출 + 빈 카드 UX 개선 (`stock-brief.tsx`, `stocks/[symbol]/page.tsx`, `snapshot-filings.tsx`, `snapshot-news.tsx`, `earnings-flow.tsx`)**
+- "기업 한눈에"(description_kr+로고)가 Pro 전용 BRIEF 박스 안에 중첩돼 있어 무료 유저가 Pro 전용으로 오인할 수 있는 구조 확인 → `CompanyGlanceCard`로 독립 컴포넌트 분리, `StockBrief`와 무관하게 항상 렌더링되도록 변경
+- 공시·뉴스 빈 카드 문구를 "이 종목의 최근 공시/뉴스가 없습니다. 변화 발생 시 확인하려면 와치리스트에 추가해 보세요."로 교체, `WatchlistAddButton` 재사용(이미 등록됨/비로그인 시 미표시)
+- 실적 흐름(`earnings-flow.tsx`) 빈 문구를 "이 종목의 실적 데이터가 없습니다."로 수정 — 요청에는 `key-metrics.tsx`로 명시됐으나 실제 "실적 흐름" 섹션·문구는 `earnings-flow.tsx`에 있어 확인 후 정정 적용
+
+**수집 대상 확장 — TOP30 + 거래량 상위 + 섹터별 시가총액 상위 (`src/lib/collect/target-tickers.ts` 신규/확장, `insider.ts`)**
+- `getCollectTargetTickers()` 신규 유틸 도입 시 `filings.ts`/`news.ts`는 애초에 티커 필터 없이 전체 상장사를 수집 중임을 확인 → 실제 티커 풀 기반 수집은 `insider.ts`(와치리스트+최근 7일 공시 종목, 기존 10건 상한)뿐이라 사용자 확인 후 `insider.ts`만 대상 확장, `.slice(0, 10)` 상한 제거(TOP30 포함 시 잘려나가는 문제 방지)
+- `getTargetTickerSets()`로 재작성 — 와치리스트/TOP30(top30_daily 최근일)/거래량 상위 20(`stock_prices.volume` 최근 1일)/섹터별 시가총액 상위 3(`tickers.sector`+`market_cap`, PostgREST 1000행 제한 우회 range 페이지네이션 포함)을 각각 Set으로 반환하도록 확장, `getCollectTargetTickers()`는 4개 Set 합집합으로 변경
+
+**종목 노출 시 뱃지 표시 (`ticker-badge.tsx` 신규, `snapshot-header.tsx`, `watchlist-card.tsx`, `filing-feed-card.tsx`, `news-feed-card.tsx` + 각 페이지)**
+- `getBadgeReasons(ticker, sets)` 헬퍼로 TOP30 선정(오렌지 `#f97316`)/거래량 상위(노랑 `#fbbf24`)/섹터 주목(보라 `#a78bfa`) 판정, 중복 해당 시 모두 표시
+- 종목 스냅샷 헤더, 와치리스트 카드, 공시 피드 카드, 뉴스 피드 카드 4곳에 적용 — 각 페이지에서 `getTargetTickerSets()`를 기존 병렬 쿼리에 추가해 페이지당 1회만 조회 후 종목별 매핑
+
+**종목 스냅샷 자동 수집 트리거 (`snapshot-collect-modal.tsx` 신규, `snapshot-status/route.ts` 신규, `collect-ticker.ts`, `log-run.ts`)**
+- 종목 스냅샷 접속 시 최근 30일 공시·뉴스·내부자거래가 모두 0건이면 첫 방문으로 간주, `after()`로 `collectTickerFull()`(공시+뉴스+내부자거래 통합 수집) 백그라운드 트리거
+- `collect_runs` 테이블(관리자 트리거와 동일 인프라)에 `job_type: "ticker-collect:{ticker}"`로 기록, `findRecentRun()`으로 동일 종목 1시간 이내 중복 트리거 방지(진행 중 실행은 재사용, 완료된 실행은 재트리거 없이 모달도 생략)
+- 클라이언트 모달: 스피너 + "데이터 수집 중" 안내, 3초 간격 폴링(`/api/collect/snapshot-status`)으로 상태 확인 후 자동 닫힘+`router.refresh()`, 60초 타임아웃 및 수동 닫기 버튼
+
+**사이트 전체 revalidateTag 캐싱 도입 요청 — 조사 후 보류 결정**
+- 요청 대상 9개 페이지 전수 확인 결과 전부 `export const dynamic = "force-dynamic"` + Supabase 직접 쿼리 구조. Next.js 16은 fetch 캐시가 기본 비활성(옵트인)이라 이미 매 요청마다 최신 데이터를 조회 중 — "캐시가 오래된 데이터를 보여주는" 문제 자체가 없음을 확인
+- `revalidateTag()`는 무효화할 캐시가 있어야 의미가 있는데 현재 캐시가 아예 없어 적용 대상이 없고, 억지로 `unstable_cache()` 레이어를 새로 추가하면 태그 무효화 누락 시 지금 없던 지연/오류가 새로 생길 위험이 있어 사용자 확인 후 작업 보류(코드 변경 없음)
+
+**빌드 검증**: 매 단계 `pnpm build` 성공, 에러 0건.
+
+---
+
 ## 2026-07-04 · 세션 77
 
 ### 종목 스냅샷 BRIEF 노출 정책 개편, 뉴스 티커 필터, 카드 UI 정리, 배당 데이터 파이프라인 사고 진단, 미국 공휴일 유틸

@@ -74,15 +74,15 @@
 :root {
   --background:            hsl(0 0% 4%);      /* #0a0a0a */
   --foreground:            hsl(0 0% 100%);    /* #ffffff */
-  --card:                  hsl(0 0% 9%);      /* #171717 — 랜딩 카드 배경 (기존 #111111보다 밝게) */
+  --card:                  hsl(0 0% 10%);     /* #1a1a1a — 대시보드 카드 밝기와 통일 */
   --card-foreground:       hsl(0 0% 100%);
   --popover:               hsl(0 0% 7%);
   --popover-foreground:    hsl(0 0% 100%);
   --primary:               hsl(0 0% 100%);    /* white CTA */
   --primary-foreground:    hsl(0 0% 4%);
-  --secondary:             hsl(0 0% 10%);     /* #1a1a1a hover */
+  --secondary:             hsl(0 0% 13%);     /* #212121 — card보다 한 단계 밝은 hover/강조면 */
   --secondary-foreground:  hsl(0 0% 100%);
-  --muted:                 hsl(0 0% 10%);     /* #1a1a1a */
+  --muted:                 hsl(0 0% 13%);     /* #212121 — card보다 한 단계 밝은 hover/강조면 */
   --muted-foreground:      hsl(0 0% 65%);     /* #666666 */
   --accent:                hsl(0 0% 10%);
   --accent-foreground:     hsl(0 0% 100%);
@@ -109,15 +109,15 @@
 .dark {
   --background:            hsl(0 0% 4%);
   --foreground:            hsl(0 0% 100%);
-  --card:                  hsl(0 0% 9%);
+  --card:                  hsl(0 0% 10%);
   --card-foreground:       hsl(0 0% 100%);
   --popover:               hsl(0 0% 7%);
   --popover-foreground:    hsl(0 0% 100%);
   --primary:               hsl(0 0% 100%);
   --primary-foreground:    hsl(0 0% 4%);
-  --secondary:             hsl(0 0% 10%);
+  --secondary:             hsl(0 0% 13%);
   --secondary-foreground:  hsl(0 0% 100%);
-  --muted:                 hsl(0 0% 10%);
+  --muted:                 hsl(0 0% 13%);
   --muted-foreground:      hsl(0 0% 65%);
   --accent:                hsl(0 0% 10%);
   --accent-foreground:     hsl(0 0% 100%);
