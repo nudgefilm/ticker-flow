@@ -51,6 +51,10 @@ const TERMS_SECTIONS = [
     content: `· Free 플랜은 무료로 이용할 수 있습니다.\n· Pro 플랜은 월 ₩14,900 또는 연 ₩142,800으로 이용할 수 있습니다.\n· 구독은 언제든지 해지할 수 있으며, 해지 후에도 결제 기간 만료일까지 이용 가능합니다.`,
   },
   {
+    title: "환불 정책",
+    content: `구독 취소\n· 구독은 언제든지 취소할 수 있습니다.\n· 취소 시 현재 결제 기간이 종료될 때까지 서비스를 이용할 수 있습니다.\n· 취소 후 추가 결제는 발생하지 않습니다.\n\n환불\n· 결제일로부터 7일 이내 환불 요청 시, 서비스 이용 이력이 없는 경우 전액 환불해 드립니다.\n· 서비스 이용 이력이 있는 경우 잔여 기간 기준 비례 환불이 적용됩니다.\n· 7일 이후에는 환불이 제공되지 않습니다.\n· 환불 요청은 support@tickerflow.net으로 문의해 주세요.\n\n문의\n· 결제 관련 문의: support@tickerflow.net`,
+  },
+  {
     title: "약관 변경",
     content: `본 약관은 서비스 개선을 위해 변경될 수 있습니다. 변경 시 서비스 내 공지를 통해 안내합니다.`,
   },
@@ -66,7 +70,7 @@ const TERMS_SECTIONS = [
 
 const MODAL_CONFIG: Record<"terms" | "privacy", { title: string; updated: string; sections: { title: string; content: string }[] }> = {
   privacy: { title: "개인정보처리방침", updated: "2026년 6월 24일", sections: PRIVACY_SECTIONS },
-  terms:   { title: "이용약관",         updated: "2026년 7월 3일", sections: TERMS_SECTIONS },
+  terms:   { title: "이용약관",         updated: "2026년 7월 5일", sections: TERMS_SECTIONS },
 };
 
 export type LegalType = "terms" | "privacy";

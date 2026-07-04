@@ -110,6 +110,9 @@ export default function Footer() {
               >
                 이용약관
               </button>
+              <Link href="/refund" className="transition-colors hover:text-foreground">
+                환불정책
+              </Link>
             </nav>
           </div>
 
