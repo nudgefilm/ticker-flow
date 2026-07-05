@@ -10,3 +10,5 @@ export const PRO_ANNUAL_FREE_MONTHS = Math.round(
 export function formatKrw(amount: number): string {
   return `₩${amount.toLocaleString("ko-KR")}`;
 }
+
+export const TAX_NOTICE_KO = "표시된 가격은 부가가치세(VAT) 등 세금이 포함된 금액입니다.";

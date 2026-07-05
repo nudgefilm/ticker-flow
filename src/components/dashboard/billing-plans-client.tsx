@@ -7,6 +7,7 @@ import {
   PRO_ANNUAL_PRICE_KRW,
   PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW,
   PRO_ANNUAL_FREE_MONTHS,
+  TAX_NOTICE_KO,
   formatKrw,
 } from "@/lib/pricing"
 
@@ -101,6 +102,7 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
   // }
 
   return (
+    <div>
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
       {/* Free 카드 */}
@@ -197,13 +199,13 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
           {tab === "monthly" ? (
             <div className="flex items-baseline gap-1">
               <span className="text-3xl font-semibold tabular-nums text-white">{formatKrw(PRO_MONTHLY_PRICE_KRW)}</span>
-              <span className="text-sm text-[#a6a6a6]">/ 월</span>
+              <span className="text-sm text-[#a6a6a6]">/ 월 (VAT 포함)</span>
             </div>
           ) : (
             <>
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-semibold tabular-nums text-white">{formatKrw(PRO_ANNUAL_PRICE_KRW)}</span>
-                <span className="text-sm text-[#a6a6a6]">/ 년</span>
+                <span className="text-sm text-[#a6a6a6]">/ 년 (VAT 포함)</span>
               </div>
               <p className="mt-1 text-xs text-[#a6a6a6]">월 {formatKrw(PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW)} 상당</p>
             </>
@@ -245,6 +247,8 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
       </div>
 
       {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(false)} />}
+    </div>
+    <p className="mt-4 text-center text-xs text-[#a6a6a6]">{TAX_NOTICE_KO}</p>
     </div>
   )
 }

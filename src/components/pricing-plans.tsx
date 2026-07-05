@@ -8,6 +8,7 @@ import {
   PRO_ANNUAL_PRICE_KRW,
   PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW,
   PRO_ANNUAL_FREE_MONTHS,
+  TAX_NOTICE_KO,
   formatKrw,
 } from "@/lib/pricing";
 
@@ -37,7 +38,8 @@ export function PricingPlans() {
   const [tab, setTab] = useState<"monthly" | "annual">("monthly");
 
   return (
-    <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 md:grid-cols-2">
+    <div className="mx-auto max-w-4xl">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
       {/* Free 카드 */}
       <div className="flex flex-col overflow-hidden rounded-[12px] border border-border bg-card">
@@ -111,13 +113,13 @@ export function PricingPlans() {
             {tab === "monthly" ? (
               <div className="flex items-baseline gap-1">
                 <span className="text-3xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_MONTHLY_PRICE_KRW)}</span>
-                <span className="text-sm text-muted-foreground">/ 월</span>
+                <span className="text-sm text-muted-foreground">/ 월 (VAT 포함)</span>
               </div>
             ) : (
               <>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_ANNUAL_PRICE_KRW)}</span>
-                  <span className="text-sm text-muted-foreground">/ 년</span>
+                  <span className="text-sm text-muted-foreground">/ 년 (VAT 포함)</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">월 {formatKrw(PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW)} 상당</p>
               </>
@@ -148,6 +150,8 @@ export function PricingPlans() {
           </div>
         </div>
       </div>
+      </div>
+      <p className="mt-6 text-center text-xs text-muted-foreground">{TAX_NOTICE_KO}</p>
     </div>
   );
 }
