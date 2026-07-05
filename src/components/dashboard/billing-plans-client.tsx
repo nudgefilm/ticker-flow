@@ -62,6 +62,7 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
     paddle.Checkout.open({
       items: [{ priceId, quantity: 1 }],
       customer: userEmail ? { email: userEmail } : undefined,
+      customData: userEmail ? { email: userEmail } : undefined,
       settings: {
         successUrl: `${window.location.origin}/billing?success=true`,
         theme: "dark",
