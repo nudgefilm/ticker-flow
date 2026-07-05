@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-07-05 · 세션 80
+
+### 어드민 "일별 방문자" KPI 카드 실 데이터 연동
+
+**`page_visits` 테이블 신규 (`supabase/page_visits.sql`, `supabase/schema.sql` §13)**
+- 컬럼: `id`, `visited_date`, `user_id`(nullable FK auth.users), `ip_hash`(nullable), `created_at`
+- 로그인 방문(`visited_date, user_id` WHERE NOT NULL)·비로그인 방문(`visited_date, ip_hash` WHERE NULL) 각각 부분 유니크 인덱스로 하루 1회만 집계되도록 제약
+- CLAUDE.md §17 체크리스트 중 "authenticated SELECT GRANT"는 의도적으로 생략 — 다른 사용자의 `ip_hash`/`user_id`가 담긴 로그라 일반 로그인 유저에게 열어두면 전체 방문자 로그를 조회할 수 있게 되는 문제 방지, `service_role`만 GRANT
+- SQL은 Supabase SQL Editor에서 직접 실행(사용자 확인) 후 `pnpm gen:types` 실행, `src/types/supabase.ts` 첫 줄 `export type Json =` 확인 완료
+
+**방문 로깅 (`middleware.ts`)**
+- `/api/*`, `/admin/*`, 정적 자산(기존 matcher) 제외 후 실제 페이지 요청만 기록, 리다이렉트되는 요청(비로그인→로그인 등)은 로깅 지점 이전에 return되어 자동 제외
+- 로그인 시 `user_id`, 비로그인 시 IP를 Web Crypto(`crypto.subtle.digest`)로 SHA-256 해시 후 저장 — 원본 IP는 저장하지 않음
+- PostgREST `.upsert()`는 부분 유니크 인덱스(WHERE 조건부)를 `ON CONFLICT` 추론에서 매칭하지 못해, `insert()` 후 중복키 오류(`23505`)를 무시하는 방식으로 대체 구현
+- `next/server`의 `after()`로 응답 전송 후 비동기 기록 — 미들웨어 어댑터가 `waitUntil`을 지원함을 확인해 응답 지연 없이 신뢰성 있게 실행되도록 처리
+
+**어드민 홈 카드 교체 (`src/app/admin/page.tsx`)**
+- "일별 방문자" "준비 중" 플레이스홀더 → 오늘(UTC, 기존 신규가입 카운트 기준과 통일) `page_visits` count 3종(전체/로그인/비로그인) 쿼리로 교체, 기존 `createAdminClient`+`force-dynamic` 병렬 쿼리 패턴 유지
+
+**빌드 검증**: `pnpm build` 성공 에러 0건, `pnpm lint` — 변경 파일(`middleware.ts`, `admin/page.tsx`) 오류 없음(기존 다른 파일 오류 72건은 이번 작업과 무관).
+
+---
+
 ## 2026-07-05 · 세션 79
 
 ### 빌링 탭 UI 정리, Polar 체크아웃 리다이렉트 사고 진단·수정, 환불정책 추가, Polar 결제 보류로 안내 모달 전환
