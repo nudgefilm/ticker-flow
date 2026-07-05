@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { initializePaddle, type Paddle } from "@paddle/paddle-js"
 import { IconCheck } from "@tabler/icons-react"
 import {
   PRO_MONTHLY_PRICE_KRW,
@@ -11,10 +12,8 @@ import {
   formatKrw,
 } from "@/lib/pricing"
 
-// 정적 buy.polar.sh 체크아웃 링크는 만료/비활성화 시 polar.sh 메인으로 리다이렉트되므로,
-// /api/polar/checkout에서 매번 새 체크아웃 세션을 생성하는 방식을 사용한다.
-const MONTHLY_PRODUCT_ID = "b4362962-9365-4bfb-be40-1f5ad65b45af"
-const ANNUAL_PRODUCT_ID = "046ffe47-7b01-4427-b69b-63202cf5ae85"
+const MONTHLY_PRICE_ID = process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_MONTHLY ?? ""
+const ANNUAL_PRICE_ID = process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_ANNUAL ?? ""
 
 const FREE_FEATURES = [
   "와치리스트 (최대 5종목)",
@@ -38,68 +37,38 @@ const PRO_FEATURES: ProFeature[] = [
   { label: "데일리 다이제스트", desc: "매일 아침 주요 기업동향과 시장 변화를 이메일로 받아보세요." },
 ]
 
-function ComingSoonModal({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative z-10 w-full max-w-sm rounded-[8px] border border-white/[0.08] bg-[#1a1a1a] p-6 text-center"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-base font-semibold text-white">결제 준비 중</h2>
-        <p className="mt-3 text-sm leading-relaxed text-[#a6a6a6]">
-          현재 결제 연동을 준비하고 있습니다. Pro 버전이 필요하신 경우 마이페이지에서 문의를 통해 요청해 주시기 바랍니다.
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 w-full rounded-[6px] bg-white py-2.5 text-sm font-medium text-black transition-opacity hover:opacity-90"
-        >
-          확인
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolean; userEmail: string }) {
   const [tab, setTab] = useState<"monthly" | "annual">("monthly")
-  const [showComingSoon, setShowComingSoon] = useState(false)
+  const [paddle, setPaddle] = useState<Paddle>()
+  const [error, setError] = useState("")
 
-  // Polar 결제 연동 거부로 결제사 교체 검토 중 — 재활성화 전까지 체크아웃 버튼은 안내 모달만 표시한다.
-  // async function handleCheckout() {
-  //   setLoading(true)
-  //   setError("")
-  //   // 팝업 차단 방지: fetch 완료 후 window.open을 호출하면 사용자 제스처가 소실되어
-  //   // 브라우저(특히 Safari)가 새 탭을 차단할 수 있으므로, 클릭 즉시 빈 탭을 먼저 연다.
-  //   const newTab = window.open("", "_blank")
-  //   try {
-  //     const res = await fetch("/api/polar/checkout", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         productId: tab === "monthly" ? MONTHLY_PRODUCT_ID : ANNUAL_PRODUCT_ID,
-  //         userEmail,
-  //       }),
-  //     })
-  //     const data = await res.json()
-  //     if (!res.ok || !data.checkoutUrl) {
-  //       newTab?.close()
-  //       setError(data.error ?? "결제 페이지를 열 수 없습니다. 잠시 후 다시 시도해주세요.")
-  //       return
-  //     }
-  //     if (newTab) {
-  //       newTab.location.href = data.checkoutUrl
-  //     } else {
-  //       window.open(data.checkoutUrl, "_blank")
-  //     }
-  //   } catch {
-  //     newTab?.close()
-  //     setError("네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
+  useEffect(() => {
+    const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
+    if (!token) return
+    initializePaddle({ environment: "production", token }).then(setPaddle)
+  }, [])
+
+  function handleCheckout() {
+    setError("")
+    if (!paddle) {
+      setError("결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해주세요.")
+      return
+    }
+    const priceId = tab === "monthly" ? MONTHLY_PRICE_ID : ANNUAL_PRICE_ID
+    if (!priceId) {
+      setError("결제 상품 설정을 확인해주세요.")
+      return
+    }
+    paddle.Checkout.open({
+      items: [{ priceId, quantity: 1 }],
+      customer: userEmail ? { email: userEmail } : undefined,
+      settings: {
+        successUrl: `${window.location.origin}/billing?success=true`,
+        theme: "dark",
+        locale: "ko",
+      },
+    })
+  }
 
   return (
     <div>
@@ -236,17 +205,17 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
             </button>
           ) : (
             <button
-              onClick={() => setShowComingSoon(true)}
-              className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90"
+              onClick={handleCheckout}
+              disabled={!paddle}
+              className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작"}
+              {paddle ? (tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작") : "결제 모듈 로딩 중..."}
             </button>
           )}
+          {error && <p className="mt-2 text-center text-xs text-red-400">{error}</p>}
         </div>
         </div>
       </div>
-
-      {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(false)} />}
     </div>
     <p className="mt-4 text-center text-xs text-[#a6a6a6]">{TAX_NOTICE_KO}</p>
     </div>
