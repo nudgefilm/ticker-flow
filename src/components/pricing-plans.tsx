@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { IconCheck } from "@tabler/icons-react";
 import {
@@ -35,8 +32,6 @@ const PRO_FEATURES: ProFeature[] = [
 ];
 
 export function PricingPlans() {
-  const [tab, setTab] = useState<"monthly" | "annual">("monthly");
-
   return (
     <div className="mx-auto max-w-4xl">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -70,60 +65,51 @@ export function PricingPlans() {
         </div>
       </div>
 
-      {/* Pro 카드 (탭) */}
+      {/* Pro 카드 (월간·연간 동시 노출) */}
       <div className="flex flex-col overflow-hidden rounded-[12px] border-2 border-blue-400/60 bg-card">
         <div className="border-b border-border px-6 py-5">
           <p className="text-base font-semibold text-foreground">Pro</p>
         </div>
         <div className="flex flex-1 flex-col p-6">
 
-          {/* 탭 스위처 */}
-          <div className="flex rounded-lg bg-muted/40 p-1">
-            <button
-              type="button"
-              onClick={() => setTab("monthly")}
-              className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${
-                tab === "monthly"
-                  ? "bg-blue-500/15 text-foreground"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              월간
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("annual")}
-              className={`flex-1 rounded-[4px] py-1.5 text-xs font-medium transition-colors ${
-                tab === "annual"
-                  ? "bg-blue-500/15 text-foreground"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <span className="flex items-center justify-center gap-1.5">
-                연간
+          {/* 월간·연간 가격 (항상 동시 노출) */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* 월간 */}
+            <div className="flex flex-col gap-3 rounded-[8px] border border-border p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">월간</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_MONTHLY_PRICE_KRW)}</span>
+                <span className="text-xs text-muted-foreground">/ 월</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">VAT 포함</p>
+              <Link
+                href="/login"
+                className="mt-auto block w-full rounded-[6px] border border-border py-2 text-center text-xs font-medium text-foreground transition-colors hover:bg-muted/30"
+              >
+                월간으로 Pro 시작하기
+              </Link>
+            </div>
+
+            {/* 연간 */}
+            <div className="flex flex-col gap-3 rounded-[8px] border border-blue-400/40 bg-blue-500/[0.04] p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">연간</p>
                 <span className="rounded-[3px] bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
                   {PRO_ANNUAL_FREE_MONTHS}개월 무료
                 </span>
-              </span>
-            </button>
-          </div>
-
-          {/* 가격 */}
-          <div className="mt-4 min-h-[52px]">
-            {tab === "monthly" ? (
-              <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_MONTHLY_PRICE_KRW)}</span>
-                <span className="text-sm text-muted-foreground">/ 월 (VAT 포함)</span>
               </div>
-            ) : (
-              <>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_ANNUAL_PRICE_KRW)}</span>
-                  <span className="text-sm text-muted-foreground">/ 년 (VAT 포함)</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">월 {formatKrw(PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW)} 상당</p>
-              </>
-            )}
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-semibold tabular-nums text-foreground">{formatKrw(PRO_ANNUAL_PRICE_KRW)}</span>
+                <span className="text-xs text-muted-foreground">/ 년</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">VAT 포함 · 월 {formatKrw(PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW)} 상당</p>
+              <Link
+                href="/login"
+                className="mt-auto block w-full rounded-[6px] bg-foreground py-2 text-center text-xs font-medium text-background transition-opacity hover:opacity-90"
+              >
+                연간으로 Pro 시작하기
+              </Link>
+            </div>
           </div>
 
           {/* 기능 목록 */}
@@ -138,16 +124,6 @@ export function PricingPlans() {
               </li>
             ))}
           </ul>
-
-          {/* CTA */}
-          <div className="mt-auto pt-6">
-            <Link
-              href="/login"
-              className="block w-full rounded-[6px] bg-foreground py-2.5 text-center text-sm font-medium text-background transition-opacity hover:opacity-90"
-            >
-              {tab === "monthly" ? "월간으로 Pro 시작하기" : "연간으로 Pro 시작하기"}
-            </Link>
-          </div>
         </div>
       </div>
       </div>
