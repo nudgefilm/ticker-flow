@@ -68,32 +68,12 @@ const TERMS_SECTIONS = [
   },
 ];
 
-const REFUND_SECTIONS = [
-  {
-    title: "구독 취소",
-    content: `· 구독은 언제든지 취소할 수 있습니다.\n· 취소 시 현재 결제 기간이 종료될 때까지 서비스를 이용할 수 있습니다.\n· 취소 후 추가 결제는 발생하지 않습니다.`,
-  },
-  {
-    title: "환불",
-    content: `· 결제일로부터 7일 이내 환불 요청 시, 서비스 이용 이력이 없는 경우 전액 환불해 드립니다.\n· 서비스 이용 이력이 있는 경우 잔여 기간 기준 비례 환불이 적용됩니다.\n· 7일 이후에는 환불이 제공되지 않습니다.\n· 환불 요청: support@tickerflow.net`,
-  },
-  {
-    title: "Cancellation",
-    content: `· You may cancel your subscription at any time.\n· Upon cancellation, you will retain access until the end of your current billing period.\n· No additional charges will occur after cancellation.`,
-  },
-  {
-    title: "Refunds",
-    content: `· Refund requests made within 7 days of payment will be fully refunded, provided the service has not been used.\n· If the service has been used, a prorated refund based on the remaining period will be applied.\n· No refunds are provided after 7 days.\n· To request a refund: support@tickerflow.net`,
-  },
-];
-
-const MODAL_CONFIG: Record<"terms" | "privacy" | "refund", { title: string; updated: string; sections: { title: string; content: string }[] }> = {
+const MODAL_CONFIG: Record<"terms" | "privacy", { title: string; updated: string; sections: { title: string; content: string }[] }> = {
   privacy: { title: "개인정보처리방침", updated: "2026년 6월 24일", sections: PRIVACY_SECTIONS },
   terms:   { title: "이용약관",         updated: "2026년 7월 5일", sections: TERMS_SECTIONS },
-  refund:  { title: "환불정책",         updated: "2026년 7월 5일", sections: REFUND_SECTIONS },
 };
 
-export type LegalType = "terms" | "privacy" | "refund";
+export type LegalType = "terms" | "privacy";
 
 export function LegalModal({ type, onClose }: { type: LegalType; onClose: () => void }) {
   const config = MODAL_CONFIG[type];
