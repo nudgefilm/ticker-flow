@@ -352,3 +352,33 @@ GRANT ALL ON TABLE public.youtube_channels TO service_role;
 
 -- authenticated는 어드민 계정만 접근 가능 (RLS로 이메일 제한, 정책은 youtube_channels.sql 참고)
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.youtube_channels TO authenticated;
+
+
+-- ============================================================
+-- 13. page_visits — 일별 방문자 로그 (어드민 KPI 카드용)
+-- ============================================================
+-- 실행용 SQL은 supabase/page_visits.sql 참고
+-- 원본 IP는 저장하지 않고 SHA-256 해시만 저장한다.
+CREATE TABLE IF NOT EXISTS public.page_visits (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  visited_date  DATE        NOT NULL,
+  user_id       UUID        REFERENCES auth.users(id) ON DELETE CASCADE,
+  ip_hash       TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 로그인 유저: 같은 날 동일 user_id 재방문은 중복 집계하지 않음
+CREATE UNIQUE INDEX IF NOT EXISTS idx_page_visits_user_date
+  ON public.page_visits (visited_date, user_id)
+  WHERE user_id IS NOT NULL;
+
+-- 비로그인: 같은 날 동일 IP 해시 재방문은 중복 집계하지 않음
+CREATE UNIQUE INDEX IF NOT EXISTS idx_page_visits_ip_date
+  ON public.page_visits (visited_date, ip_hash)
+  WHERE user_id IS NULL;
+
+ALTER TABLE public.page_visits ENABLE ROW LEVEL SECURITY;
+
+-- service_role만 접근. 다른 사용자의 ip_hash/user_id가 담긴 로그이므로
+-- authenticated에는 GRANT하지 않음 (일반 유저 접근 불필요, service_role은 RLS 우회)
+GRANT ALL ON TABLE public.page_visits TO service_role;

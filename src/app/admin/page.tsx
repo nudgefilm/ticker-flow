@@ -302,6 +302,7 @@ export default async function AdminPage() {
 
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const allJobTypes = [...DAILY_JOBS, ...WEEKLY_JOBS].map((j) => j.job);
+  const todayDateStr = todayStart.toISOString().slice(0, 10);
 
   const [
     { count: totalCount },
@@ -309,6 +310,9 @@ export default async function AdminPage() {
     { count: newTodayCount },
     { data: runRows },
     { data: signupRows },
+    { count: visitTotalCount },
+    { count: visitLoggedInCount },
+    { count: visitAnonCount },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }),
     admin.from("profiles").select("*", { count: "exact", head: true }).eq("plan", "pro"),
@@ -321,6 +325,9 @@ export default async function AdminPage() {
       .gte("started_at", sevenDaysAgoIso)
       .order("started_at", { ascending: false }) as Promise<{ data: RunInfo[] | null }>,
     admin.from("profiles").select("created_at").gte("created_at", sevenDaysAgoIso),
+    admin.from("page_visits").select("*", { count: "exact", head: true }).eq("visited_date", todayDateStr),
+    admin.from("page_visits").select("*", { count: "exact", head: true }).eq("visited_date", todayDateStr).not("user_id", "is", null),
+    admin.from("page_visits").select("*", { count: "exact", head: true }).eq("visited_date", todayDateStr).is("user_id", null),
   ]);
 
   const total    = totalCount ?? 0;
@@ -394,8 +401,12 @@ export default async function AdminPage() {
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs text-[#a6a6a6]">일별 방문자</p>
-              <p className="mt-1.5 text-2xl font-semibold text-[#a6a6a6]">준비 중</p>
-              <p className="mt-1 text-xs text-[#a6a6a6]">—</p>
+              <p className="mt-1.5 text-2xl font-semibold text-white">
+                {(visitTotalCount ?? 0).toLocaleString("ko-KR")}명
+              </p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">
+                로그인 {visitLoggedInCount ?? 0} · 비로그인 {visitAnonCount ?? 0}
+              </p>
             </div>
             <IconEye size={20} stroke={1.5} className="text-purple-400" />
           </div>

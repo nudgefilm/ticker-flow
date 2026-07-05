@@ -219,7 +219,15 @@ export type Database = {
           ticker?: string
           yield?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dividends_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
+          },
+        ]
       }
       earnings: {
         Row: {
@@ -620,6 +628,30 @@ export type Database = {
         }
         Relationships: []
       }
+      page_visits: {
+        Row: {
+          created_at: string
+          id: string
+          ip_hash: string | null
+          user_id: string | null
+          visited_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+          visited_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_hash?: string | null
+          user_id?: string | null
+          visited_date?: string
+        }
+        Relationships: []
+      }
       price_targets: {
         Row: {
           adj_price_target: number | null
@@ -933,6 +965,51 @@ export type Database = {
           generated_at?: string | null
           id?: string
           week_start?: string
+        }
+        Relationships: []
+      }
+      youtube_channels: {
+        Row: {
+          channel_id: string
+          channel_name: string
+          channel_url: string
+          created_at: string | null
+          description: string | null
+          email_sent: boolean | null
+          id: string
+          memo: string | null
+          subscriber_count: number | null
+          thumbnail_url: string | null
+          updated_at: string | null
+          video_count: number | null
+        }
+        Insert: {
+          channel_id: string
+          channel_name: string
+          channel_url: string
+          created_at?: string | null
+          description?: string | null
+          email_sent?: boolean | null
+          id?: string
+          memo?: string | null
+          subscriber_count?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_count?: number | null
+        }
+        Update: {
+          channel_id?: string
+          channel_name?: string
+          channel_url?: string
+          created_at?: string | null
+          description?: string | null
+          email_sent?: boolean | null
+          id?: string
+          memo?: string | null
+          subscriber_count?: number | null
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_count?: number | null
         }
         Relationships: []
       }
