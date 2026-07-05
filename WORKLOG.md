@@ -6,6 +6,61 @@
 
 ---
 
+## 2026-07-06 · 세션 81
+
+### Paddle 결제사 전환: Polar 전수조사, 공개 요금제/약관 페이지 신설, Paddle.js 체크아웃·웹훅 정식 연동
+
+**Polar → Paddle 전환 전수조사**
+- 저장소 전체 "polar" occurrence 16개 파일을 grep으로 전수조사 후 삭제/수정/데드코드 대상을 먼저 제시하고 사용자 확인을 받는 방식으로 진행 — `checkout-button.tsx`(미사용 데드코드)는 사용자 판단으로 보존 결정
+- Paddle 체크아웃 방식은 Paddle.js 오버레이 체크아웃으로 확정(호스팅 체크아웃 링크 대비 Paddle Billing 표준 권장 방식)
+
+**`/billing` 로그인 리다이렉트 원인 확인 → 공개 `/pricing` 페이지 신규 (`src/app/pricing/page.tsx`, `src/components/pricing-plans.tsx`)**
+- `middleware.ts`의 `PROTECTED_PATHS`에 `/billing`이 포함돼 비로그인 방문자가 `/login`으로 리다이렉트되는 것이 Paddle 심사 크롤러가 가격을 못 본 원인으로 추정 → `/billing`은 로그인 유저 전용으로 유지하고, 로그인 불필요한 `/pricing`을 랜딩 디자인 시스템(HSL 토큰)으로 신규 생성
+- `navbar.tsx`/`footer.tsx`에 "요금제" 링크 추가
+
+**가격 상수 중앙화 (`src/lib/pricing.ts` 신규)**
+- `PRO_MONTHLY_PRICE_KRW`/`PRO_ANNUAL_PRICE_KRW`/월 환산가/할인 개월수/`formatKrw()`/`TAX_NOTICE_KO`(VAT 포함 안내문)를 한 곳에 정의, `pricing-plans.tsx`·`billing-plans-client.tsx` 양쪽이 참조하도록 통일해 가격 변경 시 두 화면이 어긋나지 않게 함
+- 가격 옆 "(VAT 포함)" 병기 + 하단 세금 안내 문구 추가(Paddle tax transparency 요건 대응)
+
+**이용약관/환불정책 정적 페이지 분리 (`src/app/terms/page.tsx`, `src/app/refund/page.tsx` 신규)**
+- 개인정보처리방침은 이전 세션에 Google OAuth 크롤러 이슈로 이미 `/privacy` 정적 페이지로 분리돼 있었으나, 이용약관·환불정책은 여전히 JS 모달(`legal-modal.tsx`)이라 Paddle 심사 크롤러도 인식 못 할 위험이 있음을 확인 → 동일 패턴으로 정적 페이지 신규 생성, `footer.tsx` 링크를 모달 트리거에서 페이지 링크로 교체
+- `legal-modal.tsx`는 로그인 페이지·로그인 모달의 인라인 팝업(`terms`/`privacy`)에서 여전히 사용 중이라 삭제하지 않고, 아무 데서도 트리거되지 않게 된 `refund` 관련 죽은 분기(`REFUND_SECTIONS`, `MODAL_CONFIG.refund`, `LegalType`의 `"refund"`)만 제거
+
+**Paddle 도메인 심사 반복 반려 원인 조사 — curl 기반 실증**
+- apex(`tickerflow.net`) 접근 시 `www.tickerflow.net`으로 308 리다이렉트되는 것을 확인 — Paddle에 apex URL을 제출했다면 크롤러가 리다이렉트를 안 따라갔을 가능성
+- `/pricing`의 월간/연간 탭이 `useState` 기본값 `"monthly"`라 연간 가격(₩142,800)이 서버 렌더링 raw HTML에 전혀 존재하지 않는 것을 `curl`+grep으로 실증 확인 — 가장 유력한 반려 원인으로 판단
+
+**`/pricing` 탭 제거, 월간·연간 항상 동시 노출로 변경 (`pricing-plans.tsx`)**
+- `useState` 탭 전환 로직 제거(상태가 없어져 서버 컴포넌트로 전환), Pro 카드 내부를 좌우 분할해 월간/연간 가격·CTA를 항상 함께 노출
+- 배포 후 `curl -sL`로 raw HTML에 `14,900`/`142,800` 둘 다 포함되는 것 재확인
+- `/billing`은 로그인 후 페이지라 Paddle 크롤러가 도달할 수 없어 탭 구조 그대로 유지(사용자 확인)
+
+**Paddle.js 오버레이 체크아웃 `/billing` 정식 연동 (`billing-plans-client.tsx`, `package.json`)**
+- `@paddle/paddle-js` npm 패키지 도입(Paddle 공식 React/Next.js 권장 방식) — CDN 스크립트 방식 대비 App Router 클라이언트 컴포넌트에 자연스럽게 맞아 선택
+- 기존 "결제 준비 중" 안내 모달과 주석 처리된 Polar 로직을 제거하고 `paddle.Checkout.open()`으로 교체, 로그인 유저 이메일을 `customer.email`/`customData.email`로 전달, 결제 성공 시 `/billing?success=true`로 리다이렉트(기존 성공 배너 로직 재사용), `theme: dark`/`locale: ko` 적용
+- 환경변수 3종(`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`, `NEXT_PUBLIC_PADDLE_PRICE_ID_MONTHLY`, `NEXT_PUBLIC_PADDLE_PRICE_ID_ANNUAL`) `.env.local`·Vercel·`.env.local.example`(키 이름만) 등록
+
+**Paddle 구독 웹훅 신규 구현 (`src/app/api/webhooks/paddle/route.ts` 신규)**
+- Paddle 공식 문서를 WebFetch로 직접 확인(추정 없이 진행) — `Paddle-Signature: ts=...;h1=...` 헤더 형식과 `"{ts}:{raw body}"` 문자열의 HMAC-SHA256 서명 검증 방식 그대로 구현, `crypto.timingSafeEqual`로 비교 + 5분 타임스탬프 허용 오차로 리플레이 방지
+- 구독 웹훅 payload엔 이메일이 없고 `customer_id`만 존재한다는 사실을 문서에서 확인 → 체크아웃 시 실어 보낸 `custom_data.email`로 유저를 식별하도록 체크아웃 코드도 함께 보완
+- `subscription.created`/`updated`(status active) → `profiles.plan='pro'` + 기존 `proUpgradeEmail()` 재사용, `subscription.canceled`(또는 `updated`+status canceled) → `profiles.plan='free'`
+- `PADDLE_WEBHOOK_SECRET` 환경변수 신규 추가, `middleware.ts`는 기존 `/api/webhooks/` 전체 통과 로직이 범용적이라 수정 불필요함을 확인만 하고 그대로 둠
+- 배포 후 서명 없는 POST 요청에 404가 아닌 401(Invalid signature) 응답을 확인해 라우트 정상 배포 검증
+
+**보안 점검**
+- `.env.local.example`은 실제 시크릿 없이 커밋된 정상 템플릿 파일임을 확인, `.env.local`(실제 값)은 `git log --all --full-history` 기준 전체 히스토리에서 커밋된 적 없음을 검증
+
+**빌드 검증**: 각 단계마다 `pnpm build` 성공, 에러 0건. `pnpm lint` 신규 이슈 없음(기존 무관 경고/에러는 그대로 유지).
+
+### 다음 작업 예정
+- Paddle 도메인 재심사 결과 대기 중(사용자 문의 접수 완료)
+- Paddle Simulations로 `subscription.created`/`canceled` 이벤트를 시뮬레이션 발송해 `profiles.plan`이 실제로 동기화되는지 검증 필요
+- `<title>` 중복 표시 문제(`layout.tsx`의 title template과 각 페이지 metadata title이 겹쳐 "요금제 | TickerFlow | TickerFlow"처럼 보임) 별도 처리 예정
+- `billing/page.tsx`의 구독 해지 링크가 여전히 `https://polar.sh/tickerflow/portal`을 가리킴 — Paddle 고객 포털 URL로 교체 필요
+- Polar 관련 코드·웹훅(`/api/webhooks/polar`, `/api/polar/checkout`, `@polar-sh/sdk` 등) 완전 삭제 작업은 전수조사만 하고 착수 전 상태로 보류 중
+
+---
+
 ## 2026-07-05 · 세션 80
 
 ### 어드민 "일별 방문자" KPI 카드 실 데이터 연동
