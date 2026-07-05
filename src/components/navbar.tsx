@@ -169,6 +169,12 @@ export default function Navbar({ onOpenLogin }: { onOpenLogin?: () => void }) {
                 )}
               </div>
             ))}
+            <Link
+              href="/pricing"
+              className="rounded-[6px] px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              요금제
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3 border-l border-border pl-4 md:ml-4">

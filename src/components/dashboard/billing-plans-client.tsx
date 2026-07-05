@@ -2,6 +2,13 @@
 
 import { useState } from "react"
 import { IconCheck } from "@tabler/icons-react"
+import {
+  PRO_MONTHLY_PRICE_KRW,
+  PRO_ANNUAL_PRICE_KRW,
+  PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW,
+  PRO_ANNUAL_FREE_MONTHS,
+  formatKrw,
+} from "@/lib/pricing"
 
 // 정적 buy.polar.sh 체크아웃 링크는 만료/비활성화 시 polar.sh 메인으로 리다이렉트되므로,
 // /api/polar/checkout에서 매번 새 체크아웃 세션을 생성하는 방식을 사용한다.
@@ -179,7 +186,7 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
             <span className="flex items-center justify-center gap-1.5">
               연간
               <span className="rounded-[3px] bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
-                2개월 무료
+                {PRO_ANNUAL_FREE_MONTHS}개월 무료
               </span>
             </span>
           </button>
@@ -189,16 +196,16 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
         <div className="mt-4 min-h-[52px]">
           {tab === "monthly" ? (
             <div className="flex items-baseline gap-1">
-              <span className="text-3xl font-semibold tabular-nums text-white">₩14,900</span>
+              <span className="text-3xl font-semibold tabular-nums text-white">{formatKrw(PRO_MONTHLY_PRICE_KRW)}</span>
               <span className="text-sm text-[#a6a6a6]">/ 월</span>
             </div>
           ) : (
             <>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-semibold tabular-nums text-white">₩142,800</span>
+                <span className="text-3xl font-semibold tabular-nums text-white">{formatKrw(PRO_ANNUAL_PRICE_KRW)}</span>
                 <span className="text-sm text-[#a6a6a6]">/ 년</span>
               </div>
-              <p className="mt-1 text-xs text-[#a6a6a6]">월 ₩11,900 상당</p>
+              <p className="mt-1 text-xs text-[#a6a6a6]">월 {formatKrw(PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW)} 상당</p>
             </>
           )}
         </div>

@@ -93,6 +93,9 @@ export default function Footer() {
               <span className="text-[19px] font-semibold tracking-tight text-foreground">TickerFlow</span>
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+              <Link href="/pricing" className="transition-colors hover:text-foreground">
+                요금제
+              </Link>
               <button
                 type="button"
                 onClick={() => setModal("data-sources")}
