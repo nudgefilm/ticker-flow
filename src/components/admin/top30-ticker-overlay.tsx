@@ -5,7 +5,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /* ---------- config ---------- */
 
 // 색상 팔레트를 N개로 제한하고 순환시킨다 (Tableau10 계열, 10색).
-const PALETTE = [
+// top30-overlay-data.ts가 티커 심볼 해시로 이 팔레트에서 고정 배정한다 —
+// 순위(rank)로 배정하면 순위가 매일 바뀔 때마다 같은 종목의 색이 바뀌어
+// 관리자가 날짜 간 패턴을 추적하기 어려워지기 때문이다.
+export const PALETTE = [
   "#4e79a7",
   "#f28e2b",
   "#59a14f",
@@ -18,93 +21,37 @@ const PALETTE = [
   "#bab0ac",
 ];
 
-const WEEKS = 52;
-const TOP_COUNT = 30;
-const DROPPED_COUNT = 5;
 const VIEW_W = 1000;
 const VIEW_H = 1000;
 
 /* ---------- types ---------- */
 
-type Ticker = {
+export type Ticker = {
   symbol: string;
   color: string;
   status: "top30" | "dropped";
-  // 실데이터 연동 시 top30_daily.final_score(Internal Score)를 그대로 사용한다.
-  // 별도의 Display Score 변환은 만들지 않는다 — CLAUDE.md 18항 참고.
-  score: number;
+  // top30_daily.rank 그대로 사용 (top30 목록 정렬 기준). dropped 종목은
+  // 탈락 전(어제) 순위를 보존값으로 담아두지만 화면에는 표시하지 않는다.
+  rank: number;
   prices: number[];
 };
 
-type DataSet = {
+export type DataSet = {
   tickers: Ticker[];
   dates: string[];
 };
 
-/* ---------- mock data ---------- */
-
-const SYMBOLS = [
-  "LILA", "NVDX", "AAPL", "MSFT", "GOOG", "AMZN", "TSLA", "META", "AMD", "NFLX",
-  "CRWD", "SNOW", "PLTR", "SHOP", "SQ", "COIN", "UBER", "ABNB", "DDOG", "NET",
-  "PANW", "ADBE", "ORCL", "INTC", "MU", "QCOM", "AVGO", "TXN", "SMCI", "ARM",
-  "SOFI", "RIVN", "LCID", "HOOD", "AFRM",
-];
-
-function seededRandom(seed: number) {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
-}
-
-function buildDataset(): DataSet {
-  const dates: string[] = [];
-  const start = new Date();
-  start.setDate(start.getDate() - (WEEKS - 1) * 7);
-  for (let i = 0; i < WEEKS; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i * 7);
-    dates.push(d.toISOString().slice(0, 10));
-  }
-
-  const total = TOP_COUNT + DROPPED_COUNT;
-  const tickers: Ticker[] = SYMBOLS.slice(0, total).map((symbol, idx) => {
-    const rand = seededRandom(idx * 7919 + 13);
-    let price = 8 + rand() * 240; // 넓은 가격 범위
-    const drift = (rand() - 0.5) * 0.9;
-    const vol = 0.02 + rand() * 0.05;
-    const prices: number[] = [];
-    for (let w = 0; w < WEEKS; w++) {
-      const shock = (rand() - 0.5) * vol * price;
-      price = Math.max(1, price * (1 + drift * 0.015) + shock);
-      prices.push(Math.round(price * 100) / 100);
-    }
-    return {
-      symbol,
-      color: PALETTE[idx % PALETTE.length],
-      status: idx < TOP_COUNT ? "top30" : "dropped",
-      score: Math.round((40 + rand() * 60) * 10) / 10, // TickerFlow Screener 점수
-      prices,
-    };
-  });
-
-  return { tickers, dates };
-}
-
 /* ---------- component ---------- */
 
-export function Top30TickerOverlay() {
-  const data = useMemo(buildDataset, []);
+export function Top30TickerOverlay({ data }: { data: DataSet }) {
   const { tickers, dates } = data;
 
-  // Top 30: 점수 순위 내림차순 (#1 = 최고 점수)
+  // Top 30: rank 오름차순 (#1 = 최고 순위)
   const top30 = useMemo(
     () =>
       tickers
         .filter((t) => t.status === "top30")
-        .sort((a, b) => b.score - a.score),
+        .sort((a, b) => a.rank - b.rank),
     [tickers],
   );
   const dropped = useMemo(

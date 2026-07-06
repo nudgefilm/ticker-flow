@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
 import AdminTriggerButtons from "./trigger-buttons";
 import { Top30TickerOverlay } from "@/components/admin/top30-ticker-overlay";
+import { getTop30OverlayData } from "./top30-overlay-data";
 import OutcomesSection from "./outcomes-section";
 
 export const dynamic = "force-dynamic";
@@ -177,6 +178,24 @@ async function AdminWatchSection() {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+async function Top30OverlaySection() {
+  const data = await getTop30OverlayData();
+
+  if (!data) {
+    return (
+      <p className="text-sm text-[#a6a6a6]">
+        스크리너 데이터가 없습니다. 트리거 페이지에서 &apos;TOP30 선정&apos;을 실행해 주세요.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-white/10">
+      <Top30TickerOverlay data={data} />
     </div>
   );
 }
@@ -521,17 +540,17 @@ export default async function AdminPage() {
         <AdminTriggerButtons />
       </div>
 
-      {/* Top 30 Ticker Overlay (내부용, mock 데이터 — 실데이터 연동 예정) */}
+      {/* Top 30 Ticker Overlay (내부용, 실데이터 — 매일 갱신) */}
       <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
         <div className="mb-4">
           <h2 className="text-sm font-medium text-white">Top 30 Ticker Overlay</h2>
           <p className="mt-1 text-xs text-red-400/70">
-            mock 데이터 · 실제 top30_daily/stock_prices 연동 예정
+            실제 데이터 (매일 갱신) · top30_daily 순위 + stock_prices 52주 리샘플
           </p>
         </div>
-        <div className="overflow-hidden rounded-lg border border-white/10">
-          <Top30TickerOverlay />
-        </div>
+        <Suspense fallback={<div className="h-[720px] animate-pulse rounded-lg bg-white/[0.04]" />}>
+          <Top30OverlaySection />
+        </Suspense>
       </div>
 
       {/* TOP30 Entry/Outcome 추적 (2.5단계 — 검증 인프라, 배점 미반영) */}
