@@ -139,8 +139,11 @@ async function AdminWatchSection() {
               >
                 {item.ticker}
               </Link>
-              <span className="shrink-0 text-[10px] text-[#a6a6a6]">
-                {(item.final_score ?? 0).toFixed(1)}pt
+              <span
+                className="shrink-0 text-[10px] text-[#a6a6a6]"
+                title="Screener가 계산한 내부 점수입니다. 점수의 절대값보다 종목 간 상대 비교를 위한 값입니다. 향후 팩터 활성화에 따라 점수 범위는 변경될 수 있습니다."
+              >
+                Internal Score {Math.round(item.final_score ?? 0)}
               </span>
             </div>
             <Link

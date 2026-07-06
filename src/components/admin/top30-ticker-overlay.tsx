@@ -30,6 +30,8 @@ type Ticker = {
   symbol: string;
   color: string;
   status: "top30" | "dropped";
+  // 실데이터 연동 시 top30_daily.final_score(Internal Score)를 그대로 사용한다.
+  // 별도의 Display Score 변환은 만들지 않는다 — CLAUDE.md 18항 참고.
   score: number;
   prices: number[];
 };

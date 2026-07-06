@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SCREENER_WEIGHTS, getActiveWeightSum, type FactorLog } from "@/lib/scoring/weights";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -32,18 +33,25 @@ export type ScoredTicker = {
   finalScore: number;
   reasonTags: string[];
   metadata: ScoredMetadata;
+  factorLog: FactorLog;
 };
 
 // ─── 가중치 ───────────────────────────────────────────────────────────────────
-// Smart Money 45% / Earnings Quality 30% / Corporate Events 15% / Market 5% / News Credibility 5%
+// 최종 목표 구조(13개 항목, 100%)는 src/lib/scoring/weights.ts에서 관리한다.
+// 활성 항목(현재 8개, 합계 78%)끼리만 정규화하여 100점 만점으로 산출 —
+// computeFinalScore() 참고. 데이터 미존재 항목(revision 등)이 나중에 활성화돼도
+// 각 항목의 최종 비중 자체는 바뀌지 않는다 (weights.ts 상단 주석 참고).
 
-const FINAL_WEIGHTS = {
-  smart:    0.45,
-  earnings: 0.30,
-  events:   0.15,
-  market:   0.05,
-  news:     0.05,
-};
+// factorLog의 활성 항목을 SCREENER_WEIGHTS로 가중합산 → 활성 비중 합계로 정규화(0~100).
+function computeFinalScore(factorLog: FactorLog): number {
+  let weightedSum = 0;
+  for (const [factor, config] of Object.entries(SCREENER_WEIGHTS)) {
+    if (!config.active) continue;
+    const raw = factorLog[factor as keyof FactorLog] ?? 0;
+    weightedSum += raw * config.weight;
+  }
+  return (weightedSum / getActiveWeightSum()) * 100;
+}
 
 export const TAG_LABELS_KR: Record<string, string> = {
   fda_approval:      "FDA승인",
@@ -368,28 +376,32 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     const sector    = sectorByTicker.get(ticker)        ?? null;
     const tags      = new Set<string>();
 
-    // ── Smart Money (45%) — 내부자매수 30일 완만감쇠, 13F는 분기 내 감쇠없음 ────
-    let smartRaw = 0;
-    let insiderAmount: number | null = null;
+    // ── Smart Money 계열 — 구 스코어링의 "Smart Money(45%)"를 institution/insider/
+    // target/short 4개 팩터로 세분화 (신호 계산 로직·감쇠·태그는 그대로 유지) ────
 
+    // 내부자거래 (10%) — 30일 완만 선형 감쇠
+    let insiderRaw = 0;
+    let insiderAmount: number | null = null;
     for (const t of insiders) {
       if (!t.transaction_date) continue;
       const dAgo = daysSince(t.transaction_date, todayMs);
       const decayed = decaySmart30(dAgo);
       if (decayed <= 0) continue;
-      smartRaw += 6 * decayed;
+      insiderRaw += 6 * decayed;
       tags.add("insider_buy");
       const amt = t.shares && t.price ? t.shares * t.price : 0;
       if (amt > 0) insiderAmount = (insiderAmount ?? 0) + amt;
-      if (amt >= 1_000_000) { smartRaw += 3 * decayed; tags.add("insider_buy_large"); }
+      if (amt >= 1_000_000) { insiderRaw += 3 * decayed; tags.add("insider_buy_large"); }
     }
 
+    // 기관수급(13F) (15%) — 분기 스냅샷이라 감쇠 없음
+    let institutionRaw = 0;
     let newInstCount = 0;
     for (const instName of currHold.keys()) {
       if (!prevHold.has(instName)) newInstCount++;
     }
     if (newInstCount > 0) {
-      smartRaw += Math.min(newInstCount * 5, 12); // 건당 +5, 기관 수 무관 최대 +12 캡
+      institutionRaw += Math.min(newInstCount * 5, 12); // 건당 +5, 기관 수 무관 최대 +12 캡
       tags.add("13f_new");
     }
 
@@ -401,19 +413,24 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       const pVal = pData.shares ?? pData.value;
       if (cVal !== null && pVal !== null && cVal > pVal) { has13fInc = true; break; }
     }
-    if (has13fInc) { smartRaw += 3; tags.add("13f_increase"); }
+    if (has13fInc) { institutionRaw += 3; tags.add("13f_increase"); }
 
+    // 공매도변화 (5%)
     const shortDecrease = siRows.length >= 2 &&
       siRows[0].short_float != null && siRows[1].short_float != null &&
       siRows[0].short_float < siRows[1].short_float;
-    if (shortDecrease) { smartRaw += 4; tags.add("short_decrease"); }
+    const shortRaw = shortDecrease ? 4 : 0;
+    if (shortDecrease) tags.add("short_decrease");
 
+    // 목표주가변화 (9%)
     const targetUp = ptRows.length >= 2 &&
       ptRows[0].price_target != null && ptRows[1].price_target != null &&
       ptRows[0].price_target > ptRows[1].price_target;
-    if (targetUp) { smartRaw += 5; tags.add("target_up"); }
+    const targetRaw = targetUp ? 5 : 0;
+    if (targetUp) tags.add("target_up");
 
-    const smartScore = smartRaw;
+    // smart_score(DB 하위호환 컬럼) = 4개 팩터 합계 — 구 smartRaw와 동일한 값
+    const smartScore = insiderRaw + institutionRaw + shortRaw + targetRaw;
 
     // ── Earnings Quality (30%) — 발표일→다음 발표예정일 선형감쇠(없으면 90일) ──
     let earningsRaw = 0;
@@ -517,14 +534,27 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     // TODO: tickers.market_cap 컬럼 추가 시, 20억~300억 달러 구간 종목에 +5 부여
     const discoveryBonus = 0;
 
-    // ── Final Score ────────────────────────────────────────────────────────────
-    const finalScore =
-      smartScore    * FINAL_WEIGHTS.smart +
-      earningsScore * FINAL_WEIGHTS.earnings +
-      eventsScore   * FINAL_WEIGHTS.events +
-      marketScore   * FINAL_WEIGHTS.market +
-      newsScore     * FINAL_WEIGHTS.news +
-      discoveryBonus;
+    // ── 팩터별 기여도 로그 (사용자 비노출, 내부 분석용) ──────────────────────────
+    // 비활성 항목(revision/revenueGrowth/epsGrowth/fcf/roic)은 아직 데이터 소스가
+    // 없어 null — "계산 안 함"을 의미하며 0(계산 결과 무영향)과 구분한다.
+    const factorLog: FactorLog = {
+      earnings: earningsScore,
+      institution: institutionRaw,
+      insider: insiderRaw,
+      target: targetRaw,
+      filing: eventsScore,
+      news: newsScore,
+      short: shortRaw,
+      momentum: marketScore,
+      revision: null,
+      revenueGrowth: null,
+      epsGrowth: null,
+      fcf: null,
+      roic: null,
+    };
+
+    // ── Final Score — 활성 팩터만 가중합산 후 활성 비중 합계(현재 0.78)로 정규화 ──
+    const finalScore = computeFinalScore(factorLog) + discoveryBonus;
 
     scored.push({
       ticker, sector,
@@ -539,6 +569,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
         sectorPenalty: false,
         insiderAmount, shortDecrease, targetUp, beatStreak4,
       },
+      factorLog,
     });
   }
 

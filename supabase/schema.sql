@@ -382,3 +382,15 @@ ALTER TABLE public.page_visits ENABLE ROW LEVEL SECURITY;
 -- service_role만 접근. 다른 사용자의 ip_hash/user_id가 담긴 로그이므로
 -- authenticated에는 GRANT하지 않음 (일반 유저 접근 불필요, service_role은 RLS 우회)
 GRANT ALL ON TABLE public.page_visits TO service_role;
+
+-- ============================================================
+-- 14. top30_daily.factor_log — 스크리너 팩터별 기여도 내부 로그
+-- ============================================================
+-- 실행용 SQL은 supabase/factor_log.sql 참고
+-- 주: top30_daily 본 테이블 정의는 이 schema.sql에 기록되어 있지 않음(기존 운영 중
+-- 테이블에 컬럼만 추가하는 변경이라 본 섹션은 factor_log 컬럼 추가분만 문서화한다).
+ALTER TABLE public.top30_daily
+  ADD COLUMN IF NOT EXISTS factor_log jsonb;
+
+COMMENT ON COLUMN public.top30_daily.factor_log IS
+  '13개 팩터(src/lib/scoring/weights.ts ScreenerFactor)별 raw score 내부 로그. 비활성 항목 또는 데이터 미존재 시 null(계산 안 함), 활성 항목은 계산된 raw score(0 포함) 저장. 사용자 노출 API/화면에는 절대 포함하지 않는다.';

@@ -27,6 +27,8 @@ export async function runTop30Select(): Promise<CollectResult> {
     reason_tags:    item.reasonTags,
     // news_score/discoveryBonus는 top30_daily에 전용 컬럼이 없어 metadata JSON에 보존
     metadata:       item.metadata,
+    // 팩터별 기여도 내부 로그 — 사용자 비노출, supabase/factor_log.sql로 컬럼 추가 필요
+    factor_log:     item.factorLog,
     // updated_at은 신규 컬럼 — upsert 시마다 재계산 시각으로 명시 갱신 (DEFAULT는 INSERT에만 적용됨)
     updated_at:     nowIso,
   }));
