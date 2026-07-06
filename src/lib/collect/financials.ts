@@ -191,6 +191,9 @@ export async function runFinancialsCollect(): Promise<CollectResult> {
           roe: km?.returnOnEquity ?? null,
           raw_payload: rawPayload,
           source_updated_at: sourceUpdatedAt,
+          // collected_at 컬럼은 DEFAULT now()가 INSERT에만 적용되므로, 재수집 시에도
+          // 갱신되도록 매번 명시한다 (top30.ts의 updated_at 처리와 동일한 이유).
+          collected_at: new Date().toISOString(),
         };
 
         // 항상 전체 컬럼을 포함한 단일 upsert — 기존 행이 있어도 부분 UPDATE 하지 않는다.
