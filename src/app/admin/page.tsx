@@ -9,6 +9,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
 import AdminTriggerButtons from "./trigger-buttons";
+import { Top30TickerOverlay } from "@/components/admin/top30-ticker-overlay";
 
 export const dynamic = "force-dynamic";
 
@@ -514,6 +515,19 @@ export default async function AdminPage() {
           <AdminWatchSection />
         </Suspense>
         <AdminTriggerButtons />
+      </div>
+
+      {/* Top 30 Ticker Overlay (내부용, mock 데이터 — 실데이터 연동 예정) */}
+      <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
+        <div className="mb-4">
+          <h2 className="text-sm font-medium text-white">Top 30 Ticker Overlay</h2>
+          <p className="mt-1 text-xs text-red-400/70">
+            mock 데이터 · 실제 top30_daily/stock_prices 연동 예정
+          </p>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-white/10">
+          <Top30TickerOverlay />
+        </div>
       </div>
     </div>
   );
