@@ -79,7 +79,9 @@ export async function runPricesCollect(
   const adminClient = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminAny = adminClient as any;
-  const BATCH_SIZE = 50;
+  // 티커당 실측 평균 826ms(FMP 3,000req/min 한도 대비 여유 큼) 기준,
+  // Vercel maxDuration=300s 대비 약 31% 안전 마진을 두고 산정 (250 × 826ms ≈ 207s).
+  const BATCH_SIZE = 250;
   const offset = offsetParam ?? 0;
   let firstError: string | undefined;
   let total = 0;

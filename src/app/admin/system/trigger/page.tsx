@@ -97,8 +97,8 @@ const TRIGGERS: Trigger[] = [
   },
   {
     id: "prices",
-    label: "주가 히스토리 수집 (Yahoo Finance)",
-    desc: "tickers 테이블 전체 종목의 최근 1개월 일별 종가를 Yahoo Finance에서 수집합니다. 1회 실행당 50종목 처리. ?offset=N 파라미터로 배치 지점 지정 가능.",
+    label: "주가 히스토리 수집 (FMP)",
+    desc: "tickers 테이블 전체 종목의 최근 35일 일별 종가를 FMP에서 수집합니다. 1회 실행당 250종목 처리(tickers.prices_last_attempted_at 기준 우선순위). ?offset=N 파라미터로 배치 지점 지정 가능.",
   },
   {
     id: "earnings-actual",
