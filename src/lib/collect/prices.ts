@@ -95,45 +95,21 @@ export async function runPricesCollect(
       .select("*", { count: "exact", head: true });
     total = count ?? 0;
 
-    // stock_prices에서 우선순위 정렬 (collected_at ASC NULLS FIRST)
-    // collected_at은 생성 타입에 미반영 — as any 캐스트 사용
-    const { data: priceRows } = await adminAny
-      .from("stock_prices")
+    // 우선순위 정렬 기준: tickers.prices_last_attempted_at ASC NULLS FIRST
+    // (티커당 정확히 1행이라 PostgREST range()로 바로 페이지네이션 가능).
+    // 예전엔 stock_prices row의 collected_at으로 정렬했는데, 한 티커가 수백 개의
+    // 날짜별 row를 갖고 최근 35일치만 매일 갱신되다 보니 35일보다 오래된 과거
+    // row의 collected_at이 영원히 안 바뀌어, 방금 정상 수집된 티커도 "가장
+    // 오래된 티커"로 계속 오판되는 문제가 있었다(실제 백필 중 발견). 티커별
+    // 단일 값인 이 컬럼으로 교체해 근본 해결한다.
+    // prices_last_attempted_at은 생성 타입에 미반영 — as any 캐스트 사용
+    const { data: tickerRows } = await adminAny
+      .from("tickers")
       .select("ticker")
-      .order("collected_at", { ascending: true, nullsFirst: true })
-      .limit(5000);
+      .order("prices_last_attempted_at", { ascending: true, nullsFirst: true })
+      .range(offset, offset + BATCH_SIZE - 1);
 
-    // 티커 중복 제거 (우선순위 순서 유지)
-    const seen = new Set<string>();
-    const prioritized: string[] = [];
-    for (const row of (priceRows as { ticker: string }[] | null) ?? []) {
-      if (!seen.has(row.ticker)) {
-        seen.add(row.ticker);
-        prioritized.push(row.ticker);
-      }
-    }
-
-    // stock_prices 행이 없는 티커 추가 — PostgREST 1000행 제한 우회: range 페이지네이션
-    {
-      const TICKER_PAGE = 1000;
-      let from = 0;
-      while (true) {
-        const { data } = await adminClient
-          .from("tickers")
-          .select("ticker")
-          .order("ticker", { ascending: true })
-          .range(from, from + TICKER_PAGE - 1);
-        if (!data || data.length === 0) break;
-        for (const row of data) {
-          if (!seen.has(row.ticker)) prioritized.push(row.ticker);
-        }
-        if (data.length < TICKER_PAGE) break;
-        from += TICKER_PAGE;
-      }
-    }
-
-    // offset + BATCH_SIZE 적용
-    tickers = prioritized.slice(offset, offset + BATCH_SIZE);
+    tickers = ((tickerRows as { ticker: string }[] | null) ?? []).map((r) => r.ticker);
   }
 
   let processed = 0;
@@ -142,20 +118,14 @@ export async function runPricesCollect(
 
   for (const ticker of tickers) {
     const result = await fetchDayPrices(ticker, apiKey);
-    const collectedAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
 
     if (!result || result.rows.length === 0) {
       if (result?.error && !firstError) firstError = `${ticker}: ${result.error}`;
       skipped++;
-      // 큐 회전 — 실패도 "시도는 했음"으로 간주해 기존 행의 collected_at을
-      // 갱신한다. 이렇게 안 하면 영구히 실패하는 티커가 collected_at ASC
-      // 정렬 맨 앞에 고정되어 뒤쪽 티커에 기회가 영영 안 간다(6/28~7/6 회귀
-      // 버그로 실제 발생했던 문제). 해당 티커의 stock_prices 행이 아예 없으면
-      // 이 UPDATE는 0건에 영향을 주고 끝난다(신규 삽입 없음, 정상 동작).
-      await adminAny.from("stock_prices").update({ collected_at: collectedAt }).eq("ticker", ticker);
     } else {
       // collected_at은 생성 타입에 미반영 — as any 캐스트 사용
-      const insertRows = result.rows.map((r) => ({ ticker, ...r, collected_at: collectedAt }));
+      const insertRows = result.rows.map((r) => ({ ticker, ...r, collected_at: nowIso }));
       const { error } = await adminAny
         .from("stock_prices")
         .upsert(insertRows, { onConflict: "ticker,date" });
@@ -168,6 +138,14 @@ export async function runPricesCollect(
         saved += result.rows.length;
       }
     }
+
+    // 큐 회전 — 성공/실패 무관하게 "시도는 했음"을 티커 단위로 기록한다.
+    // 이렇게 해야 다음 실행 때 같은 티커가 다시 맨 앞에 오지 않고 다른
+    // 티커에게 기회가 간다 (prices_last_attempted_at은 생성 타입에 미반영).
+    await adminAny
+      .from("tickers")
+      .update({ prices_last_attempted_at: nowIso })
+      .eq("ticker", ticker);
 
     processed++;
     if (tickers.length > 1) await new Promise((r) => setTimeout(r, 300));
