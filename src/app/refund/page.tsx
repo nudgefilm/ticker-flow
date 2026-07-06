@@ -12,7 +12,7 @@ const SECTIONS = [
   },
   {
     title: "환불",
-    content: `· 결제일로부터 7일 이내 환불 요청 시, 서비스 이용 이력이 없는 경우 전액 환불해 드립니다.\n· 서비스 이용 이력이 있는 경우 잔여 기간 기준 비례 환불이 적용됩니다.\n· 7일 이후에는 환불이 제공되지 않습니다.\n· 환불 요청: support@tickerflow.net`,
+    content: `· 결제일로부터 7일 이내, 서비스를 이용하지 않은 경우 전액 환불해 드립니다. (전자상거래법상 청약철회 기준)\n· 월간 플랜: 7일 경과 후 해지 시 환불이 제공되지 않습니다. 다만 자동 갱신은 즉시 중단되며, 이미 결제한 기간 동안은 서비스를 계속 이용하실 수 있습니다.\n· 연간 플랜: 7일 경과 후 해지 시, 해지 신청월을 제외한 나머지 개월 수에 대해 월 단위로 환불해 드립니다. (연간 결제액 ÷ 12 × 잔여 개월 수. 1개월 미만 잔여일수는 계산하지 않습니다.)\n· 환불 요청: support@tickerflow.net\n· 환불은 결제 대행사(Paddle)의 검토 절차를 거쳐 처리되며, 승인까지 다소 시일이 소요될 수 있습니다.`,
   },
   {
     title: "Cancellation",
@@ -20,7 +20,7 @@ const SECTIONS = [
   },
   {
     title: "Refunds",
-    content: `· Refund requests made within 7 days of payment will be fully refunded, provided the service has not been used.\n· If the service has been used, a prorated refund based on the remaining period will be applied.\n· No refunds are provided after 7 days.\n· To request a refund: support@tickerflow.net`,
+    content: `· If you request a refund within 7 days of payment and have not used the service, you will be fully refunded (per Korea's e-commerce withdrawal rules).\n· Monthly plan: No refund is provided after 7 days. Auto-renewal is cancelled immediately, and you retain access for the period already paid.\n· Annual plan: If cancelled after 7 days, you will be refunded on a monthly basis for the remaining months, excluding the month in which you cancel. (Annual payment ÷ 12 × remaining months. Partial months are not counted.)\n· To request a refund: support@tickerflow.net\n· Refunds are processed through our payment provider's (Paddle) review process, and approval may take some time.`,
   },
 ];
 
@@ -33,7 +33,7 @@ export default function RefundPage() {
           환불정책
         </h1>
         <p className="text-sm text-muted-foreground">
-          최종 업데이트: 2026년 7월 5일
+          최종 업데이트: 2026년 7월 6일
         </p>
 
         {SECTIONS.map((section) => (

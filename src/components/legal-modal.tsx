@@ -52,7 +52,7 @@ const TERMS_SECTIONS = [
   },
   {
     title: "환불 정책",
-    content: `구독 취소\n· 구독은 언제든지 취소할 수 있습니다.\n· 취소 시 현재 결제 기간이 종료될 때까지 서비스를 이용할 수 있습니다.\n· 취소 후 추가 결제는 발생하지 않습니다.\n\n환불\n· 결제일로부터 7일 이내 환불 요청 시, 서비스 이용 이력이 없는 경우 전액 환불해 드립니다.\n· 서비스 이용 이력이 있는 경우 잔여 기간 기준 비례 환불이 적용됩니다.\n· 7일 이후에는 환불이 제공되지 않습니다.\n· 환불 요청은 support@tickerflow.net으로 문의해 주세요.\n\n문의\n· 결제 관련 문의: support@tickerflow.net`,
+    content: `구독 취소\n· 구독은 언제든지 취소할 수 있습니다.\n· 취소 시 현재 결제 기간이 종료될 때까지 서비스를 이용할 수 있습니다.\n· 취소 후 추가 결제는 발생하지 않습니다.\n\n환불\n· 결제일로부터 7일 이내, 서비스를 이용하지 않은 경우 전액 환불해 드립니다. (전자상거래법상 청약철회 기준)\n· 월간 플랜: 7일 경과 후 해지 시 환불이 제공되지 않습니다. 다만 자동 갱신은 즉시 중단되며, 이미 결제한 기간 동안은 서비스를 계속 이용하실 수 있습니다.\n· 연간 플랜: 7일 경과 후 해지 시, 해지 신청월을 제외한 나머지 개월 수에 대해 월 단위로 환불해 드립니다. (연간 결제액 ÷ 12 × 잔여 개월 수. 1개월 미만 잔여일수는 계산하지 않습니다.)\n· 환불 요청은 support@tickerflow.net으로 문의해 주세요.\n· 환불은 결제 대행사(Paddle)의 검토 절차를 거쳐 처리되며, 승인까지 다소 시일이 소요될 수 있습니다.\n\n문의\n· 결제 관련 문의: support@tickerflow.net`,
   },
   {
     title: "약관 변경",
@@ -70,7 +70,7 @@ const TERMS_SECTIONS = [
 
 const MODAL_CONFIG: Record<"terms" | "privacy", { title: string; updated: string; sections: { title: string; content: string }[] }> = {
   privacy: { title: "개인정보처리방침", updated: "2026년 6월 24일", sections: PRIVACY_SECTIONS },
-  terms:   { title: "이용약관",         updated: "2026년 7월 5일", sections: TERMS_SECTIONS },
+  terms:   { title: "이용약관",         updated: "2026년 7월 6일", sections: TERMS_SECTIONS },
 };
 
 export type LegalType = "terms" | "privacy";
