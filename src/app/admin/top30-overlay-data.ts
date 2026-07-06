@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PALETTE, type DataSet, type Ticker } from "@/components/admin/top30-ticker-overlay";
+import { PALETTE, type DataSet, type Ticker } from "@/components/admin/top30-overlay-types";
 
 // Top 30 Ticker Overlay 실데이터 연동 — top30_daily(오늘자 30 + 어제 대비 이탈
 // 최대 5) + stock_prices(최근 52주 리샘플)를 서버 컴포넌트에서 조회해

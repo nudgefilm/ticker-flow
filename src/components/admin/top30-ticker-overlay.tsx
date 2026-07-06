@@ -1,45 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { Ticker, DataSet } from "./top30-overlay-types";
 
-/* ---------- config ---------- */
-
-// 색상 팔레트를 N개로 제한하고 순환시킨다 (Tableau10 계열, 10색).
-// top30-overlay-data.ts가 티커 심볼 해시로 이 팔레트에서 고정 배정한다 —
-// 순위(rank)로 배정하면 순위가 매일 바뀔 때마다 같은 종목의 색이 바뀌어
-// 관리자가 날짜 간 패턴을 추적하기 어려워지기 때문이다.
-export const PALETTE = [
-  "#4e79a7",
-  "#f28e2b",
-  "#59a14f",
-  "#e15759",
-  "#76b7b2",
-  "#edc948",
-  "#b07aa1",
-  "#ff9da7",
-  "#9c755f",
-  "#bab0ac",
-];
+export type { Ticker, DataSet };
 
 const VIEW_W = 1000;
 const VIEW_H = 1000;
-
-/* ---------- types ---------- */
-
-export type Ticker = {
-  symbol: string;
-  color: string;
-  status: "top30" | "dropped";
-  // top30_daily.rank 그대로 사용 (top30 목록 정렬 기준). dropped 종목은
-  // 탈락 전(어제) 순위를 보존값으로 담아두지만 화면에는 표시하지 않는다.
-  rank: number;
-  prices: number[];
-};
-
-export type DataSet = {
-  tickers: Ticker[];
-  dates: string[];
-};
 
 /* ---------- component ---------- */
 
