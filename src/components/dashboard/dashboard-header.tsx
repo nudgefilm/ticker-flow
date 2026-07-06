@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   IconBell,
-  IconBrandTelegram,
   IconMail,
   IconChevronRight,
   IconMenu2,
@@ -81,26 +80,6 @@ export default function DashboardHeader({ title, badge = false }: DashboardHeade
                   알림
                 </p>
               </div>
-
-              {/* 텔레그램 채널 */}
-              <a
-                href="https://t.me/+c2UG4CGmAy1jMWQ9"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[#1a1a1a]"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#229ED9]/15">
-                  <IconBrandTelegram size={16} stroke={1.5} className="text-[#229ED9]" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">TickerFlow 텔레그램 채널</p>
-                  <p className="text-xs text-[#a6a6a6]">무료로 가입하고 알림을 받으세요</p>
-                </div>
-                <IconChevronRight size={14} stroke={1.5} className="shrink-0 text-[#a6a6a6]" />
-              </a>
-
-              <div className="mx-4 border-t border-white/[0.06]" />
 
               {/* 이메일 다이제스트 */}
               <Link

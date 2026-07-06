@@ -83,14 +83,6 @@
     {
       "path": "/api/collect/top30",
       "schedule": "35 13 * * *"
-    },
-    {
-      "path": "/api/collect/telegram",
-      "schedule": "10 21 * * *"
-    },
-    {
-      "path": "/api/collect/telegram-digest",
-      "schedule": "30 2 * * *"
     }
   ]
 }

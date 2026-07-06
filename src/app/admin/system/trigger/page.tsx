@@ -145,16 +145,6 @@ const TRIGGERS: Trigger[] = [
     desc: "스코어링 엔진을 실행해 오늘의 기업 동향 TOP30를 선정하고 top30_daily 테이블에 저장합니다. 섹터 다양성 적용.",
   },
   {
-    id: "telegram",
-    label: "텔레그램 발송",
-    desc: "오늘의 TOP10 기업 동향을 텔레그램 채널에 발송합니다. TOP30 선정 먼저 실행 필요.",
-  },
-  {
-    id: "telegram-digest",
-    label: "텔레그램 일간 공시 알림",
-    desc: "notified_telegram=false인 주요 공시(CEO 교체·자사주매입·M&A·가이던스 등)를 텔레그램 채널에 발송합니다. 발송 후 해당 공시를 notified_telegram=true로 업데이트합니다.",
-  },
-  {
     id: "brief-backfill",
     label: "BRIEF 백필 (Pro 와치리스트 전체)",
     desc: "Pro 유저 와치리스트 전체 종목 중 stock_briefs가 없는 종목에 대해 BRIEF를 일괄 생성합니다. 최초 1회 또는 누락 종목 보충 시 실행하세요. 건당 500ms 딜레이 포함.",
@@ -424,8 +414,6 @@ export default function TriggerPage() {
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
             { name: "티커플로우 스크리너 TOP30", schedule: "매일 13:35 UTC (22:35 KST)",   path: "/api/collect/top30"             },
-            { name: "텔레그램 발송",       schedule: "매일 21:10 UTC (익일 06:10 KST)", path: "/api/collect/telegram"          },
-            { name: "텔레그램 공시 알림",  schedule: "매일 02:30 UTC (11:30 KST)",    path: "/api/collect/telegram-digest"   },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

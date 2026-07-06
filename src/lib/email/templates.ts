@@ -468,14 +468,6 @@ export function dailyDigestEmail(data: DigestData): string {
             <span style="font-size:13px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW</span>
             <span style="display:inline-block;margin-left:6px;background:#3b82f6;color:#ffffff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 5px;vertical-align:middle">PRO</span>
           </td>
-          <td valign="middle" align="right">
-            <a href="https://t.me/tickerflow_net" style="text-decoration:none">
-              <svg width="20" height="20" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle">
-                <circle cx="120" cy="120" r="120" fill="#229ED9"/>
-                <path d="M54 118 L179 70 c6-2 11 1 9 10 l-21 100c-2 8-7 10-14 6 l-38-28 -18 17c-2 2-4 4-8 4 l3-40 73-66c3-3-1-5-5-2 l-90 57 -39-12c-8-3-8-9 2-13z" fill="#ffffff"/>
-              </svg>
-            </a>
-          </td>
         </tr></table>
         ${digestSpacer(16)}
         <p style="margin:0 0 2px;font-size:11px;color:#dddddd">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>

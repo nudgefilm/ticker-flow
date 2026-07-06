@@ -29,8 +29,6 @@ import {
   runMonthlyBriefCollect,
   runYoutubeChannelsCollect,
 } from "@/lib/collect";
-import { runTelegramNotify } from "@/lib/notify/telegram";
-import { runTelegramDigest } from "@/lib/notify/telegram-digest";
 
 // collect job id → 서비스 계층 직접 호출
 // Record<CollectJob, CollectHandler>: 누락·오타는 컴파일 오류로 즉시 검출
@@ -54,8 +52,6 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "short-interest":    runShortInterestCollect,
   "price-targets":     runPriceTargetsCollect,
   "top30":             runTop30Select,
-  "telegram":          runTelegramNotify,
-  "telegram-digest":   runTelegramDigest,
   "brief-backfill":    runBriefBackfill,
   "weekly-brief":      runWeeklyBriefCollect,
   "monthly-brief":     runMonthlyBriefCollect,

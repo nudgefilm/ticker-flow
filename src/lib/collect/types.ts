@@ -26,8 +26,6 @@ export const COLLECT_JOBS = [
   "short-interest",
   "price-targets",
   "top30",
-  "telegram",
-  "telegram-digest",
   "brief-backfill",
   "weekly-brief",
   "monthly-brief",
