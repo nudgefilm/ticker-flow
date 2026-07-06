@@ -616,3 +616,32 @@ WORKLOG.md에 세션이 30개를 초과하면, 가장 오래된 30개 세션을 
 * 팩터별 raw score는 `top30_daily.factor_log`(jsonb)에 내부 로그로만 저장하며,
   사용자 노출 API/화면에는 절대 포함하지 않는다. 비활성 항목 또는 데이터
   미존재 시 값은 `null`("계산 안 함")이며, 활성 항목의 계산 결과 0과 구분한다.
+
+## 2.5단계 — 검증 인프라 (배점 설계 아님)
+
+2.5단계는 배점 설계가 아니라 검증 인프라 구축이다. TOP30 선정 시점의
+`factor_log`를 스냅샷으로 남기고, 이후 실제 가격 성과(30/60/90일)를 추적해
+`top30_entries`/`top30_outcome_results`에 최소 2~3개월 데이터가 축적된 후
+팩터별 예측력을 실측 데이터로 분석하여 4단계(배점 설계)를 진행한다.
+
+* `SCORING_MODEL_VERSION`(`src/lib/scoring/version.ts`)은 `weights.ts`의
+  `SCREENER_WEIGHTS` 변경 시 반드시 함께 갱신하며, `top30_daily`·
+  `top30_entries` 양쪽에 저장되어 어느 시점의 TOP30이 어떤 모델 버전으로
+  계산됐는지 항상 추적 가능해야 한다. 현재는 `version.ts`를 단일 진실
+  (Single Source of Truth)로 사용하며, 향후 운영 중 동적 버전 변경이
+  필요해질 경우에만 DB 설정 테이블로 이전한다.
+* `TRACKED_DAYS`(`src/lib/outcomes/config.ts`)로 성과 추적 기간을 중앙
+  관리하며, 임의 기간(180일, 365일 등) 확장이 스키마 변경 없이 가능하다.
+* `top30_outcome_results`의 모든 계산은 `entry_id`를 유일한 기준으로 하며,
+  `ticker`/`selected_date`는 조회용 비정규화 컬럼일 뿐이다.
+* `top30_entries`는 생성 이후 수정하지 않는 불변(immutable) 스냅샷이다.
+  이후 모델 버전 변경이나 factor_log 계산 로직 수정이 발생해도 과거 Entry는
+  그대로 유지된다.
+* `top30_entries` 및 `top30_outcome_results`는 분석용 원본 데이터셋으로
+  간주한다. 운영 중 DELETE를 수행하지 않으며, 데이터 수정이 필요한 경우에도
+  기존 행을 변경하지 않고 새로운 Entry/Event를 생성하는 방향을 우선한다
+  (단, 명백한 수집 오류에 대한 관리자 수동 보정은 예외).
+* 이 테이블들과 관련 화면은 어드민 전용 규제 예외 구간에 속하며, 사용자
+  노출 API·화면에 절대 포함하지 않는다.
+* `weights.ts`의 `SCREENER_WEIGHTS` `active` 플래그는 2.5단계에서 변경하지
+  않는다.

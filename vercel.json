@@ -87,6 +87,10 @@
     {
       "path": "/api/collect/financials",
       "schedule": "45 1 * * 1"
+    },
+    {
+      "path": "/api/collect/top30-outcomes",
+      "schedule": "40 13 * * *"
     }
   ]
 }

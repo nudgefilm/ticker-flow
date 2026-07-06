@@ -29,6 +29,7 @@ import {
   runMonthlyBriefCollect,
   runYoutubeChannelsCollect,
   runFinancialsCollect,
+  runTop30OutcomesUpdate,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -58,6 +59,7 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "monthly-brief":     runMonthlyBriefCollect,
   "youtube-channels":  runYoutubeChannelsCollect,
   "financials":        runFinancialsCollect,
+  "top30-outcomes":    runTop30OutcomesUpdate,
 };
 
 export async function GET(req: NextRequest) {

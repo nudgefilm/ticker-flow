@@ -31,6 +31,7 @@ export const COLLECT_JOBS = [
   "monthly-brief",
   "youtube-channels",
   "financials",
+  "top30-outcomes",
 ] as const;
 
 export type CollectJob = typeof COLLECT_JOBS[number];

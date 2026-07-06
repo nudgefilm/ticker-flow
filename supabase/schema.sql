@@ -434,3 +434,149 @@ CREATE POLICY "authenticated can select financial_metrics"
 
 COMMENT ON COLUMN public.top30_daily.factor_log IS
   '13개 팩터(src/lib/scoring/weights.ts ScreenerFactor)별 raw score 내부 로그. 비활성 항목 또는 데이터 미존재 시 null(계산 안 함), 활성 항목은 계산된 raw score(0 포함) 저장. 사용자 노출 API/화면에는 절대 포함하지 않는다.';
+
+-- ============================================================
+-- 16. top30_daily.model_version — 스코어링 모델 버전 스냅샷
+-- ============================================================
+-- 실행용 SQL은 supabase/top30-model-version.sql 참고
+ALTER TABLE public.top30_daily
+  ADD COLUMN IF NOT EXISTS model_version text;
+
+COMMENT ON COLUMN public.top30_daily.model_version IS
+  'SCORING_MODEL_VERSION(src/lib/scoring/version.ts) 스냅샷. weights.ts의 SCREENER_WEIGHTS 변경 시 사람이 버전을 올리면, 이 컬럼으로 어느 날짜의 TOP30이 어떤 모델 버전으로 계산됐는지 즉시 알 수 있다.';
+
+-- ============================================================
+-- 17. top30_entries / top30_outcome_results — 스크리너 2.5단계
+-- (배점 설계가 아니라 검증 인프라 구축: TOP30 선정 시점 스냅샷 + 이후
+-- 가격 성과 추적. 2~3개월 데이터 축적 후 4단계 배점 설계의 근거 자료로 사용)
+-- ============================================================
+-- 실행용 SQL은 supabase/top30-entries-outcomes.sql 참고 (RPC 함수 포함)
+-- 어드민 전용 규제 예외 구간 — 사용자 노출 화면·API에는 절대 포함하지 않는다.
+-- 불변 원칙: top30_entries는 생성 이후 UPDATE하지 않는 INSERT 전용 테이블이다.
+-- 운영 중 DELETE도 하지 않으며, 명백한 수집 오류에 대한 관리자 수동 보정 외에는
+-- 기존 행을 변경하지 않고 새 Entry/Event를 생성하는 방향을 우선한다.
+CREATE TABLE IF NOT EXISTS public.top30_entries (
+  id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker                TEXT        NOT NULL REFERENCES public.tickers(ticker) ON DELETE CASCADE,
+  selected_date         DATE        NOT NULL,
+  factor_log_snapshot   JSONB,
+  final_score_snapshot  NUMERIC(14, 4),
+  entry_price           NUMERIC(14, 4),
+  rank_snapshot         INTEGER,
+  reason_tags_snapshot  JSONB,
+  model_version         TEXT        NOT NULL,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (ticker, selected_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_top30_entries_selected_date
+  ON public.top30_entries (selected_date DESC);
+CREATE INDEX IF NOT EXISTS idx_top30_entries_model_version
+  ON public.top30_entries (model_version);
+
+ALTER TABLE public.top30_entries ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.top30_entries TO service_role;
+
+-- entry_id가 모든 계산의 유일한 기준. ticker/selected_date는 조회용 비정규화 컬럼.
+CREATE TABLE IF NOT EXISTS public.top30_outcome_results (
+  id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  entry_id              UUID        NOT NULL REFERENCES public.top30_entries(id) ON DELETE CASCADE,
+  ticker                TEXT        NOT NULL,
+  selected_date         DATE        NOT NULL,
+  days_after            INTEGER     NOT NULL,
+  close_price           NUMERIC(14, 4),
+  return_pct            NUMERIC(10, 4),
+  benchmark_return_pct  NUMERIC(10, 4),
+  status                TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'complete')),
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (entry_id, days_after)
+);
+
+CREATE INDEX IF NOT EXISTS idx_top30_outcome_results_ticker_date
+  ON public.top30_outcome_results (ticker, selected_date);
+CREATE INDEX IF NOT EXISTS idx_top30_outcome_results_status
+  ON public.top30_outcome_results (status);
+CREATE INDEX IF NOT EXISTS idx_top30_outcome_results_days_after
+  ON public.top30_outcome_results (days_after);
+
+ALTER TABLE public.top30_outcome_results ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.top30_outcome_results TO service_role;
+
+-- top30_daily upsert + top30_entries/outcome_results 신규 행 생성을 하나의
+-- 트랜잭션으로 묶는 RPC. 단일 함수 호출은 Postgres에서 이미 하나의
+-- 트랜잭션이므로 어느 한 단계라도 실패하면 전체가 롤백된다.
+CREATE OR REPLACE FUNCTION public.upsert_top30_with_entries(
+  p_rows jsonb,
+  p_entries jsonb,
+  p_tracked_days integer[]
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  r jsonb;
+  e jsonb;
+  new_entry_id uuid;
+  d integer;
+BEGIN
+  FOR r IN SELECT * FROM jsonb_array_elements(p_rows) LOOP
+    INSERT INTO public.top30_daily (
+      date, ticker, rank, event_score, smart_score, earnings_score, market_score,
+      final_score, reason_tags, metadata, factor_log, model_version, updated_at
+    )
+    VALUES (
+      (r->>'date')::date,
+      r->>'ticker',
+      (r->>'rank')::integer,
+      (r->>'event_score')::numeric,
+      (r->>'smart_score')::numeric,
+      (r->>'earnings_score')::numeric,
+      (r->>'market_score')::numeric,
+      (r->>'final_score')::numeric,
+      ARRAY(SELECT jsonb_array_elements_text(COALESCE(r->'reason_tags', '[]'::jsonb))),
+      r->'metadata',
+      r->'factor_log',
+      r->>'model_version',
+      (r->>'updated_at')::timestamptz
+    )
+    ON CONFLICT (date, ticker) DO UPDATE SET
+      rank           = EXCLUDED.rank,
+      event_score    = EXCLUDED.event_score,
+      smart_score    = EXCLUDED.smart_score,
+      earnings_score = EXCLUDED.earnings_score,
+      market_score   = EXCLUDED.market_score,
+      final_score    = EXCLUDED.final_score,
+      reason_tags    = EXCLUDED.reason_tags,
+      metadata       = EXCLUDED.metadata,
+      factor_log     = EXCLUDED.factor_log,
+      model_version  = EXCLUDED.model_version,
+      updated_at     = EXCLUDED.updated_at;
+  END LOOP;
+
+  FOR e IN SELECT * FROM jsonb_array_elements(p_entries) LOOP
+    INSERT INTO public.top30_entries (
+      ticker, selected_date, factor_log_snapshot, final_score_snapshot,
+      entry_price, rank_snapshot, reason_tags_snapshot, model_version
+    )
+    VALUES (
+      e->>'ticker',
+      (e->>'selected_date')::date,
+      e->'factor_log_snapshot',
+      (e->>'final_score_snapshot')::numeric,
+      (e->>'entry_price')::numeric,
+      (e->>'rank_snapshot')::integer,
+      e->'reason_tags_snapshot',
+      e->>'model_version'
+    )
+    RETURNING id INTO new_entry_id;
+
+    FOREACH d IN ARRAY p_tracked_days LOOP
+      INSERT INTO public.top30_outcome_results (entry_id, ticker, selected_date, days_after, status)
+      VALUES (new_entry_id, e->>'ticker', (e->>'selected_date')::date, d, 'pending');
+    END LOOP;
+  END LOOP;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.upsert_top30_with_entries(jsonb, jsonb, integer[]) TO service_role;

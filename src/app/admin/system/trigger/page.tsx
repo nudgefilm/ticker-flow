@@ -170,6 +170,11 @@ const TRIGGERS: Trigger[] = [
     label: "재무 품질 팩터 원시 데이터 수집 (FMP)",
     desc: "와치리스트 + 최근 7일 공시 종목의 분기 손익계산서·현금흐름표·key-metrics를 FMP에서 수집해 financial_metrics에 저장합니다(매출성장률·EPS성장률·FCF·ROIC/ROE). 스코어링 미반영(2단계, 원시 데이터 수집만). 최대 30종목, 종목당 300ms 딜레이.",
   },
+  {
+    id: "top30-outcomes",
+    label: "TOP30 성과 추적 업데이트",
+    desc: "top30_entries 선정 시점 스냅샷 대비 30/60/90일 후 실제 가격 성과(return_pct)를 계산해 top30_outcome_results를 완료 처리합니다. 배점 미반영(2.5단계, 검증 인프라).",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -431,6 +436,7 @@ export default function TriggerPage() {
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
             { name: "티커플로우 스크리너 TOP30", schedule: "매일 13:35 UTC (22:35 KST)",   path: "/api/collect/top30"             },
             { name: "재무 품질 팩터 수집",   schedule: "매주 월 01:45 UTC (10:45 KST)", path: "/api/collect/financials"         },
+            { name: "TOP30 성과 추적 업데이트", schedule: "매일 13:40 UTC (22:40 KST)",  path: "/api/collect/top30-outcomes"     },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

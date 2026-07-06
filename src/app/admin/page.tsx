@@ -10,6 +10,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils";
 import AdminTriggerButtons from "./trigger-buttons";
 import { Top30TickerOverlay } from "@/components/admin/top30-ticker-overlay";
+import OutcomesSection from "./outcomes-section";
 
 export const dynamic = "force-dynamic";
 
@@ -531,6 +532,19 @@ export default async function AdminPage() {
         <div className="overflow-hidden rounded-lg border border-white/10">
           <Top30TickerOverlay />
         </div>
+      </div>
+
+      {/* TOP30 Entry/Outcome 추적 (2.5단계 — 검증 인프라, 배점 미반영) */}
+      <div className="rounded-xl border border-red-500/60 bg-red-500/[0.03] p-4 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
+        <div className="mb-4">
+          <h2 className="text-sm font-medium text-white">TOP30 Entry/Outcome 추적</h2>
+          <p className="mt-1 text-xs text-red-400/70">
+            선정 시점 스냅샷(불변) 대비 30/60/90일 후 실제 가격 성과 — 배점 설계용이 아닌 검증 인프라
+          </p>
+        </div>
+        <Suspense fallback={<p className="text-sm text-[#a6a6a6]">불러오는 중...</p>}>
+          <OutcomesSection />
+        </Suspense>
       </div>
     </div>
   );
