@@ -392,5 +392,45 @@ GRANT ALL ON TABLE public.page_visits TO service_role;
 ALTER TABLE public.top30_daily
   ADD COLUMN IF NOT EXISTS factor_log jsonb;
 
+-- ============================================================
+-- 15. financial_metrics — 재무 품질 팩터 원시 데이터 (스크리너 2단계)
+-- ============================================================
+-- 실행용 SQL은 supabase/financial_metrics.sql 참고
+-- revenueGrowth/epsGrowth/fcf/roic 스코어링 반영은 별도 단계 — 이 테이블은
+-- 원시 데이터 수집용이며 CLAUDE.md 18항 active:false 팩터와는 아직 연결되지 않는다.
+CREATE TABLE IF NOT EXISTS public.financial_metrics (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker               TEXT        NOT NULL REFERENCES public.tickers(ticker) ON DELETE CASCADE,
+  period_type          TEXT        NOT NULL CHECK (period_type IN ('quarter', 'annual')),
+  period_end           DATE        NOT NULL,
+  fiscal_year          INTEGER,
+  fiscal_period        TEXT,
+  currency             TEXT,
+  revenue              NUMERIC(20, 2),
+  eps                  NUMERIC(12, 4),
+  operating_cash_flow  NUMERIC(20, 2),
+  capital_expenditure  NUMERIC(20, 2),
+  revenue_growth_yoy   NUMERIC(10, 4),
+  eps_growth_yoy       NUMERIC(10, 4),
+  fcf                  NUMERIC(20, 2),
+  roic                 NUMERIC(10, 6),
+  roe                  NUMERIC(10, 6),
+  raw_payload          JSONB,
+  source_updated_at    TIMESTAMPTZ,
+  collected_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (ticker, period_type, period_end)
+);
+
+CREATE INDEX IF NOT EXISTS idx_financial_metrics_period_end
+  ON public.financial_metrics (period_end DESC);
+
+ALTER TABLE public.financial_metrics ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT ON public.financial_metrics TO authenticated;
+GRANT ALL    ON public.financial_metrics TO service_role;
+
+CREATE POLICY "authenticated can select financial_metrics"
+  ON public.financial_metrics FOR SELECT TO authenticated USING (true);
+
 COMMENT ON COLUMN public.top30_daily.factor_log IS
   '13개 팩터(src/lib/scoring/weights.ts ScreenerFactor)별 raw score 내부 로그. 비활성 항목 또는 데이터 미존재 시 null(계산 안 함), 활성 항목은 계산된 raw score(0 포함) 저장. 사용자 노출 API/화면에는 절대 포함하지 않는다.';

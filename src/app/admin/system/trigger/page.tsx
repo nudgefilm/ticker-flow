@@ -40,6 +40,7 @@ interface TriggerResult {
   error?: string;
   firstError?: string;
   debug?: DebugInfo;
+  failedTickers?: { ticker: string; reason: string }[];
 }
 
 interface RunRecord {
@@ -163,6 +164,11 @@ const TRIGGERS: Trigger[] = [
     id: "youtube-channels",
     label: "유튜브 채널 수집",
     desc: "키워드(미국주식·나스닥·미국증시 등)로 YouTube Data API를 검색해 구독자 1,000명 이상 채널을 youtube_channels 테이블에 저장합니다. API 할당량 절약을 위해 Cron 없이 수동 실행만 지원합니다.",
+  },
+  {
+    id: "financials",
+    label: "재무 품질 팩터 원시 데이터 수집 (FMP)",
+    desc: "와치리스트 + 최근 7일 공시 종목의 분기 손익계산서·현금흐름표·key-metrics를 FMP에서 수집해 financial_metrics에 저장합니다(매출성장률·EPS성장률·FCF·ROIC/ROE). 스코어링 미반영(2단계, 원시 데이터 수집만). 최대 30종목, 종목당 300ms 딜레이.",
   },
 ];
 
@@ -347,6 +353,16 @@ export default function TriggerPage() {
                       )}
                     </div>
                   )}
+
+                  {result?.failedTickers && result.failedTickers.length > 0 && (
+                    <div className="mt-2 max-h-40 space-y-0.5 overflow-auto rounded-lg bg-[#0a0a0a] p-2">
+                      {result.failedTickers.map((f) => (
+                        <p key={f.ticker} className="text-[10px] text-[#a6a6a6]">
+                          <span className="font-medium text-red-400">{f.ticker}</span> — {f.reason}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <button
@@ -414,6 +430,7 @@ export default function TriggerPage() {
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },
             { name: "Price Target",       schedule: "매주 월 01:55 UTC (10:55 KST)", path: "/api/collect/price-targets"      },
             { name: "티커플로우 스크리너 TOP30", schedule: "매일 13:35 UTC (22:35 KST)",   path: "/api/collect/top30"             },
+            { name: "재무 품질 팩터 수집",   schedule: "매주 월 01:45 UTC (10:45 KST)", path: "/api/collect/financials"         },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

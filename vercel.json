@@ -83,6 +83,10 @@
     {
       "path": "/api/collect/top30",
       "schedule": "35 13 * * *"
+    },
+    {
+      "path": "/api/collect/financials",
+      "schedule": "45 1 * * 1"
     }
   ]
 }

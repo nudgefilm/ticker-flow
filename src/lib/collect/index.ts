@@ -22,3 +22,4 @@ export * from "./top30";
 export * from "./weekly-brief";
 export * from "./monthly-brief";
 export * from "./youtube-channels";
+export * from "./financials";
