@@ -6,6 +6,86 @@
 
 ---
 
+## 2026-07-07 · 세션 83
+
+### 티커플로우 스크리너 13개 팩터 재설계 + 2단계(재무 데이터 수집)·2.5단계(검증 인프라) + stock_prices 수집 회귀 버그 긴급 수정·전체 백필 + Top 30 Ticker Overlay 실데이터 연동
+
+**UI 소소한 수정**
+- 위로가기 버튼 위치를 `bottom-[4.5rem]` → `bottom-6`으로 조정 — 텔레그램 채널/봇 운영 중단(세션 82)으로 그 자리에 있던 텔레그램 아이콘이 사라져 버튼이 빈 공간 위에 떠 있던 문제
+- 상단 네비게이션에서 "요금제" 메뉴 제거 — 푸터에 이미 동일 메뉴가 있어 중복
+
+**Top 30 Ticker Overlay 어드민 차트 신규 추가 (`src/components/admin/top30-ticker-overlay.tsx`)**
+- v0로 프로토타입 제작한 다중 라인 오버레이 차트(순수 React/SVG, 외부 차트 라이브러리 불필요)를 어드민 페이지 스크리너 섹션 하단에 mock 데이터 상태로 우선 이식, 이후 세션에서 실데이터 연동(아래 참고)
+
+**스크리너 가중치 구조 전면 재설계 — 13개 팩터 확정 (`src/lib/scoring/weights.ts` 신규, `scoring.ts`, `top30.ts`)**
+- 기존 5분류(Smart Money 45%/Earnings 30%/Events 15%/Market 5%/News 5%)를 13개 확정 팩터(활성 8개: earnings 18%·institution 15%·insider 10%·target 9%·filing 12%·news 5%·short 5%·momentum 4% = 78%, 비활성 5개: revision 12%·revenueGrowth 4%·epsGrowth 3%·fcf 2%·roic 1% = 22%)로 재설계
+- `SCREENER_WEIGHTS`(가중치+active 플래그+라벨) + `getActiveWeightSum()`(활성 비중 합계, 하드코딩 금지) + `FactorLog` 타입(`Record<ScreenerFactor, number|null>`) 도입 — 비활성 항목은 `null`("계산 안 함")로 활성 항목 계산결과 0과 구분
+- `computeFinalScore()`: 활성 팩터만 가중합산 후 활성 비중 합계로 정규화해 100점 만점 산출 — 비활성 항목이 나중에 활성화돼도 다른 항목 비중은 그대로 유지되는 구조
+- `top30_daily.factor_log`(jsonb) 컬럼 신규 — 팩터별 raw score 내부 로그, 사용자 비노출
+- 어드민 화면 점수 라벨을 "Internal Score"로 명확화 + 툴팁("종목 간 상대 비교용, 절대값 무의미, 향후 팩터 활성화에 따라 범위 변경될 수 있음") 추가 — 별도 Display Score 변환 함수는 만들지 않기로 결정(raw÷활성비중×100 공식 그대로 노출, 결과적으로 기존 대비 점수 스케일이 커짐)
+- CLAUDE.md 18항에 최종 목표 구조 표·비중 고정 원칙·4단계(신규 팩터는 최소 수개월 실운영 검증 후)·5단계(예측 경로 시각화는 4단계 검증 완료 후) 방침 기록
+
+**스크리너 2단계 — 재무 품질 팩터 원시 데이터 수집 인프라 (`financial_metrics` 테이블, `src/lib/collect/financials.ts` 신규)**
+- FMP `/stable/income-statement`·`/stable/cash-flow-statement`·`/stable/key-metrics`·`/stable/profile` 엔드포인트를 실제 API 호출로 필드명 검증(공식 문서 403 차단으로 라이브 검증 대체) 후 구현
+- 매출성장률/EPS성장률(YoY, fiscalYear-period 키로 전년 동기 매칭, 배열 위치 의존 안 함)·FCF(OCF+Capex)·ROIC/ROE 계산, `raw_payload`는 해당 분기 단일 객체만 저장(배열 전체 저장 금지)
+- UNIQUE(ticker, period_type, period_end) 전체 컬럼 UPSERT, 실패 종목/사유는 `CollectResult.failedTickers`로만 반환하고 `financial_metrics`에는 저장하지 않음(실행 로그와 재무 데이터를 명확히 분리 — 사용자 운영 원칙 확정)
+- 실행 결과: 30종목 223개 분기 행 정상 수집, UPSERT 재실행 시 행 수 불변·전체 컬럼 갱신 확인. `weights.ts`의 해당 4개 팩터는 계속 `active:false` 유지(스코어링 미반영)
+
+**스크리너 2.5단계 — TOP30 선정 검증 인프라 (`top30_entries`/`top30_outcome_results` 신규, `src/lib/scoring/version.ts`, `src/lib/outcomes/config.ts` 신규)**
+- 배점 설계가 아니라 검증 인프라 구축 — TOP30 선정 시점 `factor_log` 스냅샷을 불변 기록으로 남기고 이후 30/60/90일(`TRACKED_DAYS`) 가격 성과를 추적, 2~3개월 데이터 축적 후 4단계(배점 설계) 근거로 사용
+- `SCORING_MODEL_VERSION`("v1", weights.ts 변경 시 사람이 직접 갱신하는 단일 관리 지점)을 `top30_daily`·`top30_entries` 양쪽에 스냅샷
+- Postgres RPC 함수 `upsert_top30_with_entries`로 top30_daily upsert + 신규 Entry + outcome_results pending 행 생성을 하나의 트랜잭션으로 원자적 처리(PostgREST가 여러 요청 간 클라이언트 트랜잭션을 지원하지 않아 채택)
+- 신규 Entry 판정: 어제 top30_daily에 없었던 티커만 판정(재진입 시 독립된 새 Entry로 처리 — synthetic 테스트로 검증), `top30_entries`는 생성 후 UPDATE하지 않는 불변 테이블로 취급
+- entry_price 장중 선정 이슈 발견: TOP30 선정이 13:35 UTC(미 장중)에 실행돼 당일 종가가 없어 entry_price가 null로 생성됨 → 별도 백필 단계가 null인 행만 최초 1회 채우는 방식으로 해결(이미 채워진 값은 절대 재수정 안 함 — 불변 원칙의 유일한 예외로 CLAUDE.md 18항에 명시)
+- `top30_entries`/`top30_outcome_results` 모두 운영 중 DELETE 안 함, 수정 필요 시 기존 행 대신 새 Entry/Event 생성 우선 원칙 확정(관리자 수동 보정만 예외)
+
+**stock_prices 수집 회귀 버그 발견 및 긴급 수정 (`src/lib/collect/prices.ts`)** — 이번 세션 최대 이슈
+- 증상: NVDA 등 다수 종목 `stock_prices`가 10일 이상 정체. 사용자 지시로 원인 조사 착수
+- 원인 1: 세션 78 커밋 `f0661a3`(Yahoo Finance→FMP 전환) 때 FMP `/stable/historical-price-eod/full` 응답이 순수 배열로 오는데 코드가 여전히 v3 형태(`{historical:[]}`)를 참조 → 6/28부터 **모든 티커가 "no data"로 스킵**되고 있었음. `{ok:true, saved:0}` 형태로 겉보기 성공처럼 보여 발견이 늦어짐 — `Array.isArray()` 분기로 수정(seed-prices.ts에 이미 있던 동일 패턴 재사용), 다른 FMP 호출 파일(profile/price-targets/short-interest/calls/financials)은 이미 안전 처리돼 있음을 전수 확인
+- 원인 2(1차 수정 후 재검증 중 추가 발견): `collected_at ASC NULLS FIRST` 우선순위 큐가 stock_prices row 단위였는데, 한 티커가 수백 개 날짜별 row를 갖고 최근 35일치만 매일 갱신되다 보니 35일보다 오래된 row의 collected_at이 영원히 안 바뀌어 방금 정상 수집된 티커도 "가장 오래된 티커"로 계속 오판되던 구조적 결함 — `tickers.prices_last_attempted_at`(티커당 단일 값) 컬럼으로 교체해 근본 해결
+- "성공으로 위장된 실패" 재발 방지: `processed>0 && saved===0`이면 `ok:false`로 반환하도록 가드 추가
+- BATCH_SIZE 조정: FMP Ultimate 플랜(3,000req/min)은 실측 티커당 826ms 기준 75req/min 수준이라 전혀 병목이 아님을 확인, 실제 제약은 Vercel `maxDuration=300s` — 250 × 826ms ≈ 207초(약 31% 안전마진)로 계산해 50→250 상향, 실측 210초로 계산치와 거의 일치 확인
+- 전체 잔여 백필(6,644개 티커) 완료 — 총 saved 약 147,972건, skipped 246건, 에러 0건. NVDA/A/FDX/SWBI 등 목표 종목 최신 거래일(07-06) 데이터 갱신 확인, `top30-outcomes`의 entry_price 자동 백필도 정상 동작 확인(entryPriceFilled:4, entryPriceStillMissing:0)
+
+**Top 30 Ticker Overlay mock → 실데이터 연동 (`src/app/admin/top30-overlay-data.ts` 신규, `top30-overlay-types.ts` 신규, `top30-ticker-overlay.tsx`, `admin/page.tsx`)**
+- 오늘자 top30_daily 30개(rank 기준 정렬) + 어제 대비 이탈 최대 5개 조회, stock_prices를 52주 그리드로 as-of 리샘플링(그리드 시작 이전 데이터 없으면 최이른 종가로 전방 채움)
+- color는 순위 기반 대신 티커 심볼 해시로 고정 배정(순위는 매일 바뀌어 같은 종목 색이 흔들리는 문제 방지) — 판단해서 제안 후 적용
+- 버그 1(배포 전 자체 검증 중 발견): `stock_prices` 조회가 PostgREST 기본 1,000행 응답 상한에 걸려 date 오름차순 정렬 특성상 최근 데이터가 잘려나가던 문제 — `range()` 페이지네이션 적용
+- 버그 2(배포 후 사용자가 devtools로 발견): 라인 `<path>`에 `stroke` 속성 자체가 누락 — 서버 코드(`top30-overlay-data.ts`)가 `"use client"` 파일에서 `PALETTE` 값을 import하고 있어 Next.js가 클라이언트 경계 참조로 취급해 undefined가 되던 문제. `PALETTE`/`Ticker`/`DataSet`을 `"use client"` 없는 `top30-overlay-types.ts`로 분리해 해결
+- `/stocks/[symbol]` 종목 스냅샷 가격 차트도 실제 백필 데이터로 정상 표시될지 쿼리 재현으로 검증(로그인이 OAuth 전용이라 브라우저 스크린샷은 이번에도 불가 — NVDA 최신 종가/등락률 계산 결과가 정상임을 서버 쿼리 재현으로 확인)
+
+**빌드 검증**: 매 단계 `pnpm build` 성공, 에러 0건. 커밋 다수(weights.ts 리팩터, financial_metrics, 2.5단계 인프라, prices.ts 버그 수정 2건, BATCH_SIZE 조정, Top30Overlay 연동 2건 등) 전부 배포 후 실제 프로덕션 데이터로 검증.
+
+### 다음 작업 예정
+- 사용자가 로그인 후 `/admin`에서 Top 30 Ticker Overlay 라인이 정상 렌더링되는지 최종 육안 확인 필요
+- `financial_metrics`(revenueGrowth/epsGrowth/fcf/roic)와 `top30_entries`/`top30_outcome_results`(2.5단계) 모두 아직 스코어링 미반영 상태 — 2~3개월 데이터 축적 후 4단계(배점 설계) 진행 예정
+
+---
+
+## 2026-07-06 · 세션 82
+
+### 환불 정책 확정(월간/연간 차등 + Paddle 청약철회 14일 반영) 및 텔레그램 채널/봇 운영 완전 중단
+
+**환불 정책 재정의 (`legal-modal.tsx`, `refund/page.tsx`)**
+- 기존 "이용 이력 있으면 비례 환불"이라는 애매한 문구를 월간/연간 플랜별로 명확히 분리: 월간은 청약철회 기간 경과 후 환불 없음(자동 갱신만 중단, 이미 결제한 기간은 계속 이용), 연간은 해지 신청월을 제외한 잔여 개월 수를 월 단위로 일할 환불(연간 결제액 ÷ 12 × 잔여 개월 수, 1개월 미만 잔여일수는 미산정)
+- Paddle이 환불을 자체 검토 절차로 처리하며 승인까지 시일이 소요될 수 있다는 점을 고객 기대치 관리 차원에서 명시
+- 청약철회 기간을 최초 7일(국내 전자상거래법 기준)로 반영했다가, Paddle Buyer Terms가 전세계 공통 14일을 요구한다는 사용자 지적에 따라 즉시 14일로 재수정 — 근거 문구도 "Paddle 14일이 국내 7일보다 길어 상충 없음"을 드러내는 톤으로 조정
+- 국문(`legal-modal.tsx`, `refund/page.tsx`) + 영문(`refund/page.tsx` Refunds 섹션) 3곳 동기화, 매 수정 후 `pnpm build` 통과 및 grep 재검색으로 누락 여부 확인
+
+**텔레그램 채널/봇 운영 완전 중단**
+- 작업 전 저장소 전체 "telegram" 대소문자 무관 grep + `t.me/` 링크 재검색으로 전수조사를 먼저 수행하고 목록을 사용자에게 제시한 뒤, 확정된 범위로 진행 — 관리자 화면 처리 방식·DB 컬럼 처리·API disable 방식 3가지는 AskUserQuestion으로 확인 후 결정
+- 프론트엔드: 전역 텔레그램 플로팅 버튼(`telegram-float-button.tsx`) 삭제, 대시보드 헤더 알림 드롭다운·`/alerts` 페이지의 텔레그램 채널 카드 제거(알림 페이지는 이메일 다이제스트 카드만 남아 단일 컬럼으로 재구성), 이메일 다이제스트 템플릿 푸터의 텔레그램 SVG 아이콘 제거("telegram" 텍스트가 없어 1차 grep에서는 누락되고 `t.me/` 재검색으로 추가 발견된 부분)
+- 크론/관리자: `vercel.json`에서 텔레그램 cron 2건 제거, 관리자 트리거 페이지·`COLLECT_JOBS`·admin run dispatcher에서 텔레그램 job 완전 삭제(사용자 결정: 내부 운영 화면이라도 완전 제거)
+- API route(`/api/collect/telegram`, `/api/collect/telegram-digest`)는 삭제하지 않고 즉시 disabled 응답만 반환하도록 처리, `lib/notify/telegram*.ts`는 미사용 상태로 보존(사용자 결정 — BotFather 봇 계정 삭제 전까지 파일은 남겨둠)
+- `filings.notified_telegram` DB 컬럼은 자동 생성 타입이라 건드리지 않고 그대로 둠(사용자 결정)
+
+**빌드 검증**: 각 단계마다 `pnpm build` 성공, 에러 0건.
+
+### 다음 작업 예정
+- 사용자가 BotFather에서 텔레그램 봇 계정 비활성화/삭제 예정 — 완료 후 `lib/notify/telegram*.ts` 파일 삭제 여부 재검토
+
+---
+
 ## 2026-07-06 · 세션 81
 
 ### Paddle 결제사 전환: Polar 전수조사, 공개 요금제/약관 페이지 신설, Paddle.js 체크아웃·웹훅 정식 연동
