@@ -15,6 +15,10 @@ import {
 const MONTHLY_PRICE_ID = process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_MONTHLY ?? ""
 const ANNUAL_PRICE_ID = process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_ANNUAL ?? ""
 
+// Paddle 도메인 미승인으로 체크아웃이 "Something went wrong" 에러를 띄우는 동안의 임시 차단 플래그.
+// 도메인 승인이 완료되면 이 값을 true로만 바꾸면 원상 복구된다.
+const PADDLE_CHECKOUT_ENABLED = false
+
 const FREE_FEATURES = [
   "와치리스트 (최대 5종목)",
   "공시 피드",
@@ -37,10 +41,35 @@ const PRO_FEATURES: ProFeature[] = [
   { label: "데일리 다이제스트", desc: "매일 아침 주요 기업동향과 시장 변화를 이메일로 받아보세요." },
 ]
 
+function ComingSoonModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-full max-w-sm rounded-[8px] border border-white/[0.08] bg-[#1a1a1a] p-6 text-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-semibold text-white">결제 연동 준비 중</h2>
+        <p className="mt-3 text-sm leading-relaxed text-[#a6a6a6]">
+          현재 결제 시스템 연동을 준비하고 있습니다. 빠른 시일 내에 정식 오픈할 예정이며, Pro 버전이 필요하신 경우 이메일(support@tickerflow.net)로 문의해 주시기 바랍니다.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 w-full rounded-[6px] bg-white py-2.5 text-sm font-medium text-black transition-opacity hover:opacity-90"
+        >
+          확인
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolean; userEmail: string }) {
   const [tab, setTab] = useState<"monthly" | "annual">("monthly")
   const [paddle, setPaddle] = useState<Paddle>()
   const [error, setError] = useState("")
+  const [showComingSoon, setShowComingSoon] = useState(false)
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN
@@ -206,11 +235,13 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
             </button>
           ) : (
             <button
-              onClick={handleCheckout}
-              disabled={!paddle}
+              onClick={PADDLE_CHECKOUT_ENABLED ? handleCheckout : () => setShowComingSoon(true)}
+              disabled={PADDLE_CHECKOUT_ENABLED && !paddle}
               className="block w-full rounded-[6px] bg-white py-2.5 text-center text-sm font-medium text-black transition-colors hover:bg-white/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {paddle ? (tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작") : "결제 모듈 로딩 중..."}
+              {PADDLE_CHECKOUT_ENABLED && !paddle
+                ? "결제 모듈 로딩 중..."
+                : tab === "monthly" ? "월간 구독 시작" : "연간 구독 시작"}
             </button>
           )}
           {error && <p className="mt-2 text-center text-xs text-red-400">{error}</p>}
@@ -219,6 +250,7 @@ export default function BillingPlansClient({ isPro, userEmail }: { isPro: boolea
       </div>
     </div>
     <p className="mt-4 text-center text-xs text-[#a6a6a6]">{TAX_NOTICE_KO}</p>
+    {showComingSoon && <ComingSoonModal onClose={() => setShowComingSoon(false)} />}
     </div>
   )
 }
