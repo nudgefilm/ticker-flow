@@ -51,7 +51,7 @@ function ComingSoonModal({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-base font-semibold text-white">결제 연동 준비 중</h2>
         <p className="mt-3 text-sm leading-relaxed text-[#a6a6a6]">
-          현재 결제 시스템 연동을 준비하고 있습니다. 빠른 시일 내에 정식 오픈할 예정이며, Pro 버전이 필요하신 경우 이메일(support@tickerflow.net)로 문의해 주시기 바랍니다.
+          현재 결제 시스템 연동을 준비하고 있습니다. Pro 버전 이용이 필요하신 경우 마이페이지 &apos;문의하기&apos;를 통해 요청해 주시면 &apos;구독플랜&apos;을 업그레이드해 드리겠습니다. 베타 서비스 기간 중 이용이 가능합니다.
         </p>
         <button
           type="button"
