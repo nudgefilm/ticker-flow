@@ -109,19 +109,25 @@ export default async function Hero() {
 
         {/* 좌측: 기존 텍스트 + CTA */}
         <div className="animate-fade-in flex flex-col items-center text-center lg:items-start lg:text-left">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
+          <p className="text-sm font-medium uppercase tracking-wide text-blue-400">
+            미국 기업 동향
+          </p>
+
+          <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
             나스닥 모니터링
             <br />
             <span
               className="text-blue-400"
               style={{ filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.7))" }}
             >
-              티커플로우
+              TickerFlow
             </span>
           </h1>
 
           <p className="mt-5 max-w-xl text-base text-muted-foreground md:text-lg">
-            미국 기업의 공시, 뉴스, 실적 변화를 한곳에서 확인하세요.
+            공시, 어닝콜, 내부자 거래, 뉴스를 한국어로.
+            <br />
+            여러 사이트를 오갈 필요 없이 하나의 화면에서 확인하세요.
           </p>
 
           <p className="mt-3 max-w-xl text-sm text-muted-foreground/70">
