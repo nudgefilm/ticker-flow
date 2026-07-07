@@ -198,6 +198,16 @@ export type MacroItem = {
   unit: string;
 };
 
+// TOP30 전체(1~30위) + 원본 reason_tags — 이메일 카드에는 쓰이지 않고,
+// 블로그 초안 생성(blog-draft.ts)에서 타입별(내부자 매수/실적 등)로
+// 종목을 걸러낼 때만 사용한다.
+export type Top30TagItem = {
+  ticker: string;
+  name: string;
+  rank: number;
+  tags: string[];
+};
+
 export type DigestData = {
   kstDate: string;
   headline: {
@@ -209,7 +219,9 @@ export type DigestData = {
   marketMood: string;
   top3: DigestTopItem[];
   top4to10: DigestTopItem[];
+  top30Full: Top30TagItem[];
   marketChange: MarketChangeCounts;
+  earningsTotal: number;
   featured: FeaturedCompany | null;
   newEntrants: NewEntrantItem[];
   dropped: DroppedItem[];

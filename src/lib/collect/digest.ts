@@ -5,6 +5,7 @@ import { dailyDigestEmail } from "@/lib/email/templates";
 import type {
   DigestData,
   DigestTopItem,
+  Top30TagItem,
   FeaturedCompany,
   NewEntrantItem,
   DroppedItem,
@@ -440,6 +441,15 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     name:   nameMap.get(t) ?? t,
   }));
 
+  // 1~30위 전체 + 원본 reason_tags — 블로그 초안 생성에서 타입별(내부자
+  // 매수/실적 등)로 종목을 걸러낼 때 사용 (이메일 카드에는 사용하지 않음).
+  const top30Full: Top30TagItem[] = today30.map((r) => ({
+    ticker: r.ticker,
+    name:   nameMap.get(r.ticker) ?? r.ticker,
+    rank:   r.rank ?? 0,
+    tags:   r.reason_tags ?? [],
+  }));
+
   return {
     kstDate,
     headline: {
@@ -451,7 +461,9 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     marketMood,
     top3: top3Items,
     top4to10: top4to10Items,
+    top30Full,
     marketChange,
+    earningsTotal: earningsToday.length,
     featured,
     newEntrants,
     dropped,
