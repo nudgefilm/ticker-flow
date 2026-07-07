@@ -54,11 +54,11 @@ function fmtDate(iso: string): string {
 
 function NewsFeedSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
+          className="mb-4 break-inside-avoid rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
         >
           <div className="flex items-center justify-between">
             <div className="h-3 w-16 rounded bg-white/[0.06]" />
@@ -127,17 +127,15 @@ async function NewsFeedList({ page, ticker }: { page: number; ticker?: string })
   return (
     <>
       <FeedScrollAnchor />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {items.map((item, i) => (
-          <NewsFeedCard
-            key={item.id}
-            news={item}
-            badges={item.ticker ? getBadgeReasons(item.ticker, badgeSets) : undefined}
-            className={[
-              i % 2 === 0 ? "bg-[#111820]" : "",
-              items.length % 2 !== 0 && i === items.length - 1 ? "col-span-2" : "",
-            ].filter(Boolean).join(" ") || undefined}
-          />
+          <div key={item.id} className="mb-4 break-inside-avoid">
+            <NewsFeedCard
+              news={item}
+              badges={item.ticker ? getBadgeReasons(item.ticker, badgeSets) : undefined}
+              className={i % 2 === 0 ? "bg-[#111820]" : undefined}
+            />
+          </div>
         ))}
       </div>
       <div className="mt-6">
@@ -258,10 +256,12 @@ export default async function NewsPage({
         </div>
       </section>
 
+      {ticker && (
+        <div className="mt-6">
+          <NewsFilterBar activeTicker={ticker} />
+        </div>
+      )}
       <div className="mt-6">
-        <NewsFilterBar activeTicker={ticker} />
-      </div>
-      <div className="mt-5">
         <Suspense fallback={<NewsFeedSkeleton />} key={ticker ?? "all"}>
           <NewsFeedList page={page} ticker={ticker} />
         </Suspense>

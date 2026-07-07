@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { summarizeNews } from "./summarize";
 import { runStockBriefCollect } from "./brief";
+import { getCollectTargetTickers } from "./target-tickers";
 import type { CollectResult } from "./types";
 
 interface FinnhubNewsItem {
@@ -9,6 +10,70 @@ interface FinnhubNewsItem {
   related: string;
   source: string;
   url: string;
+}
+
+interface FinnhubCompanyNewsItem {
+  datetime: number;
+  headline: string;
+  source: string;
+  url: string;
+}
+
+function ymd(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+// ─── 종목별 뉴스(티커 태깅용) ───────────────────────────────────────────────────
+//
+// category=general 뉴스는 Finnhub 특성상 related(연관 티커)가 거의 항상 비어
+// 있어 "섹터별 뉴스 활동" 등 티커 기반 집계에 쓸 수 없다. 관심 종목 한정으로
+// company-news를 별도 호출해 ticker를 확실히 채운다.
+//
+// upsert에 ignoreDuplicates를 주지 않아(기본값 false) 이미 general 수집으로
+// ticker=null 상태로 저장된 동일 url 행이 있으면 이번 호출로 ticker가 채워지도록
+// 덮어쓴다. 반대로 general 쪽 upsert는 ignoreDuplicates: true를 유지해, 이미
+// 정확한 ticker가 채워진 행을 다시 null로 되돌리지 않는다.
+async function collectCompanyNewsForTicker(
+  ticker: string,
+  apiKey: string,
+  adminClient: ReturnType<typeof createAdminClient>
+): Promise<{ inserted: number; skipped: number }> {
+  const to = new Date();
+  const from = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+  const res = await fetch(
+    `https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=${ymd(from)}&to=${ymd(to)}&token=${apiKey}`,
+    { signal: AbortSignal.timeout(15_000) }
+  );
+  if (!res.ok) return { inserted: 0, skipped: 1 };
+
+  const items: FinnhubCompanyNewsItem[] = await res.json();
+  let inserted = 0;
+  let skipped = 0;
+
+  for (const item of items) {
+    if (!item.url || !item.headline) { skipped++; continue; }
+
+    const { error } = await adminClient.from("news").upsert(
+      {
+        ticker,
+        headline: item.headline,
+        source: item.source || null,
+        published_at: new Date(item.datetime * 1000).toISOString(),
+        url: item.url,
+      },
+      { onConflict: "url" }
+    );
+
+    if (error) {
+      console.error(`[collect/news] company-news upsert ${ticker}:`, error.message);
+      skipped++;
+    } else {
+      inserted++;
+    }
+  }
+
+  return { inserted, skipped };
 }
 
 export async function runNewsCollect(): Promise<CollectResult> {
@@ -83,6 +148,33 @@ export async function runNewsCollect(): Promise<CollectResult> {
       }
     }
 
+    // ── 종목별 뉴스(티커 태깅) — 와치리스트 + top30/거래량/섹터 상위 + 최근 7일
+    // 공시 종목 한정. 다른 collect 함수(insider.ts 등)와 동일한 대상 선정 패턴.
+    const [targetTickers, filingRes] = await Promise.all([
+      getCollectTargetTickers(),
+      adminClient
+        .from("filings")
+        .select("ticker")
+        .gte("filed_at", new Date(Date.now() - 7 * 86_400_000).toISOString()),
+    ]);
+
+    const companyNewsTickerSet = new Set<string>(targetTickers);
+    for (const r of filingRes.data ?? []) companyNewsTickerSet.add(r.ticker);
+    const companyNewsTickers = [...companyNewsTickerSet];
+
+    let companyNewsInserted = 0;
+    let companyNewsSkipped = 0;
+
+    for (const ticker of companyNewsTickers) {
+      const result = await collectCompanyNewsForTicker(ticker, apiKey, adminClient);
+      companyNewsInserted += result.inserted;
+      companyNewsSkipped += result.skipped;
+      if (result.inserted > 0 && briefTickers.size < 20) briefTickers.add(ticker);
+
+      if (companyNewsTickers.length > 1) await new Promise((r) => setTimeout(r, 250));
+    }
+    console.log(`[collect/news] company-news 대상 종목 ${companyNewsTickers.length}개, 저장 ${companyNewsInserted}건`);
+
     let summarized = 0;
     let summarizeFailed = 0;
     if (process.env.ANTHROPIC_API_KEY) {
@@ -103,6 +195,9 @@ export async function runNewsCollect(): Promise<CollectResult> {
       total: items.length,
       inserted,
       skipped,
+      companyNewsTickers: companyNewsTickers.length,
+      companyNewsInserted,
+      companyNewsSkipped,
       summarized,
       ...(summarizeFailed > 0 && { summarizeFailed }),
       ...(firstError && { firstError }),

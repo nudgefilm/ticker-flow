@@ -48,13 +48,13 @@ export default function NewsFeedCard({
       </div>
 
       {/* Row 2: 헤드라인 (한국어 요약 있을 때 흐리게) */}
-      <p className={`mt-2 line-clamp-2 text-sm leading-snug ${summary_kr && summary_kr !== headline ? "font-medium text-[#888888]" : "font-semibold text-white"}`}>
+      <p className={`mt-2 text-sm leading-snug ${summary_kr && summary_kr !== headline ? "font-medium text-[#888888]" : "font-semibold text-white"}`}>
         {headline}
       </p>
 
       {/* Row 3: 한국어 요약 (summary_kr 있을 때만, 주텍스트로 강조) */}
       {summary_kr && summary_kr !== headline && (
-        <p className="mt-2 line-clamp-3 text-sm font-medium leading-relaxed text-white">
+        <p className="mt-2 text-sm font-medium leading-relaxed text-white">
           {summary_kr}
         </p>
       )}

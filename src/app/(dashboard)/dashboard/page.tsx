@@ -60,11 +60,11 @@ function fmtDate(iso: string): string {
 
 function FilingFeedSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
+          className="mb-4 break-inside-avoid rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
         >
           <div className="flex items-center gap-2">
             <div className="h-5 w-20 rounded-[4px] bg-white/[0.06]" />
@@ -130,17 +130,15 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
   return (
     <>
       <FeedScrollAnchor />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {filings.map((filing, i) => (
-          <FilingFeedCard
-            key={filing.id}
-            filing={filing}
-            badges={getBadgeReasons(filing.ticker, badgeSets)}
-            className={[
-              i % 2 === 0 ? "bg-[#111820]" : "",
-              filings.length % 2 !== 0 && i === filings.length - 1 ? "col-span-2" : "",
-            ].filter(Boolean).join(" ") || undefined}
-          />
+          <div key={filing.id} className="mb-4 break-inside-avoid">
+            <FilingFeedCard
+              filing={filing}
+              badges={getBadgeReasons(filing.ticker, badgeSets)}
+              className={i % 2 === 0 ? "bg-[#111820]" : undefined}
+            />
+          </div>
         ))}
       </div>
       <div className="mt-6">
