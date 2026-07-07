@@ -205,31 +205,17 @@ async function generateMarketNarrative(params: {
   }
 }
 
-// ─── 메인 ─────────────────────────────────────────────────────────────────────
-
-export async function runDigestCollect(): Promise<CollectResult> {
+// ─── 다이제스트 데이터 수집 (이메일 발송과 무관한 순수 데이터 조회부) ────────────
+//
+// 이메일 발송(runDigestCollect)과 블로그 초안 생성(blog-draft.ts) 양쪽에서
+// "오늘의 기업동향 TOP30 + 시장 변화" 데이터를 동일하게 사용해야 하므로,
+// 수신자 조회·이메일 발송과 무관한 데이터 수집 로직만 이 함수로 분리했다.
+// TOP30 데이터가 없으면 null을 반환한다.
+export async function gatherDigestData(): Promise<DigestData | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
-  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일(168시간) 이내 Free 유저.
-  // created_at 기준 롤링 윈도우이므로 신규 가입일수록 앞으로 남은 발송 횟수가
-  // 많다. 이 기능 배포일(2026-07-03) 이전에 가입한 Free 유저는 가입일로부터
-  // 계산한 7일 중 이미 지나간 기간만큼 발송 횟수가 줄어드는 것이 정상이다.
-  const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: profiles, error: profileErr } = await admin
-    .from("profiles")
-    .select("email")
-    .or(`plan.eq.pro,and(plan.eq.free,created_at.gte.${sevenDaysAgoIso})`);
-
-  if (profileErr) return { ok: false, error: (profileErr as { message: string }).message };
-
-  const targetEmails = ((profiles ?? []) as { email: string | null }[])
-    .map((p) => p.email)
-    .filter((e): e is string => typeof e === "string" && e.length > 0);
-
-  if (targetEmails.length === 0) return { ok: true, sent: 0, message: "발송 대상 없음" };
-
-  // 2. 최근 2개 수집일(오늘/전일) 조회 — 주말·공휴일 공백 대응을 위해 달력일 차감 대신 실제 존재하는 직전 날짜 사용
+  // 1. 최근 2개 수집일(오늘/전일) 조회 — 주말·공휴일 공백 대응을 위해 달력일 차감 대신 실제 존재하는 직전 날짜 사용
   const { data: dateRows } = await admin
     .from("top30_daily")
     .select("date")
@@ -241,7 +227,7 @@ export async function runDigestCollect(): Promise<CollectResult> {
   const prevDate = distinctDates[1] ?? null;
 
   if (!latestDate) {
-    return { ok: true, sent: 0, message: "TOP30 데이터 없음" };
+    return null;
   }
 
   // 3. 최신 TOP30 조회
@@ -254,7 +240,7 @@ export async function runDigestCollect(): Promise<CollectResult> {
 
   const today30 = todayRows ?? [];
   if (today30.length === 0) {
-    return { ok: true, sent: 0, message: `TOP30 데이터 없음 (${latestDate})` };
+    return null;
   }
 
   // 4. 전일 TOP30 조회 (신규진입·이탈·순위변화 계산용)
@@ -454,7 +440,7 @@ export async function runDigestCollect(): Promise<CollectResult> {
     name:   nameMap.get(t) ?? t,
   }));
 
-  const digestData: DigestData = {
+  return {
     kstDate,
     headline: {
       top30Count: today30.length,
@@ -473,8 +459,36 @@ export async function runDigestCollect(): Promise<CollectResult> {
     marketSummary,
     macros,
   };
+}
 
-  // 12. HTML 생성 및 발송
+// ─── 메인 (이메일 발송) ─────────────────────────────────────────────────────────
+
+export async function runDigestCollect(): Promise<CollectResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = createAdminClient() as any;
+
+  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일(168시간) 이내 Free 유저.
+  // created_at 기준 롤링 윈도우이므로 신규 가입일수록 앞으로 남은 발송 횟수가
+  // 많다. 이 기능 배포일(2026-07-03) 이전에 가입한 Free 유저는 가입일로부터
+  // 계산한 7일 중 이미 지나간 기간만큼 발송 횟수가 줄어드는 것이 정상이다.
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: profiles, error: profileErr } = await admin
+    .from("profiles")
+    .select("email")
+    .or(`plan.eq.pro,and(plan.eq.free,created_at.gte.${sevenDaysAgoIso})`);
+
+  if (profileErr) return { ok: false, error: (profileErr as { message: string }).message };
+
+  const targetEmails = ((profiles ?? []) as { email: string | null }[])
+    .map((p) => p.email)
+    .filter((e): e is string => typeof e === "string" && e.length > 0);
+
+  if (targetEmails.length === 0) return { ok: true, sent: 0, message: "발송 대상 없음" };
+
+  const digestData = await gatherDigestData();
+  if (!digestData) return { ok: true, sent: 0, message: "TOP30 데이터 없음" };
+
+  // 2. HTML 생성 및 발송
   // Resend 기본 rate limit(2req/s)을 준수하기 위해 발송 간 550ms 간격을 둔다.
   // 간격 없이 연속 호출하면 수신자가 많을 때 rate_limit_exceeded가 발생해
   // 실제로는 일시적인 현상인데도 발송 실패로 집계되는 문제가 있었다.
