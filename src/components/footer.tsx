@@ -123,7 +123,7 @@ export default function Footer() {
                   언폴드랩(UNFOLD LAB)
                   <span className="text-xs font-normal text-muted-foreground"> | 데이터 기반 SaaS 인디 개발 스튜디오</span>
                 </p>
-                <p>대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
+                <p>대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-03723 호</p>
                 <p>주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
                 <p>연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
               </div>

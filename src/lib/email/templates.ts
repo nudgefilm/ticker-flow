@@ -470,7 +470,7 @@ export function dailyDigestEmail(data: DigestData): string {
           </td>
         </tr></table>
         ${digestSpacer(16)}
-        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-XXXX 호</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-03723 호</p>
         <p style="margin:0 0 2px;font-size:11px;color:#dddddd">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
         <p style="margin:0 0 14px;font-size:11px;color:#dddddd">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
         ${DIGEST_DISCLAIMER}
