@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { initializePaddle, type Paddle } from "@paddle/paddle-js"
-import { IconCheck } from "@tabler/icons-react"
+import { IconCheck, IconCopy } from "@tabler/icons-react"
 import {
   PRO_MONTHLY_PRICE_KRW,
   PRO_ANNUAL_PRICE_KRW,
   PRO_ANNUAL_MONTHLY_EQUIVALENT_KRW,
   PRO_ANNUAL_FREE_MONTHS,
   TAX_NOTICE_KO,
+  BANK_TRANSFER_INFO,
   formatKrw,
 } from "@/lib/pricing"
 
@@ -42,6 +43,18 @@ const PRO_FEATURES: ProFeature[] = [
 ]
 
 function ComingSoonModal({ onClose }: { onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(BANK_TRANSFER_INFO.accountNumber)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // 클립보드 접근 실패 시 조용히 무시 — 계좌번호는 화면에 그대로 표시돼 있음
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
@@ -51,8 +64,34 @@ function ComingSoonModal({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-base font-semibold text-white">결제 연동 준비 중</h2>
         <p className="mt-3 text-sm leading-relaxed text-[#a6a6a6]">
-          현재 결제 시스템 연동을 준비하고 있습니다. Pro 버전 이용이 필요하신 경우 마이페이지 &apos;문의하기&apos;를 통해 요청해 주시면 &apos;구독플랜&apos;을 업그레이드해 드리겠습니다. 베타 서비스 기간 중 이용이 가능합니다.
+          현재 결제 시스템 연동을 준비하고 있습니다. 아래 계좌로 입금 후 마이페이지 &apos;문의하기&apos;로 입금자명과 함께 알려주시면 확인 후 Pro로 업그레이드해 드립니다.
         </p>
+
+        <div className="mt-4 rounded-[6px] border border-white/[0.08] bg-[#111111] p-4 text-left">
+          <p className="text-sm text-white">{BANK_TRANSFER_INFO.bank}</p>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="mt-1 flex w-full items-center gap-1.5 text-left text-base font-semibold tabular-nums text-white transition-colors hover:text-[#cccccc]"
+            aria-label="계좌번호 복사"
+          >
+            {BANK_TRANSFER_INFO.accountNumber}
+            {copied ? (
+              <IconCheck size={15} stroke={2} className="shrink-0 text-emerald-400" />
+            ) : (
+              <IconCopy size={15} stroke={1.5} className="shrink-0 text-[#a6a6a6]" />
+            )}
+          </button>
+          <p className="mt-1 text-xs text-[#a6a6a6]">예금주: {BANK_TRANSFER_INFO.accountHolder}</p>
+          <p className="mt-3 text-xs text-[#cccccc]">
+            월간 {formatKrw(PRO_MONTHLY_PRICE_KRW)} / 연간 {formatKrw(PRO_ANNUAL_PRICE_KRW)}
+          </p>
+        </div>
+
+        <p className="mt-4 text-xs text-[#a6a6a6]">
+          또는 이메일(support@tickerflow.net)로도 문의 가능합니다.
+        </p>
+
         <button
           type="button"
           onClick={onClose}
