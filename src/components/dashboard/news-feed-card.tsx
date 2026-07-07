@@ -59,6 +59,11 @@ export default function NewsFeedCard({
         </p>
       )}
 
+      {/* summary_kr 번역 전 — 원문 헤드라인만 있는 상태임을 안내 */}
+      {!summary_kr && (
+        <p className="mt-2 text-xs text-[#a6a6a6]">번역 준비 중 · 원문 헤드라인만 표시됩니다</p>
+      )}
+
       {/* Row 4: 티커 태그 + 원문 보기 */}
       <div className="mt-3 flex items-center justify-between">
         {ticker ? (

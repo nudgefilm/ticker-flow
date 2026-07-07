@@ -3,7 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
-const BATCH_LIMIT = 20;
+// company-news 수집 추가(2026-07-08)로 뉴스 유입량이 급증해 기존 20건/회로는
+// 번역이 밀려 누적됨 — /api/collect/news(시간당 1회) + /api/translate(20분당
+// 1회, 시간당 3회) 합산 처리량을 시간당 80건 → 160건으로 상향.
+const BATCH_LIMIT = 40;
 
 type AdminClient = SupabaseClient<any, any, any>;
 
