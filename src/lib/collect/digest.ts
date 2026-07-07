@@ -211,7 +211,10 @@ export async function runDigestCollect(): Promise<CollectResult> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
-  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일 이내 Free 유저
+  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일(168시간) 이내 Free 유저.
+  // created_at 기준 롤링 윈도우이므로 신규 가입일수록 앞으로 남은 발송 횟수가
+  // 많다. 이 기능 배포일(2026-07-03) 이전에 가입한 Free 유저는 가입일로부터
+  // 계산한 7일 중 이미 지나간 기간만큼 발송 횟수가 줄어드는 것이 정상이다.
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: profiles, error: profileErr } = await admin
     .from("profiles")
