@@ -1,8 +1,13 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+// "맨 위로 가기" 버튼(scroll-to-top.tsx)이 이 위젯 바로 위에 쌓이도록,
+// 위젯의 실제 렌더링 높이(접힘/펼침에 따라 가변)를 CSS 변수로 공유한다.
+const SCROLL_OFFSET_VAR = "--tf-scroll-offset"
+const SCROLL_GAP_PX = 12
 
 type MarketId = "KRX" | "NYSE"
 
@@ -71,11 +76,36 @@ function statusMeta(status: MarketState["status"]) {
 export function MarketClock() {
   const [now, setNow] = useState<Date | null>(null)
   const [collapsed, setCollapsed] = useState(false)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setNow(new Date())
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
+  }, [])
+
+  // 위젯의 실제 렌더링 높이(접힘/펼침에 따라 가변)를 측정해 scroll-to-top
+  // 버튼이 항상 위젯 바로 위에 쌓이도록 CSS 변수로 공유한다.
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+
+    const updateOffset = () => {
+      const top = el.getBoundingClientRect().top
+      const offset = Math.max(0, window.innerHeight - top) + SCROLL_GAP_PX
+      document.documentElement.style.setProperty(SCROLL_OFFSET_VAR, `${offset}px`)
+    }
+
+    updateOffset()
+    const ro = new ResizeObserver(updateOffset)
+    ro.observe(el)
+    window.addEventListener("resize", updateOffset)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", updateOffset)
+      document.documentElement.style.removeProperty(SCROLL_OFFSET_VAR)
+    }
   }, [])
 
   const states = useMemo(() => {
@@ -84,8 +114,9 @@ export function MarketClock() {
   }, [now])
 
   return (
-    <div className="pointer-events-none fixed bottom-20 right-3 z-40 flex justify-end sm:bottom-24 sm:right-6">
+    <div className="pointer-events-none fixed bottom-20 right-6 z-40 flex justify-end sm:bottom-24">
       <div
+        ref={boxRef}
         className="pointer-events-auto w-[260px] overflow-hidden rounded-[8px] border border-white/[0.08] bg-[#1a1a1a]/95 shadow-2xl backdrop-blur-md sm:w-[280px]"
         role="complementary"
         aria-label="국내·미국 증시 개장 상태 및 현재 시각"

@@ -19,7 +19,8 @@ export default function ScrollToTop() {
       type="button"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
       aria-label="맨 위로"
-      className="fixed bottom-6 right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
+      style={{ bottom: "var(--tf-scroll-offset, 1.5rem)" }}
+      className="fixed right-6 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
     >
       <IconArrowUp size={18} stroke={1.5} className="text-white" />
     </button>
