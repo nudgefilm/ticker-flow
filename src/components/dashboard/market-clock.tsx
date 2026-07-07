@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { ChevronDown, ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// "맨 위로 가기" 버튼(scroll-to-top.tsx)이 이 위젯 바로 위에 쌓이도록,
-// 위젯의 실제 렌더링 높이(접힘/펼침에 따라 가변)를 CSS 변수로 공유한다.
-const SCROLL_OFFSET_VAR = "--tf-scroll-offset"
-const SCROLL_GAP_PX = 12
+// 전역 scroll-to-top 버튼(scroll-to-top.tsx)은 이 위젯이 떠 있는 동안
+// 스스로를 숨기고, 대신 이 위젯이 같은 fixed 컨테이너 안에 자체 스크롤
+// 버튼을 함께 그려 "화살표+위젯"이 항상 화면 하단에 붙은 한 덩어리로
+// 쌓이도록 한다 (분리돼 있으면 위젯 높이가 바뀔 때 둘 사이에 빈 공백이
+// 남는 문제가 있었음).
+const SCROLL_DISPLAY_VAR = "--tf-scroll-display"
 
 type MarketId = "KRX" | "NYSE"
 
@@ -76,7 +78,7 @@ function statusMeta(status: MarketState["status"]) {
 export function MarketClock() {
   const [now, setNow] = useState<Date | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-  const boxRef = useRef<HTMLDivElement>(null)
+  const [scrollVisible, setScrollVisible] = useState(false)
 
   useEffect(() => {
     setNow(new Date())
@@ -84,27 +86,16 @@ export function MarketClock() {
     return () => clearInterval(id)
   }, [])
 
-  // 위젯의 실제 렌더링 높이(접힘/펼침에 따라 가변)를 측정해 scroll-to-top
-  // 버튼이 항상 위젯 바로 위에 쌓이도록 CSS 변수로 공유한다.
+  // 전역 scroll-to-top 버튼을 숨기고(이 위젯이 자체 버튼을 그림), 스크롤
+  // 위치에 따라 그 자체 버튼의 표시 여부를 관리한다.
   useEffect(() => {
-    const el = boxRef.current
-    if (!el) return
-
-    const updateOffset = () => {
-      const top = el.getBoundingClientRect().top
-      const offset = Math.max(0, window.innerHeight - top) + SCROLL_GAP_PX
-      document.documentElement.style.setProperty(SCROLL_OFFSET_VAR, `${offset}px`)
-    }
-
-    updateOffset()
-    const ro = new ResizeObserver(updateOffset)
-    ro.observe(el)
-    window.addEventListener("resize", updateOffset)
-
+    document.documentElement.style.setProperty(SCROLL_DISPLAY_VAR, "none")
+    const onScroll = () => setScrollVisible(window.scrollY > 300)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
     return () => {
-      ro.disconnect()
-      window.removeEventListener("resize", updateOffset)
-      document.documentElement.style.removeProperty(SCROLL_OFFSET_VAR)
+      window.removeEventListener("scroll", onScroll)
+      document.documentElement.style.removeProperty(SCROLL_DISPLAY_VAR)
     }
   }, [])
 
@@ -114,9 +105,8 @@ export function MarketClock() {
   }, [now])
 
   return (
-    <div className="pointer-events-none fixed bottom-20 right-6 z-40 flex justify-end sm:bottom-24">
+    <div className="pointer-events-none fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
       <div
-        ref={boxRef}
         className="pointer-events-auto w-[260px] overflow-hidden rounded-[8px] border border-white/[0.08] bg-[#1a1a1a]/95 shadow-2xl backdrop-blur-md sm:w-[280px]"
         role="complementary"
         aria-label="국내·미국 증시 개장 상태 및 현재 시각"
@@ -158,6 +148,17 @@ export function MarketClock() {
           <span className="font-mono text-[10px] text-blue-400">{"> LIVE UPDATE"}</span>
         </div>
       </div>
+
+      {scrollVisible && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="맨 위로"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
+        >
+          <ArrowUp size={18} strokeWidth={1.5} className="text-white" />
+        </button>
+      )}
     </div>
   )
 }
