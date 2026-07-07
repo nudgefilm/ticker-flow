@@ -106,6 +106,17 @@ export function MarketClock() {
 
   return (
     <div className="pointer-events-none fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+      {scrollVisible && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="맨 위로"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
+        >
+          <ArrowUp size={18} strokeWidth={1.5} className="text-white" />
+        </button>
+      )}
+
       <div
         className="pointer-events-auto w-[260px] overflow-hidden rounded-[8px] border border-white/[0.08] bg-[#1a1a1a]/95 shadow-2xl backdrop-blur-md sm:w-[280px]"
         role="complementary"
@@ -148,17 +159,6 @@ export function MarketClock() {
           <span className="font-mono text-[10px] text-blue-400">{"> LIVE UPDATE"}</span>
         </div>
       </div>
-
-      {scrollVisible && (
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          aria-label="맨 위로"
-          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20"
-        >
-          <ArrowUp size={18} strokeWidth={1.5} className="text-white" />
-        </button>
-      )}
     </div>
   )
 }
