@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Sidebar from "@/components/dashboard/sidebar";
 import NoticeBanner from "@/components/notice-banner";
+import { MarketClock } from "@/components/dashboard/market-clock";
 import { SidebarProvider } from "@/lib/sidebar-context";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -14,6 +15,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* PC: px-10 py-8 / 모바일: px-4 py-5 */}
           <main className="flex-1 px-4 py-5 md:px-10 md:py-8">{children}</main>
         </div>
+        <MarketClock />
       </div>
     </SidebarProvider>
   );
