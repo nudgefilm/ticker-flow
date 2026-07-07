@@ -390,13 +390,13 @@ export function dailyDigestEmail(data: DigestData): string {
         <tr><td style="padding:0 12px">
 
       <!-- 헤더 -->
-      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:28px 8px 20px">
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e3a5f;border-radius:10px;padding:28px 16px 20px" bgcolor="#1e3a5f">
         <p style="margin:0 0 10px">
           <span style="font-size:15px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW</span>
           <span style="display:inline-block;margin-left:8px;background:#3b82f6;color:#ffffff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;vertical-align:middle">PRO</span>
         </p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">데일리 다이제스트</p>
-        <p style="margin:0 0 10px;font-size:12px;color:#dddddd">${escapeHtml(kstDate)} · KST</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#93c5fd">${escapeHtml(kstDate)} · KST</p>
         <p style="margin:0;font-size:13px;color:#dddddd">${escapeHtml(headlineLine)}</p>
       </td></tr></table>
 
