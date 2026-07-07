@@ -314,14 +314,16 @@ export default async function AnalysisPage({
               insider={insight.insider}
               latestEarnings={insight.earnings[0]}
             />
-
-            {/* 데이터 출처 */}
-            <DataSources
-              description="미국 증권거래위원회(SEC EDGAR) 공시 및 시장 데이터를 기반으로 제공됩니다."
-              updatedAt={dataUpdatedAt}
-            />
           </div>
         </ProGate>
+      </div>
+
+      {/* 데이터 출처 — ProGate 밖에 둬서 Free 사용자에게도 항상 노출 (다른 Pro 페이지와 동일 패턴) */}
+      <div className="mt-6">
+        <DataSources
+          description="SEC EDGAR 공시, Form 4 내부자 거래, 실적 발표, 관련 뉴스 등 공시 인사이트에 사용된 데이터를 종합해 제공합니다."
+          updatedAt={dataUpdatedAt}
+        />
       </div>
 
       <DashboardDisclaimer />
