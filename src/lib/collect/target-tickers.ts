@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type TickerBadgeReason = "top30" | "volume" | "sector";
@@ -8,6 +9,11 @@ export interface TargetTickerSets {
   volume: Set<string>;
   sector: Set<string>;
 }
+
+// 페이지네이션 이동마다 8천여 개 tickers를 다시 긁는 게 낭비라 결과를 캐싱한다.
+// watchlist/top30/거래량/섹터 상위 종목은 크론(하루 1~2회) 단위로만 바뀌므로
+// 5분 TTL이면 신선도 손실 없이 페이지 이동 시 재계산을 사실상 없앨 수 있다.
+const TARGET_TICKER_SETS_TTL_SECONDS = 300;
 
 const VOLUME_TOP_N = 20;
 const SECTOR_TOP_N = 3;
@@ -49,11 +55,18 @@ async function fetchTickersWithMarketCap(
   return pages.flatMap((page) => page.data ?? []);
 }
 
+type TargetTickerArrays = {
+  watchlist: string[];
+  top30: string[];
+  volume: string[];
+  sector: string[];
+};
+
 /**
- * 종목 풀 산정에 쓰이는 4가지 소스를 각각 Set으로 반환한다.
- * 수집 대상 확장(getCollectTargetTickers)과 뱃지 표시(getBadgeReasons) 양쪽에서 공용으로 사용한다.
+ * 종목 풀 산정에 쓰이는 4가지 소스를 각각 배열로 조회한다 (실제 쿼리 수행부).
+ * unstable_cache는 결과를 JSON으로 직렬화하므로 Set이 아닌 배열을 반환한다.
  */
-export async function getTargetTickerSets(): Promise<TargetTickerSets> {
+async function fetchTargetTickerArrays(): Promise<TargetTickerArrays> {
   const adminClient = createAdminClient();
 
   const [watchlistRes, top30LatestRes, priceLatestRes, sectorRows] = await Promise.all([
@@ -114,7 +127,34 @@ export async function getTargetTickerSets(): Promise<TargetTickerSets> {
     }
   }
 
-  return { watchlist, top30, volume, sector };
+  return {
+    watchlist: [...watchlist],
+    top30: [...top30],
+    volume: [...volume],
+    sector: [...sector],
+  };
+}
+
+const getCachedTargetTickerArrays = unstable_cache(
+  fetchTargetTickerArrays,
+  ["target-ticker-sets"],
+  { revalidate: TARGET_TICKER_SETS_TTL_SECONDS }
+);
+
+/**
+ * 종목 풀 산정에 쓰이는 4가지 소스를 각각 Set으로 반환한다.
+ * 수집 대상 확장(getCollectTargetTickers)과 뱃지 표시(getBadgeReasons) 양쪽에서 공용으로 사용한다.
+ * 내부적으로 5분 TTL 캐시(getCachedTargetTickerArrays)를 거치므로, 같은 TTL 창 안의
+ * 반복 호출(페이지네이션 등)은 DB를 다시 조회하지 않는다.
+ */
+export async function getTargetTickerSets(): Promise<TargetTickerSets> {
+  const arrays = await getCachedTargetTickerArrays();
+  return {
+    watchlist: new Set(arrays.watchlist),
+    top30: new Set(arrays.top30),
+    volume: new Set(arrays.volume),
+    sector: new Set(arrays.sector),
+  };
 }
 
 /**
