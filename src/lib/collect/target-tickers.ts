@@ -13,27 +13,40 @@ const VOLUME_TOP_N = 20;
 const SECTOR_TOP_N = 3;
 const TICKER_PAGE = 1000;
 
-/** sector·market_cap이 모두 있는 tickers 전체를 페이지네이션으로 조회한다 (PostgREST 1000행 제한 우회). */
+/**
+ * sector·market_cap이 모두 있는 tickers 전체를 페이지네이션으로 조회한다 (PostgREST
+ * 1000행 제한 우회). tickers 테이블이 8천 행을 넘어가면서 순차 페이지네이션이
+ * 페이지당 왕복을 하나씩 기다려 5초 이상 걸렸음 — 먼저 count만 가져와 페이지 수를
+ * 구한 뒤 나머지 요청을 Promise.all로 동시에 쏴서 왕복 1회 시간으로 단축한다.
+ * .range()의 정렬된 슬라이스이므로 순서대로 이어붙이면 결과는 이전과 동일하다.
+ */
 async function fetchTickersWithMarketCap(
   adminClient: ReturnType<typeof createAdminClient>
 ): Promise<{ ticker: string; sector: string | null; market_cap: number | null }[]> {
-  const rows: { ticker: string; sector: string | null; market_cap: number | null }[] = [];
-  let from = 0;
-  while (true) {
-    const { data } = await adminClient
-      .from("tickers")
-      .select("ticker, sector, market_cap")
-      .not("sector", "is", null)
-      .not("market_cap", "is", null)
-      .order("sector", { ascending: true })
-      .order("market_cap", { ascending: false })
-      .range(from, from + TICKER_PAGE - 1);
-    if (!data || data.length === 0) break;
-    rows.push(...data);
-    if (data.length < TICKER_PAGE) break;
-    from += TICKER_PAGE;
-  }
-  return rows;
+  const { count } = await adminClient
+    .from("tickers")
+    .select("ticker", { count: "exact", head: true })
+    .not("sector", "is", null)
+    .not("market_cap", "is", null);
+
+  if (!count || count === 0) return [];
+
+  const pageCount = Math.ceil(count / TICKER_PAGE);
+  const pages = await Promise.all(
+    Array.from({ length: pageCount }, (_, i) => {
+      const from = i * TICKER_PAGE;
+      return adminClient
+        .from("tickers")
+        .select("ticker, sector, market_cap")
+        .not("sector", "is", null)
+        .not("market_cap", "is", null)
+        .order("sector", { ascending: true })
+        .order("market_cap", { ascending: false })
+        .range(from, from + TICKER_PAGE - 1);
+    })
+  );
+
+  return pages.flatMap((page) => page.data ?? []);
 }
 
 /**
