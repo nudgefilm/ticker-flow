@@ -142,7 +142,7 @@ export default async function HomePage() {
                 {/* 좌측 */}
                 <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
                   <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
-                    정보 비대칭 해소를 위한
+                    미국 기업 동향
                   </p>
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
