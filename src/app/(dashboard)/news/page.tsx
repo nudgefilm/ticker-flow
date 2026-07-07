@@ -126,7 +126,7 @@ async function NewsFeedList({ page, ticker }: { page: number; ticker?: string })
 
   return (
     <>
-      <FeedScrollAnchor />
+      <FeedScrollAnchor watch={page} />
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {items.map((item, i) => (
           <div key={item.id} className="mb-4 break-inside-avoid">

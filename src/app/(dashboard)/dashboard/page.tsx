@@ -129,7 +129,7 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
 
   return (
     <>
-      <FeedScrollAnchor />
+      <FeedScrollAnchor watch={page} />
       <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
         {filings.map((filing, i) => (
           <div key={filing.id} className="mb-4 break-inside-avoid">
