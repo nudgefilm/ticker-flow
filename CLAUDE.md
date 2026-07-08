@@ -134,10 +134,67 @@ SEC 공시, 뉴스, 실적 일정은 이러한 변화를 탐지하기 위한 데
 | --------------- | -------------------------- |
 | SEC EDGAR API   | 공시 원문                      |
 | edgartools      | EDGAR 파싱                   |
-| Finnhub         | 뉴스·실적 캘린더·경제지표·배당 일정·내부자 거래 |
+| Finnhub (Free 플랜) | 뉴스·실적 캘린더·배당 일정·내부자 거래 |
+| FRED API        | 경제지표                       |
 | FMP API         | 종가 데이터 (1년 일봉)             |
 | Claude Haiku    | 한국어 요약                     |
 | Claude Sonnet   | 심층 리포트                     |
+
+## Finnhub Free 플랜 제약 (2026-07-08 확인)
+
+* Finnhub는 유료(Premium) 플랜이 아니라 **Free 플랜**이다. `/stock/insider-transactions`,
+  `/company-news`, `/calendar/earnings`, `/news`, `/stock/recommendation`,
+  `/stock/profile2` 등 현재 사용 중인 엔드포인트는 모두 Free 플랜에서 정상
+  호출 가능함을 실측으로 확인했다.
+* Free 플랜 제약 두 가지가 실제로 존재한다.
+  1. `/stock/insider-transactions` 응답에 임원 직함(`title`) 필드가 오지 않음
+     — `src/lib/collect/insider.ts`가 SEC Form 4 원문 조회(`insider-form4.ts`)로
+     이미 보완 중.
+  2. **분당 60회 호출 제한**(`x-ratelimit-remaining` 헤더로 실측 확인). 종목별
+     순차 호출이 이 한도를 넘기면 초과분이 429로 실패한다. `src/lib/collect/types.ts`의
+     `classifyHttpSkipReason()`이 429(rate_limit)/401·403(auth_error)/404(not_found)/
+     5xx(server_error)를 구분해 `CollectResult.skipReasons`에 집계하므로(2026-07-09
+     반영), 이제 실행 결과만 봐도 rate limit 때문인지 진짜 데이터가 없는지 구분 가능.
+
+## insider_trades 12일 정체 사고 (2026-07-09 원인 확인·수정)
+
+* **증상**: `insider_trades` 최신 데이터가 2026-06-26 이후 갱신되지 않음. 원인은
+  Finnhub 요금제가 아니라 **종목당 처리 시간 폭증으로 인한 `maxDuration`(300초)
+  타임아웃**이었다(`/api/collect/insider`를 직접 호출해 120초+ 무응답으로 실측
+  재현).
+* **정확한 원인**: Finnhub `/stock/insider-transactions`는 종목당 전체 Form 4
+  거래 히스토리를 반환한다 — NVDA·TSLA 같은 대형주는 100건 이상. 2026-07-03
+  추가된 SEC Form 4 직책 조회(`insider-form4.ts`)가 거래 건마다 실행되면서,
+  대형주 몇 개만으로도 종목당 수십 초가 누적됐다(2026-07-04 거래량·섹터 상위
+  종목까지 수집 대상에 합류해 대상 풀이 150개 이상으로 커진 것도 함께 작용).
+  `/api/collect/insider` 라우트가 `withCollectRunLog`를 쓰지 않아 크론 실행
+  결과가 `collect_runs`에 전혀 기록되지 않았던 것도 조기 발견을 늦춘 원인.
+* **수정**:
+  - `src/lib/collect/limits.ts` 신설 — `INSIDER_LOOKBACK_DAYS`(기본 30일: 최근
+    거래만 처리, 오래된 거래는 이전 실행에서 이미 수집됐을 가능성이 높고 "최근
+    내부자 거래" 모니터링 목적에도 맞지 않음)와 `MAX_TICKERS_PER_RUN`(기본 30:
+    한 번 실행에서 처리할 최대 종목 수)을 중앙 관리. `insider.ts`·`news.ts`가
+    공유. 운영 중 값 조정 시 이 파일만 고치면 됨.
+  - `insider.ts`/`news.ts` 모두 최근 공시 종목을 최우선으로 채운 뒤
+    `MAX_TICKERS_PER_RUN`으로 자르도록 순서를 재정렬(공시 트리거 종목이 배열
+    끝에 붙어 상한에 밀려나지 않도록).
+  - `earnings.ts`: 30일 캘린더가 1,500건 안팎인데 행 단위 순차 upsert(약 1,500회
+    왕복)로 처리해 `maxDuration`을 넘기고 있었음(라우트에 `maxDuration` 설정
+    자체도 누락돼 있었음) — 배열 upsert(500건 청크)로 전환. Finnhub가 동일
+    (ticker, report_date)를 중복 반환하는 경우가 있어 배치 전 Map으로 먼저
+    중복 제거(동일 배치 안에 같은 conflict 대상이 2번 있으면 PostgreSQL이
+    `ON CONFLICT DO UPDATE command cannot affect row a second time`로 배치
+    전체를 거부함).
+  - 실측 개선: insider 37초, earnings 3.5초, news 131초 (모두 300초 이내로 안정화).
+  - `/api/collect/insider`, `/api/collect/watchlist-ticker`, `/api/collect/watchlist-tickers`
+    에 `withCollectRunLog` 적용해 크론 실행 결과가 `collect_runs`에 기록되도록
+    통일.
+* **다음 단계 개선 후보** (2026-07-09 리뷰에서 제안, 아직 미착수):
+  - 대상 종목 우선순위에 "최근 실적 발표 종목"을 별도로 추가하는 안 (현재는
+    최근 공시 → watchlist → TOP30 → 거래량 → 섹터 순).
+  - `insider-form4.ts`의 직책 조회 결과를 (이름, 티커) 기준으로 실행 간
+    영속 캐시하는 안 — 현재는 한 번의 `collectForTicker` 호출 내에서만
+    캐시되고 다음 날 실행에서는 다시 SEC를 조회함. 다음 병목 후보.
 
 ---
 

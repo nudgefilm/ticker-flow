@@ -6,6 +6,26 @@ export interface CollectResult {
   [key: string]: unknown;
 }
 
+// 외부 API(Finnhub 등) 응답이 실패했을 때 "스킵"으로만 뭉뚱그리면 rate limit인지
+// 진짜 데이터가 없는지 구분할 수 없다. 종목별 순차 호출 루프(insider.ts, news.ts
+// 등)에서 실패 사유를 집계해 CollectResult에 skipReasons로 남긴다.
+export type SkipReason = "rate_limit" | "auth_error" | "not_found" | "server_error" | "other";
+
+export function classifyHttpSkipReason(status: number): SkipReason {
+  if (status === 429) return "rate_limit";
+  if (status === 401 || status === 403) return "auth_error";
+  if (status === 404) return "not_found";
+  if (status >= 500) return "server_error";
+  return "other";
+}
+
+export function addSkipReason(
+  tally: Partial<Record<SkipReason, number>>,
+  reason: SkipReason
+): void {
+  tally[reason] = (tally[reason] ?? 0) + 1;
+}
+
 export const COLLECT_JOBS = [
   "profile",
   "filings",
