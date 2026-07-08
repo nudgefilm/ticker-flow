@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-07-09 · 세션 86
+
+### Resend 포워딩 빈 메일 버그 완전 해결(API 키 권한 검증 포함), Finnhub Free 플랜 실측 검증 및 CLAUDE.md 오기 정정, insider_trades 12일 정체 근본 원인 발견·수정(수집 파이프라인 안정성 전반 개선), 랜딩 히어로 문구 2차 수정
+
+**Resend 포워딩 이메일 "빈 내용" 버그 후속 — API 키 권한 검증 (`src/app/api/webhooks/resend/route.ts`)**
+- 전 세션에서 파싱 로직은 수정했으나, 당시 API 키가 "발송 전용" 권한이라 본문 조회(`GET /emails/receiving/{id}`)가 거부되는 것을 확인해 사용자에게 권한 승격 요청
+- 사용자가 Resend 대시보드에서 Full access로 전환 후, 토큰 값이 바뀌었는지(안 바뀜 확인 — `.env.local`/Vercel 값 그대로 사용 가능) + 실제 수신 목록 조회(`receiving.list()`)로 권한 정상 작동을 실측 확인
+- 실제 테스트 메일을 `support@tickerflow.net`으로 발송해 Resend 인바운드 수신 확인 → 프로덕션 웹훅에 실제 email_id로 직접 요청해 `{"ok":true}` 응답 확인. 최종 수신함 확인은 사용자에게 위임(에이전트가 Gmail 접근 불가)
+
+**TickerFlow 월간 비용 구조 추산**
+- 실제 프로덕션 DB(유저 4명, Pro 2명, 티커 8,604개, 최근 7일 뉴스 1,934건)와 Claude/Finnhub/FMP/Supabase/Vercel/Resend 최신 가격을 조합해 추산 — Claude API는 번역 파이프라인 위주로 월 $15~25 수준, 병목은 Finnhub·FMP 외부 데이터 구독료(월 $100~250 추정, 실제 계약 확인 필요)
+
+**Finnhub 요금제 실측 검증 + CLAUDE.md 오기 정정**
+- 사용자가 Finnhub 대시보드에서 실제로는 Free 플랜임을 확인 — CLAUDE.md 자체에는 "Finnhub Premium" 문구가 없었고, 전 턴 비용 추산 답변에서 에이전트가 임의로 추측해 언급한 표현이었음을 확인 후 정정
+- 사용 중인 6개 엔드포인트(`insider-transactions`/`company-news`/`calendar/earnings`/`news`/`recommendation`/`profile2`) 전부 Free 플랜에서 정상 호출 실측 확인, 분당 60회 제한을 `x-ratelimit-remaining` 헤더로 실측
+- CLAUDE.md 5번 섹션에 Finnhub를 "Free 플랜"으로 명시, 경제지표는 Finnhub가 아니라 FRED API가 제공한다는 것도 함께 바로잡음(같은 표를 보다가 발견한 별도 오류)
+
+**insider_trades 12일 정체 근본 원인 발견·수정 (`src/lib/collect/insider.ts`, `news.ts`, `earnings.ts`, 신규 `limits.ts`)** — 이번 세션 핵심 작업
+- 증상: `insider_trades` 최신 데이터가 2026-06-26 이후 갱신 안 됨. Finnhub 요금제 문제로 의심됐으나, 실측 결과 `/api/collect/insider`를 직접 호출하면 120초+ 무응답 — `maxDuration`(300초) 타임아웃이 원인
+- 정확한 원인: Finnhub `/stock/insider-transactions`는 종목당 전체 Form 4 거래 히스토리를 반환(NVDA·TSLA 등 대형주는 100건 이상) — 2026-07-03 추가된 SEC Form 4 직책 조회(`insider-form4.ts`)가 거래 건마다 실행되면서 대형주 몇 개만으로 종목당 수십 초 누적. 2026-07-04 거래량·섹터 상위 종목까지 수집 대상에 합류해 대상 풀이 150개 이상으로 커진 것도 함께 작용. `/api/collect/insider` 라우트가 `withCollectRunLog`를 안 써서 크론 실행 결과가 `collect_runs`에 전혀 기록되지 않아 조기 발견도 늦어졌음
+- 수정: `limits.ts` 신설(`INSIDER_LOOKBACK_DAYS=30`, `MAX_TICKERS_PER_RUN=30` 중앙 관리, insider.ts·news.ts 공유), 최근 공시 종목을 최우선으로 채운 뒤 상한을 적용하도록 순서 재정렬(공시 트리거 종목이 배열 끝에 밀려 상한에서 잘리지 않도록)
+- 같은 원인 계열로 `news`·`earnings` 크론도 `collect_runs`에 `running` 상태로 영구 정체돼 있던 것을 함께 발견·수정: `earnings.ts`는 30일 캘린더 1,500건을 행 단위 순차 upsert하던 것을 배치 upsert(500건 청크)로 전환(라우트에 `maxDuration` 설정 자체도 누락돼 있었음). 배치 전환 중 Finnhub가 동일 (ticker, report_date)를 중복 반환해 `ON CONFLICT DO UPDATE command cannot affect row a second time` 오류가 발생 — Map으로 사전 dedupe해 해결
+- 실측 개선: insider 37초, earnings 3.5초, news 131초(전부 300초 이내로 안정화)
+- 부가 개선: `/api/collect/insider`·`watchlist-ticker`·`watchlist-tickers` 라우트에 `withCollectRunLog` 적용해 크론 결과가 `collect_runs`에 기록되도록 통일, Finnhub 비200 응답을 rate_limit/auth_error/not_found/server_error로 세분화(`classifyHttpSkipReason`)해 이후 "스킵"이 rate limit 때문인지 진짜 데이터 없음인지 구분 가능하도록 개선
+- 코드 리뷰 피드백 반영: `RECENT_DAYS`/`MAX_TICKERS` 하드코딩값을 `limits.ts`로 즉시 분리(운영 중 조정 시 이 파일만 수정하면 됨). 대상 종목 우선순위에 "최근 실적 발표 종목" 추가하는 안과 SEC 직책 조회 영속 캐시는 스코프가 커서 백로그로 보류(CLAUDE.md에 기록)
+
+**랜딩 히어로 라벨 문구 2차 수정 (`src/app/page.tsx`)**
+- "미국 기업 변화" → "미국 기업 변화 탐지 플랫폼"
+
+**빌드 검증**: 매 단계 `pnpm build` 통과(postbuild 웹훅 검증 포함). insider/earnings/news 세 엔드포인트 모두 로컬에서 실제 Finnhub/SEC API로 재현·수정 확인 후 배포, Vercel 배포 로그·프로덕션 curl로 반영 여부 재확인.
+
+### 다음 작업 예정
+- 대상 종목 우선순위 재편(최근 공시 → watchlist → 최근 실적 발표 → TOP30 → 거래량 → 섹터) — 현재는 최근 실적 발표 카테고리가 없음
+- `insider-form4.ts`의 SEC 직책 조회 결과를 (이름, 티커) 기준으로 실행 간 영속 캐시 — 현재는 한 번의 `collectForTicker` 호출 내에서만 캐시되고 다음 날 실행에서는 다시 SEC를 조회함. 다음 병목 후보
+- Finnhub Free 플랜 분당 60회 제한 — 지금은 종목 상한(30)으로 여유 있지만, 와치리스트·공시 증가 시 재발 가능성 있어 모니터링 필요
+
+---
+
 ## 2026-07-08 · 세션 85
 
 ### 어드민 "Pro 수동 부여" 미구현 버그 수정(기간별 만료 관리 포함), 블로그 초안 생성 "오늘의 기업동향" 통합 포스팅으로 전환(SNS 요약 추가), Resend 웹훅 트레일링 슬래시 308 리다이렉트 버그 수정 + 재발 방지 자동 검증, 랜딩 히어로 라벨 문구 수정
