@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { generateBlogDraft, BLOG_DRAFT_TYPES, type BlogDraftType } from "@/lib/collect/blog-draft";
+import { generateBlogDraft } from "@/lib/collect/blog-draft";
 
-const VALID_TYPES = new Set(BLOG_DRAFT_TYPES.map((t) => t.id));
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -12,12 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const type = req.nextUrl.searchParams.get("type") as BlogDraftType | null;
-  if (!type || !VALID_TYPES.has(type)) {
-    return NextResponse.json({ error: "유효하지 않은 타입입니다." }, { status: 400 });
-  }
-
-  const result = await generateBlogDraft(type);
+  const result = await generateBlogDraft();
   if (!result.ok) return NextResponse.json(result, { status: 500 });
   return NextResponse.json(result);
 }

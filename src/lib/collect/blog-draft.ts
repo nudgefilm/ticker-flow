@@ -2,45 +2,30 @@ import { gatherDigestData } from "./digest";
 import type { DigestData, Top30TagItem } from "@/lib/email/templates";
 
 // 이 모듈이 생성하는 텍스트는 어드민 내부 도구 결과물이 아니라, 검수 후 그대로
-// 외부(네이버 블로그 등)에 게시될 콘텐츠다. CLAUDE.md 18항의 "어드민 전용
-// 규제 예외" 대상이 아니므로, 일반 CLAUDE.md 원칙(6항 투자 권유 금지, 8항
-// "AI" 단어 금지, 14항 사실 서술체 원칙)을 다른 사용자 노출 화면과 동일하게
-// 그대로 적용해야 한다.
+// 외부(네이버 블로그, X/Threads/LinkedIn 등)에 게시될 콘텐츠다. CLAUDE.md 18항의
+// "어드민 전용 규제 예외" 대상이 아니므로, 일반 CLAUDE.md 원칙(6항 투자 권유
+// 금지, 8항 "AI" 단어 금지, 14항 사실 서술체 원칙)을 다른 사용자 노출 화면과
+// 동일하게 그대로 적용해야 한다.
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
 // 대시보드 화면용 표준 면책 문구("본 서비스는...")는 서비스 UI를 지칭하는
 // 표현이라 블로그 콘텐츠 맥락에 맞지 않는다. 블로그·유튜브 쇼츠 등 서비스
 // 화면 밖으로 나가는 콘텐츠는 이 "TickerFlow Note" 문구를 사용한다
-// (CLAUDE.md 14항 참고 — 콘텐츠 성격별 면책 문구 구분 원칙).
+// (CLAUDE.md 14항 참고 — 콘텐츠 성격별 면책 문구 구분 원칙). 두 문구 모두
+// 모델이 생성하지 않고 코드에서 고정 상수로 삽입한다.
 const DISCLAIMER =
   "TickerFlow Note\n" +
   "이 글은 미국 기업의 공시와 시장 데이터를 기반으로 주요 변화를 정리한 콘텐츠입니다.\n" +
   "TickerFlow는 공개된 데이터를 바탕으로 기업 활동과 시장 흐름을 모니터링하며, 특정 종목에 대한 투자 권유나 투자 자문을 제공하지 않습니다.\n" +
   "투자 판단은 다양한 정보를 함께 검토한 뒤 본인의 책임하에 결정하시기 바랍니다.";
 
-export type BlogDraftType =
-  | "daily-summary"
-  | "insider-buying"
-  | "earnings-surprise"
-  | "new-entries"
-  | "macro";
+// SNS 요약본은 글자수 제약이 커서 위 전체 문구 대신 축약 문구를 사용한다.
+const SHORT_DISCLAIMER = "\n\n※ 정보 제공 목적이며 투자 권유가 아닙니다. 투자 판단은 본인 책임입니다.";
 
-export const BLOG_DRAFT_TYPES: { id: BlogDraftType; label: string; desc: string }[] = [
-  { id: "daily-summary",     label: "데일리 요약",       desc: "뉴스레터 스타일 · 오늘 전체 핵심 변화" },
-  { id: "insider-buying",    label: "내부자 매수",       desc: "내부자 매수 개념 설명 + 오늘의 매수 기업" },
-  { id: "earnings-surprise", label: "실적 서프라이즈",   desc: "오늘 실적 발표·예상치 상회 기업에 집중" },
-  { id: "new-entries",       label: "TOP30 신규 진입",   desc: "TOP30(스크리너) 개념 설명 + 오늘 신규 진입 종목" },
-  { id: "macro",             label: "경제지표",          desc: "CPI·금리 등 시장 전체 거시 지표" },
-];
-
-const LENGTH_RANGE: Record<BlogDraftType, [number, number]> = {
-  "daily-summary":     [1200, 1800],
-  "insider-buying":    [700, 1200],
-  "earnings-surprise": [700, 1200],
-  "new-entries":       [600, 1000],
-  "macro":             [600, 900],
-};
+// 본문 목표 분량 — "오늘의 기업동향" 통합 포스팅 기준 1,600자 내외.
+const BODY_LENGTH_RANGE: [number, number] = [1400, 1900];
+const BODY_LENGTH_TARGET = 1600;
 
 // 카테고리는 자유 생성이 아니라 반드시 이 6개 중에서만 선택하도록 프롬프트에서 강제한다.
 const FIXED_CATEGORIES = ["기업 동향", "시장 흐름", "실적 발표", "경제지표", "TOP30 변동", "내부자 거래"];
@@ -54,42 +39,19 @@ function filterByTags(items: Top30TagItem[], tags: string[]): Top30TagItem[] {
 
 // ─── 이미지 프롬프트 (LLM 미사용 — 코드 템플릿 조합) ────────────────────────────
 
-const IMAGE_TEMPLATE: Record<BlogDraftType, { headline: string; theme: string; accent: string }> = {
-  "daily-summary": {
-    headline: "오늘의 나스닥 핵심 동향",
-    theme:    "종합 대시보드 스타일, 다크 테마, 미니멀 금융 UI",
-    accent:   "블루 (#60a5fa)",
-  },
-  "insider-buying": {
-    headline: "내부자 매수 스포트라이트",
-    theme:    "내부자 거래 리포트 스타일, 다크 네이비 배경",
-    accent:   "에메랄드 그린 (#34d399)",
-  },
-  "earnings-surprise": {
-    headline: "실적 서프라이즈 브리핑",
-    theme:    "실적 발표 차트 스타일, 막대그래프·화살표 그래픽",
-    accent:   "퍼플 (#c084fc)",
-  },
-  "new-entries": {
-    headline: "TOP30 신규 진입 종목",
-    theme:    "랭킹보드 스타일, 순위표 그래픽",
-    accent:   "앰버 (#fbbf24)",
-  },
-  "macro": {
-    headline: "이번 주 경제지표 브리핑",
-    theme:    "게이지 차트 스타일, 매크로 대시보드",
-    accent:   "레드 (#f87171)",
-  },
+const IMAGE_TEMPLATE = {
+  headline: "오늘의 나스닥 기업동향",
+  theme:    "종합 대시보드 스타일, 다크 테마, 미니멀 금융 UI",
+  accent:   "블루 (#60a5fa)",
 };
 
-/** 글 타입별 고정 구조(Headline/Subtitle/Theme/Accent)에 그날의 핵심 키워드만 삽입한다. */
-function buildImagePrompt(type: BlogDraftType, kstDate: string, dashboardKeyword: string): string {
-  const t = IMAGE_TEMPLATE[type];
+/** 고정 구조(Headline/Subtitle/Theme/Accent)에 그날의 핵심 키워드만 삽입한다. */
+function buildImagePrompt(kstDate: string, dashboardKeyword: string): string {
   return [
-    `Headline: ${t.headline}`,
+    `Headline: ${IMAGE_TEMPLATE.headline}`,
     `Subtitle: ${kstDate}`,
-    `Theme: ${t.theme}`,
-    `Accent: ${t.accent}`,
+    `Theme: ${IMAGE_TEMPLATE.theme}`,
+    `Accent: ${IMAGE_TEMPLATE.accent}`,
     `Dashboard: ${dashboardKeyword || "데이터 없음"}`,
   ].join("\n");
 }
@@ -122,15 +84,23 @@ const SHARED_PRINCIPLES = `원칙
   개념 설명은 1회만 간결하게 다루고, 이 글의 핵심 주제가 아닌 인접 개념은
   굳이 재설명하지 말고 필요하면 한 문장으로만 짧게 언급할 것.`;
 
+const TITLE_GUIDE = `제목 작성 지침
+- 단순히 수치나 종목명을 나열하는 제목은 금지합니다 (예: "오늘의 나스닥 동향: AAPL, MSFT 실적 발표").
+- 오늘 데이터 중 가장 특징적인 지점 하나를 골라, 질문형(예: "오늘 나스닥에서
+  이 기업에 무슨 일이?")·리스티클형(예: "오늘 나스닥에서 확인된 N가지
+  변화")·궁금증 유발형 중 하나의 방식으로 클릭을 유도하는 제목을 작성하세요.
+- 과장이나 자극적인 문구, 투자 권유로 해석될 수 있는 표현은 사용하지 마세요
+  (아래 "절대 금지 표현" 목록 참고).`;
+
 function outputFormatBlock(min: number, max: number): string {
   return `[TITLE]
-(블로그 제목 1줄, 30자 내외, 과장 없이 사실 위주)
+(블로그 제목 1줄, 30자 내외, 위 "제목 작성 지침"을 따를 것)
 
 [BODY]
-(본문 ${min}~${max}자 내외(공백 포함, 한국어 기준). 문단 구분은 빈 줄로. 마크다운 기호(#, **, - 등) 사용 금지, plain text만)
+(본문 ${min}~${max}자 내외(공백 포함, 한국어 기준). 문단 구분은 빈 줄로. 마크다운 기호(#, **, - 등)나 소제목 라벨을 그대로 쓰지 말고 자연스러운 문단으로만 구성. plain text만)
 
 [CATEGORIES]
-(반드시 다음 목록 중에서만 1~3개 선택, 쉼표로 구분. 목록에 없는 새 카테고리를 만들지 말 것: ${FIXED_CATEGORIES.join(", ")})
+(반드시 다음 목록 중에서만 1~2개 선택, 쉼표로 구분. 목록에 없는 새 카테고리를 만들지 말 것: ${FIXED_CATEGORIES.join(", ")})
 
 [HASHTAGS]
 (5~8개 내외, #으로 시작하는 해시태그를 공백으로 구분. 예: #미국주식 #나스닥 #TickerFlow. 본문에 언급된 종목이 있으면 관련 티커·기업명 해시태그도 포함할 것)`;
@@ -153,45 +123,86 @@ function macroLinesOf(data: DigestData): string {
     : "없음";
 }
 
-// ─── 타입별 프롬프트 빌더 ───────────────────────────────────────────────────────
+// ─── 통합 프롬프트 빌더 ─────────────────────────────────────────────────────────
 //
-// 각 타입은 관점을 완전히 분리한다 — 같은 데이터라도 어떤 슬라이스를 쓰는지,
-// 개념 설명을 포함하는지가 타입마다 다르다. 데이터가 부족하면(예: 오늘
-// 내부자 매수 공시가 없음) unavailable 메시지를 반환해 Haiku를 호출하지 않는다.
+// 예전에는 타입(데일리 요약/내부자 매수/실적 서프라이즈/신규 진입/경제지표)별로
+// 관점을 분리해 5개 글을 따로 생성했다. 지금은 이 모든 슬라이스를 한 번에
+// 모아 "오늘의 기업동향" 통합 글 하나로 구성한다 — 그날 데이터가 없는 슬라이스는
+// 프롬프트에 "없음"으로만 표시하고, 본문에서 해당 문단을 통째로 생략하도록
+// LLM에게 지시한다(억지로 채우지 않음).
 
-type BuildResult =
-  | { ok: true; prompt: string; tickers: string[]; dashboardKeyword: string }
-  | { ok: false; reason: string };
+interface UnifiedPromptResult {
+  prompt: string;
+  tickers: string[];
+  dashboardKeyword: string;
+}
 
-function buildDailySummary(data: DigestData): BuildResult {
-  const [min, max] = LENGTH_RANGE["daily-summary"];
+function buildUnifiedPrompt(data: DigestData): UnifiedPromptResult {
+  const [min, max] = BODY_LENGTH_RANGE;
+
   const top10Lines = [...data.top3, ...data.top4to10]
     .map((item) => `${item.rank}위 ${item.ticker}(${item.name}) — ${item.descriptions.join(", ")}`)
     .join("\n");
+
+  const featuredLine = data.featured
+    ? `${data.featured.ticker}(${data.featured.name}) — ${data.featured.descriptionKr}`
+    : "없음";
+
+  const insiderFiltered = filterByTags(data.top30Full, INSIDER_TAGS);
+  const insiderLines = insiderFiltered.length > 0
+    ? insiderFiltered
+        .map((item) => `${item.rank}위 ${item.ticker}(${item.name}) — ${item.tags.includes("insider_buy_large") ? "대규모 내부자 매수 확인" : "내부자 매수 확인"}`)
+        .join("\n")
+    : "없음";
+
+  const earningsFiltered = filterByTags(data.top30Full, EARNINGS_TAGS);
+  const earningsLines = earningsFiltered.length > 0
+    ? earningsFiltered
+        .map((item) => {
+          const desc = item.tags.includes("both_beat") ? "EPS·매출 예상치 상회"
+            : item.tags.includes("revenue_beat") ? "매출 예상치 상회"
+            : "EPS 예상치 상회";
+          return `${item.rank}위 ${item.ticker}(${item.name}) — ${desc}`;
+        })
+        .join("\n")
+    : "없음";
+
   const newEntrantLines = data.newEntrants.length > 0
     ? data.newEntrants.map((e) => `${e.ticker}(${e.name}) — ${e.description}`).join("\n")
     : "없음";
+
   const droppedLine = data.dropped.length > 0
     ? data.dropped.map((d) => `${d.ticker}(${d.name})`).join(", ")
     : "없음";
 
   const prompt = `다음은 ${data.kstDate} 미국 나스닥 주요 기업 동향 데이터입니다. 이 데이터를 바탕으로
-네이버 블로그 등에 게시할 "데일리 요약" 블로그 포스트 초안을 작성하세요.
+네이버 블로그 등에 게시할 "오늘의 기업동향" 통합 블로그 포스트 초안을 작성하세요.
 
-관점: 뉴스레터 스타일. 오늘 하루 전체의 핵심 변화를 훑어주는 글입니다.
-개별 주제(내부자 매수, 실적, TOP30 신규 진입, 경제지표)를 깊게 파고들지
-말고, 오늘 하루를 조망하는 요약으로 작성하세요.
+관점: 오늘 하루 미국 나스닥에서 확인된 주요 변화를 종합적으로 정리하는
+글입니다. 아래 각 섹션의 데이터를 활용해 하나의 자연스러운 흐름으로
+구성하세요. "없음"으로 표시된 섹션은 본문에서 억지로 언급하지 말고 통째로
+생략하세요 (예: 내부자 매수 확인 종목이 없으면 내부자 거래 관련 문단을
+아예 쓰지 않아도 됩니다).
 
 [기업동향 TOP10]
 ${top10Lines}
 
+[오늘 가장 눈에 띈 기업]
+${featuredLine}
+
+[내부자 매수 확인 종목 (TOP30 내)]
+${insiderLines}
+
+[실적 예상치 상회 종목 (TOP30 내)]
+${earningsLines}
+
 [TOP30 신규 진입 종목]
 ${newEntrantLines}
 
-[TOP30 이탈 종목]
+[TOP30 이탈 종목 (참고)]
 ${droppedLine}
 
-[오늘 시장 변화]
+[오늘 시장 변화 건수]
 - 기관 관련 공시: ${data.marketChange.institutionalCount}건
 - 내부자 거래: ${data.marketChange.insiderCount}건
 - 실적 발표: ${data.earningsTotal}건 (예상치 상회 ${data.marketChange.earningsBeatCount}건)
@@ -207,7 +218,13 @@ ${data.marketSummary}
 ${macroLinesOf(data)}
 
 작성 지침
-- 분량은 본문 ${min}~${max}자 내외로 작성하세요. 이메일 다이제스트보다 길고 자세하게 서술하세요.
+- 분량은 본문 ${min}~${max}자 내외(목표 ${BODY_LENGTH_TARGET}자)로 작성하세요.
+- 글의 흐름은 다음 순서를 따르되, 소제목 텍스트 자체를 본문에 쓰지 말고 각
+  소주제에 맞는 문단으로 자연스럽게 이어서 구성하세요: 핵심 요약 → 오늘
+  가장 눈에 띈 기업 → 내부자 거래 → 실적 → TOP30 신규 진입 → 경제지표 →
+  마무리. 데이터가 "없음"인 섹션은 순서에서 통째로 건너뛰세요.
+
+${TITLE_GUIDE}
 
 ${outputFormatBlock(min, max)}
 
@@ -217,187 +234,57 @@ ${BANNED_BLOCK}
 
 ${FOOTER_RULES}`;
 
-  const tickers = [...data.top3, ...data.top4to10].slice(0, 3).map((i) => i.ticker);
-  return { ok: true, prompt, tickers, dashboardKeyword: tickers.join(" · ") };
+  const tickers = Array.from(
+    new Set([
+      ...(data.featured ? [data.featured.ticker] : []),
+      ...[...data.top3, ...data.top4to10].slice(0, 3).map((i) => i.ticker),
+    ])
+  );
+
+  return { prompt, tickers, dashboardKeyword: tickers.slice(0, 3).join(" · ") };
 }
 
-function buildInsiderBuying(data: DigestData): BuildResult {
-  const filtered = filterByTags(data.top30Full, INSIDER_TAGS);
-  if (filtered.length === 0) {
-    return { ok: false, reason: "오늘은 TOP30 내에서 내부자 매수 관련 공시가 확인되지 않았습니다. 다른 타입을 선택해보세요." };
-  }
+// ─── SNS 요약본 프롬프트 (본문 생성 후 2차 호출) ────────────────────────────────
 
-  const [min, max] = LENGTH_RANGE["insider-buying"];
-  const lines = filtered
-    .map((item) => `${item.rank}위 ${item.ticker}(${item.name}) — ${item.tags.includes("insider_buy_large") ? "대규모 내부자 매수 확인" : "내부자 매수 확인"}`)
-    .join("\n");
+function buildSnsPrompt(title: string, body: string): string {
+  return `다음은 이미 작성이 끝난 블로그 포스트입니다. 이 내용을 바탕으로 소셜미디어
+공유용 요약본 두 가지를 작성하세요.
 
-  const prompt = `다음은 ${data.kstDate} 미국 나스닥 TOP30 중 내부자 매수 관련 공시가 확인된
-종목 데이터입니다. 이 데이터를 바탕으로 네이버 블로그 등에 게시할 "내부자 매수"
-블로그 포스트 초안을 작성하세요.
+[블로그 제목]
+${title}
 
-관점: 교육 중심. 이 글을 처음 읽는 독자도 이해할 수 있도록, 도입부에서
-"내부자 매수(Insider Buying)"가 무엇이고 왜 시장 참여자들이 주목해서
-지켜보는 지표인지를 사실 기반으로 간결하게 설명하세요 (예: 임원·이사·주요
-주주가 SEC에 자사주 매수를 신고하는 Form 4 공시 제도라는 사실 설명 —
-"이것이 곧 주가 상승을 의미한다"는 식의 해석은 금지). 이후 본문에서
-오늘 확인된 내부자 매수 기업들을 사실 기반으로 정리하세요.
-
-[오늘 내부자 매수 확인 종목 (TOP30 내 ${filtered.length}건)]
-${lines}
-
-[참고: 오늘 전체 내부자 거래 공시 건수]
-${data.marketChange.insiderCount}건
+[블로그 본문]
+${body}
 
 작성 지침
-- 분량은 본문 ${min}~${max}자 내외로 작성하세요.
-
-${outputFormatBlock(min, max)}
-
-${SHARED_PRINCIPLES}
-
-${BANNED_BLOCK}
-
-${FOOTER_RULES}`;
-
-  const tickers = filtered.slice(0, 3).map((i) => i.ticker);
-  return { ok: true, prompt, tickers, dashboardKeyword: tickers.join(" · ") };
-}
-
-function buildEarningsSurprise(data: DigestData): BuildResult {
-  const filtered = filterByTags(data.top30Full, EARNINGS_TAGS);
-  if (filtered.length === 0) {
-    return { ok: false, reason: "오늘은 TOP30 내에서 실적 예상치 상회가 확인된 종목이 없습니다. 다른 타입을 선택해보세요." };
-  }
-
-  const [min, max] = LENGTH_RANGE["earnings-surprise"];
-  const lines = filtered
-    .map((item) => {
-      const desc = item.tags.includes("both_beat") ? "EPS·매출 예상치 상회"
-        : item.tags.includes("revenue_beat") ? "매출 예상치 상회"
-        : "EPS 예상치 상회";
-      return `${item.rank}위 ${item.ticker}(${item.name}) — ${desc}`;
-    })
-    .join("\n");
-
-  const prompt = `다음은 ${data.kstDate} 미국 나스닥 TOP30 중 실적 예상치 상회가 확인된
-종목 데이터입니다. 이 데이터를 바탕으로 네이버 블로그 등에 게시할 "실적
-서프라이즈" 블로그 포스트 초안을 작성하세요.
-
-관점: 실적 발표에만 집중하세요. 다른 주제(내부자 매수, TOP30 개념 설명,
-경제지표)는 다루지 마세요.
-
-[오늘 실적 예상치 상회 종목 (TOP30 내 ${filtered.length}건)]
-${lines}
-
-[참고: 오늘 전체 실적 발표 현황]
-- 총 실적 발표: ${data.earningsTotal}건
-- 예상치 상회: ${data.marketChange.earningsBeatCount}건
-
-작성 지침
-- 분량은 본문 ${min}~${max}자 내외로 작성하세요.
-
-${outputFormatBlock(min, max)}
+- [X] 섹션: X(트위터)·Threads에 게시할 요약. 간결하고 캐주얼한 톤으로, 오늘
+  가장 핵심적인 사실 1~2가지만 압축해서 전달하세요. 본문은 230자 내외로
+  작성하세요(면책 문구는 별도로 코드에서 추가되므로 포함하지 마세요). 마지막
+  줄에 X/Threads 관례에 맞는 해시태그 2~4개(예: #나스닥 #미국주식)를
+  포함하세요.
+- [LINKEDIN] 섹션: LinkedIn에 게시할 요약. 캐주얼한 구어체 대신 전문적이고
+  정보 전달 중심의 톤으로 작성하세요. 본문은 230자 내외로 작성하세요(면책
+  문구는 별도로 코드에서 추가되므로 포함하지 마세요). 마지막 줄에 LinkedIn
+  관례에 맞는 해시태그 2~4개(예: #미국주식 #글로벌증시)를 포함하세요.
+- 마크다운 기호(#, **, -, --- 등)나 구분선을 사용하지 마세요. 소제목 없이
+  문장으로만 자연스럽게 작성하세요. [X], [LINKEDIN] 섹션 헤더 자체를
+  제외하면 그 외에는 순수 텍스트와 마지막 줄의 해시태그만 있어야 합니다.
 
 ${SHARED_PRINCIPLES}
 
 ${BANNED_BLOCK}
 
-${FOOTER_RULES}`;
-
-  const tickers = filtered.slice(0, 3).map((i) => i.ticker);
-  return { ok: true, prompt, tickers, dashboardKeyword: tickers.join(" · ") };
+기타 규칙
+- "AI" 단어 사용 금지 (Claude, Anthropic 등 생성 도구명도 언급 금지)
+- 기관명·개인명 비노출
+- 반드시 [X], [LINKEDIN] 두 섹션 헤더를 그대로 포함해 응답할 것
+- 응답을 제출하기 전에, 위 "절대 금지 표현" 목록에 있는 단어나 그와 유사한
+  표현이 단 하나라도 남아있지 않은지 스스로 다시 확인할 것`;
 }
-
-function buildNewEntries(data: DigestData): BuildResult {
-  if (data.newEntrants.length === 0) {
-    return { ok: false, reason: "오늘은 TOP30 신규 진입 종목이 없습니다. 다른 타입을 선택해보세요." };
-  }
-
-  const [min, max] = LENGTH_RANGE["new-entries"];
-  const lines = data.newEntrants.map((e) => `${e.ticker}(${e.name}) — ${e.description}`).join("\n");
-  const droppedLine = data.dropped.length > 0
-    ? data.dropped.map((d) => `${d.ticker}(${d.name})`).join(", ")
-    : "없음";
-
-  const prompt = `다음은 ${data.kstDate} 미국 나스닥 TOP30 신규 진입 종목 데이터입니다. 이
-데이터를 바탕으로 네이버 블로그 등에 게시할 "TOP30 신규 진입" 블로그
-포스트 초안을 작성하세요.
-
-관점: 교육 중심. 도입부에서 "TOP30"이 무엇을 의미하는지 사실 기반으로
-간결하게 설명하세요 — 공시·실적·내부자 거래 등 공개된 여러 지표를 종합해
-매일 갱신되는, 최근 주요 변화가 있었던 나스닥 상장 기업 목록이라는 사실만
-서술하고, 구체적인 산출 방식(가중치·점수·알고리즘)은 언급하지 마세요.
-이후 오늘 신규 진입한 종목들을 사실 기반으로 정리하세요.
-
-[오늘 TOP30 신규 진입 종목]
-${lines}
-
-[오늘 TOP30 이탈 종목 (참고)]
-${droppedLine}
-
-작성 지침
-- 분량은 본문 ${min}~${max}자 내외로 작성하세요.
-
-${outputFormatBlock(min, max)}
-
-${SHARED_PRINCIPLES}
-
-${BANNED_BLOCK}
-
-${FOOTER_RULES}`;
-
-  const tickers = data.newEntrants.slice(0, 3).map((e) => e.ticker);
-  return { ok: true, prompt, tickers, dashboardKeyword: tickers.join(" · ") };
-}
-
-function buildMacro(data: DigestData): BuildResult {
-  if (data.macros.length === 0) {
-    return { ok: false, reason: "오늘은 표시할 경제지표 데이터가 없습니다. 다른 타입을 선택해보세요." };
-  }
-
-  const [min, max] = LENGTH_RANGE.macro;
-  const macroLines = macroLinesOf(data);
-
-  const prompt = `다음은 ${data.kstDate} 기준 미국 주요 경제지표 데이터입니다. 이 데이터를
-바탕으로 네이버 블로그 등에 게시할 "경제지표" 블로그 포스트 초안을
-작성하세요.
-
-관점: 개별 종목이 아니라 금리·물가 등 시장 전체 거시 지표 관점으로
-작성하세요. 특정 종목명은 다루지 마세요.
-
-[주요 경제지표]
-${macroLines}
-
-[참고: 오늘 시장 분위기]
-${data.marketMood}
-
-작성 지침
-- 분량은 본문 ${min}~${max}자 내외로 작성하세요.
-
-${outputFormatBlock(min, max)}
-
-${SHARED_PRINCIPLES}
-
-${BANNED_BLOCK}
-
-${FOOTER_RULES}`;
-
-  const dashboardKeyword = data.macros.map((m) => `${m.label.split(" ")[0]} ${m.value ?? "—"}${m.unit}`).join(" · ");
-  return { ok: true, prompt, tickers: [], dashboardKeyword };
-}
-
-const BUILDERS: Record<BlogDraftType, (data: DigestData) => BuildResult> = {
-  "daily-summary":     buildDailySummary,
-  "insider-buying":    buildInsiderBuying,
-  "earnings-surprise": buildEarningsSurprise,
-  "new-entries":       buildNewEntries,
-  "macro":             buildMacro,
-};
 
 // ─── Claude Haiku 호출 + 파싱 ───────────────────────────────────────────────────
 
-async function callHaikuForDraft(prompt: string): Promise<string | null> {
+async function callHaiku(prompt: string): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -435,7 +322,7 @@ function parseDraft(text: string): { title: string; body: string; categories: st
 
   const categoriesRaw = categoriesMatch?.[1]?.trim();
   const categories = categoriesRaw
-    ? categoriesRaw.split(",").map((c) => c.trim()).filter((c) => FIXED_CATEGORIES.includes(c)).slice(0, 3)
+    ? categoriesRaw.split(",").map((c) => c.trim()).filter((c) => FIXED_CATEGORIES.includes(c)).slice(0, 2)
     : [];
 
   const hashtagsRaw = hashtagsMatch?.[1]?.trim() ?? "";
@@ -445,6 +332,27 @@ function parseDraft(text: string): { title: string; body: string; categories: st
     .filter((h) => h.startsWith("#") && h.length > 1);
 
   return { title, body, categories, hashtags };
+}
+
+// 모델이 지시를 어기고 섹션 사이에 "---", "##" 같은 마크다운 구분선을 남기는
+// 경우를 대비한 방어적 정리 — 기호로만 이루어진 줄은 통째로 제거한다.
+function stripMarkdownArtifacts(text: string): string {
+  return text
+    .split("\n")
+    .filter((line) => !/^[\s#*_=-]+$/.test(line))
+    .join("\n")
+    .trim();
+}
+
+function parseSnsSummaries(text: string): { x: string; linkedin: string } | null {
+  const xMatch = text.match(/\[X\]\s*([\s\S]*?)(?=\[LINKEDIN\]|$)/i);
+  const linkedinMatch = text.match(/\[LINKEDIN\]\s*([\s\S]*)$/i);
+
+  const x = xMatch?.[1] ? stripMarkdownArtifacts(xMatch[1]) : "";
+  const linkedin = linkedinMatch?.[1] ? stripMarkdownArtifacts(linkedinMatch[1]) : "";
+  if (!x || !linkedin) return null;
+
+  return { x, linkedin };
 }
 
 /** LLM이 놓쳤을 수 있는 종목 해시태그를 보강하고, 5~8개 범위로 정리한다. */
@@ -464,7 +372,6 @@ function enrichHashtags(raw: string[], tickers: string[]): string[] {
 }
 
 export interface BlogDraft {
-  type: BlogDraftType;
   title: string;
   body: string;
   bodyLength: number;
@@ -472,6 +379,8 @@ export interface BlogDraft {
   hashtags: string[];
   imagePrompt: string;
   kstDate: string;
+  snsX: string;
+  snsLinkedIn: string;
 }
 
 export interface GenerateBlogDraftResult {
@@ -482,18 +391,14 @@ export interface GenerateBlogDraftResult {
 
 /**
  * 오늘의 TOP30/시장 변화 데이터(gatherDigestData — 이메일 다이제스트와 동일한
- * 데이터 소스)를 바탕으로 지정한 타입의 블로그 포스트 초안(제목/본문/카테고리/
- * 해시태그/이미지 프롬프트)을 생성한다. 발행은 이미지 첨부 포함 전체 수동으로
- * 진행하므로, 이 함수는 초안 텍스트 생성까지만 담당하고 별도 저장은 하지 않는다.
+ * 데이터 소스)를 바탕으로 "오늘의 기업동향" 통합 블로그 포스트 초안(제목/본문/
+ * 카테고리/해시태그/이미지 프롬프트)과, 이를 요약한 X·Threads/LinkedIn용 SNS
+ * 요약본을 생성한다. 발행은 이미지 첨부 포함 전체 수동으로 진행하므로, 이
+ * 함수는 초안 텍스트 생성까지만 담당하고 별도 저장은 하지 않는다.
  */
-export async function generateBlogDraft(type: BlogDraftType): Promise<GenerateBlogDraftResult> {
+export async function generateBlogDraft(): Promise<GenerateBlogDraftResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, error: "ANTHROPIC_API_KEY not set" };
-  }
-
-  const builder = BUILDERS[type];
-  if (!builder) {
-    return { ok: false, error: `알 수 없는 타입입니다: ${type}` };
   }
 
   const digestData = await gatherDigestData();
@@ -501,12 +406,9 @@ export async function generateBlogDraft(type: BlogDraftType): Promise<GenerateBl
     return { ok: false, error: "TOP30 데이터가 없습니다. 스크리너(top30) 실행 후 다시 시도하세요." };
   }
 
-  const built = builder(digestData);
-  if (!built.ok) {
-    return { ok: false, error: built.reason };
-  }
+  const { prompt, tickers, dashboardKeyword } = buildUnifiedPrompt(digestData);
 
-  const text = await callHaikuForDraft(built.prompt);
+  const text = await callHaiku(prompt);
   if (!text) {
     return { ok: false, error: "초안 생성에 실패했습니다 (Claude 호출 오류)." };
   }
@@ -516,14 +418,23 @@ export async function generateBlogDraft(type: BlogDraftType): Promise<GenerateBl
     return { ok: false, error: "생성된 응답 형식을 파싱하지 못했습니다. 다시 시도해주세요." };
   }
 
+  const snsText = await callHaiku(buildSnsPrompt(parsed.title, parsed.body));
+  if (!snsText) {
+    return { ok: false, error: "SNS 요약본 생성에 실패했습니다 (Claude 호출 오류)." };
+  }
+
+  const sns = parseSnsSummaries(snsText);
+  if (!sns) {
+    return { ok: false, error: "SNS 요약본 응답 형식을 파싱하지 못했습니다. 다시 시도해주세요." };
+  }
+
   const body = `${parsed.body}\n\n${DISCLAIMER}`;
-  const hashtags = enrichHashtags(parsed.hashtags, built.tickers);
-  const imagePrompt = buildImagePrompt(type, digestData.kstDate, built.dashboardKeyword);
+  const hashtags = enrichHashtags(parsed.hashtags, tickers);
+  const imagePrompt = buildImagePrompt(digestData.kstDate, dashboardKeyword);
 
   return {
     ok: true,
     draft: {
-      type,
       title: parsed.title,
       body,
       bodyLength: body.length,
@@ -531,6 +442,8 @@ export async function generateBlogDraft(type: BlogDraftType): Promise<GenerateBl
       hashtags,
       imagePrompt,
       kstDate: digestData.kstDate,
+      snsX: `${sns.x}${SHORT_DISCLAIMER}`,
+      snsLinkedIn: `${sns.linkedin}${SHORT_DISCLAIMER}`,
     },
   };
 }
