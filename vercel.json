@@ -91,6 +91,10 @@
     {
       "path": "/api/collect/top30-outcomes",
       "schedule": "40 13 * * *"
+    },
+    {
+      "path": "/api/collect/pro-expiry",
+      "schedule": "45 0 * * *"
     }
   ]
 }

@@ -593,3 +593,14 @@ CREATE INDEX IF NOT EXISTS idx_tickers_prices_last_attempted_at
 
 COMMENT ON COLUMN public.tickers.prices_last_attempted_at IS
   'runPricesCollect()가 이 티커에 대해 마지막으로 수집을 "시도"한 시각(성공/실패 무관). stock_prices 수집 큐(collected_at ASC NULLS FIRST) 우선순위 산정에 사용 — 티커별 단일 값이라 row 단위 collected_at의 과거 데이터 오염 문제가 없다.';
+
+
+-- ============================================================
+-- 19. profiles.pro_expires_at — 어드민 Pro 수동 부여 만료일 관리
+-- ============================================================
+-- 실행용 SQL은 supabase/pro-expires-at.sql 참고
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS pro_expires_at timestamptz;
+
+COMMENT ON COLUMN public.profiles.pro_expires_at IS
+  '어드민 "Pro 수동 부여"로 설정한 만료 시각. null=무기한. src/lib/collect/pro-expiry.ts의 매일 1회 강등 잡이 지난 시각의 pro 유저를 free로 되돌린다.';

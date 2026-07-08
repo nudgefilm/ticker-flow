@@ -427,6 +427,80 @@ export type Database = {
           },
         ]
       }
+      financial_metrics: {
+        Row: {
+          capital_expenditure: number | null
+          collected_at: string
+          currency: string | null
+          eps: number | null
+          eps_growth_yoy: number | null
+          fcf: number | null
+          fiscal_period: string | null
+          fiscal_year: number | null
+          id: string
+          operating_cash_flow: number | null
+          period_end: string
+          period_type: string
+          raw_payload: Json | null
+          revenue: number | null
+          revenue_growth_yoy: number | null
+          roe: number | null
+          roic: number | null
+          source_updated_at: string | null
+          ticker: string
+        }
+        Insert: {
+          capital_expenditure?: number | null
+          collected_at?: string
+          currency?: string | null
+          eps?: number | null
+          eps_growth_yoy?: number | null
+          fcf?: number | null
+          fiscal_period?: string | null
+          fiscal_year?: number | null
+          id?: string
+          operating_cash_flow?: number | null
+          period_end: string
+          period_type: string
+          raw_payload?: Json | null
+          revenue?: number | null
+          revenue_growth_yoy?: number | null
+          roe?: number | null
+          roic?: number | null
+          source_updated_at?: string | null
+          ticker: string
+        }
+        Update: {
+          capital_expenditure?: number | null
+          collected_at?: string
+          currency?: string | null
+          eps?: number | null
+          eps_growth_yoy?: number | null
+          fcf?: number | null
+          fiscal_period?: string | null
+          fiscal_year?: number | null
+          id?: string
+          operating_cash_flow?: number | null
+          period_end?: string
+          period_type?: string
+          raw_payload?: Json | null
+          revenue?: number | null
+          revenue_growth_yoy?: number | null
+          roe?: number | null
+          roic?: number | null
+          source_updated_at?: string | null
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_metrics_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
+          },
+        ]
+      }
       insider_trades: {
         Row: {
           filed_at: string | null
@@ -688,18 +762,21 @@ export type Database = {
           email: string | null
           id: string
           plan: string
+          pro_expires_at: string | null
         }
         Insert: {
           created_at?: string | null
           email?: string | null
           id: string
           plan?: string
+          pro_expires_at?: string | null
         }
         Update: {
           created_at?: string | null
           email?: string | null
           id?: string
           plan?: string
+          pro_expires_at?: string | null
         }
         Relationships: []
       }
@@ -833,6 +910,7 @@ export type Database = {
           market_cap: number | null
           name_en: string
           name_kr: string | null
+          prices_last_attempted_at: string | null
           sector: string | null
           ticker: string
           website: string | null
@@ -850,6 +928,7 @@ export type Database = {
           market_cap?: number | null
           name_en: string
           name_kr?: string | null
+          prices_last_attempted_at?: string | null
           sector?: string | null
           ticker: string
           website?: string | null
@@ -867,6 +946,7 @@ export type Database = {
           market_cap?: number | null
           name_en?: string
           name_kr?: string | null
+          prices_last_attempted_at?: string | null
           sector?: string | null
           ticker?: string
           website?: string | null
@@ -878,10 +958,12 @@ export type Database = {
           date: string
           earnings_score: number | null
           event_score: number | null
+          factor_log: Json | null
           final_score: number | null
           id: string
           market_score: number | null
           metadata: Json | null
+          model_version: string | null
           rank: number | null
           reason_tags: string[] | null
           smart_score: number | null
@@ -892,10 +974,12 @@ export type Database = {
           date?: string
           earnings_score?: number | null
           event_score?: number | null
+          factor_log?: Json | null
           final_score?: number | null
           id?: string
           market_score?: number | null
           metadata?: Json | null
+          model_version?: string | null
           rank?: number | null
           reason_tags?: string[] | null
           smart_score?: number | null
@@ -906,10 +990,12 @@ export type Database = {
           date?: string
           earnings_score?: number | null
           event_score?: number | null
+          factor_log?: Json | null
           final_score?: number | null
           id?: string
           market_score?: number | null
           metadata?: Json | null
+          model_version?: string | null
           rank?: number | null
           reason_tags?: string[] | null
           smart_score?: number | null
@@ -917,6 +1003,100 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      top30_entries: {
+        Row: {
+          created_at: string
+          entry_price: number | null
+          factor_log_snapshot: Json | null
+          final_score_snapshot: number | null
+          id: string
+          model_version: string
+          rank_snapshot: number | null
+          reason_tags_snapshot: Json | null
+          selected_date: string
+          ticker: string
+        }
+        Insert: {
+          created_at?: string
+          entry_price?: number | null
+          factor_log_snapshot?: Json | null
+          final_score_snapshot?: number | null
+          id?: string
+          model_version: string
+          rank_snapshot?: number | null
+          reason_tags_snapshot?: Json | null
+          selected_date: string
+          ticker: string
+        }
+        Update: {
+          created_at?: string
+          entry_price?: number | null
+          factor_log_snapshot?: Json | null
+          final_score_snapshot?: number | null
+          id?: string
+          model_version?: string
+          rank_snapshot?: number | null
+          reason_tags_snapshot?: Json | null
+          selected_date?: string
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "top30_entries_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
+          },
+        ]
+      }
+      top30_outcome_results: {
+        Row: {
+          benchmark_return_pct: number | null
+          close_price: number | null
+          created_at: string
+          days_after: number
+          entry_id: string
+          id: string
+          return_pct: number | null
+          selected_date: string
+          status: string
+          ticker: string
+        }
+        Insert: {
+          benchmark_return_pct?: number | null
+          close_price?: number | null
+          created_at?: string
+          days_after: number
+          entry_id: string
+          id?: string
+          return_pct?: number | null
+          selected_date: string
+          status?: string
+          ticker: string
+        }
+        Update: {
+          benchmark_return_pct?: number | null
+          close_price?: number | null
+          created_at?: string
+          days_after?: number
+          entry_id?: string
+          id?: string
+          return_pct?: number | null
+          selected_date?: string
+          status?: string
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "top30_outcome_results_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "top30_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       watchlist: {
         Row: {
@@ -1018,7 +1198,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      upsert_top30_with_entries: {
+        Args: { p_entries: Json; p_rows: Json; p_tracked_days: number[] }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

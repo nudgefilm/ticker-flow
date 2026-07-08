@@ -175,6 +175,11 @@ const TRIGGERS: Trigger[] = [
     label: "TOP30 성과 추적 업데이트",
     desc: "top30_entries 선정 시점 스냅샷 대비 30/60/90일 후 실제 가격 성과(return_pct)를 계산해 top30_outcome_results를 완료 처리합니다. 배점 미반영(2.5단계, 검증 인프라).",
   },
+  {
+    id: "pro-expiry",
+    label: "Pro 수동 부여 만료 강등",
+    desc: "profiles.pro_expires_at이 지난 Pro 유저를 free로 강등합니다. 무기한 부여(pro_expires_at=null)는 대상에서 제외됩니다.",
+  },
 ];
 
 function resultSummary(result: TriggerResult): string {
@@ -437,6 +442,7 @@ export default function TriggerPage() {
             { name: "티커플로우 스크리너 TOP30", schedule: "매일 13:35 UTC (22:35 KST)",   path: "/api/collect/top30"             },
             { name: "재무 품질 팩터 수집",   schedule: "매주 월 01:45 UTC (10:45 KST)", path: "/api/collect/financials"         },
             { name: "TOP30 성과 추적 업데이트", schedule: "매일 13:40 UTC (22:40 KST)",  path: "/api/collect/top30-outcomes"     },
+            { name: "Pro 수동 부여 만료 강등", schedule: "매일 00:45 UTC (09:45 KST)",    path: "/api/collect/pro-expiry"         },
           ].map((cron) => (
             <div key={cron.path} className="flex items-center justify-between px-4 py-3">
               <div>

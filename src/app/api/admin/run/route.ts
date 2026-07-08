@@ -30,6 +30,7 @@ import {
   runYoutubeChannelsCollect,
   runFinancialsCollect,
   runTop30OutcomesUpdate,
+  runProExpiryDowngrade,
 } from "@/lib/collect";
 
 // collect job id → 서비스 계층 직접 호출
@@ -60,6 +61,7 @@ const COLLECT_MAP: Record<CollectJob, CollectHandler> = {
   "youtube-channels":  runYoutubeChannelsCollect,
   "financials":        runFinancialsCollect,
   "top30-outcomes":    runTop30OutcomesUpdate,
+  "pro-expiry":        runProExpiryDowngrade,
 };
 
 export async function GET(req: NextRequest) {

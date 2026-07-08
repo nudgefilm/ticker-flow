@@ -1,14 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { IconShieldStar } from "@tabler/icons-react";
-
-type ProUser = {
-  id: string;
-  email: string | null;
-  created_at: string | null;
-  plan: string;
-};
+import ProGrantForm from "./pro-grant-form";
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-";
@@ -16,16 +9,20 @@ function formatDate(dateStr: string | null): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function formatExpiresAt(dateStr: string | null): string {
+  return dateStr ? formatDate(dateStr) : "무기한";
+}
+
 export default async function ProGrantPage() {
   const adminClient = createAdminClient();
 
   const { data } = await adminClient
     .from("profiles")
-    .select("id, email, created_at, plan")
+    .select("id, email, created_at, plan, pro_expires_at")
     .eq("plan", "pro")
     .order("created_at", { ascending: false });
 
-  const users = (data ?? []) as unknown as ProUser[];
+  const users = data ?? [];
 
   return (
     <div className="space-y-6">
@@ -43,33 +40,7 @@ export default async function ProGrantPage() {
       {/* 부여 폼 */}
       <div className="rounded-xl border border-white/[0.08] bg-[#111111] p-6">
         <h2 className="mb-4 text-sm font-medium text-white">Pro 플랜 부여</h2>
-        <div className="space-y-4 max-w-md">
-          <div>
-            <label className="mb-1.5 block text-xs text-[#a6a6a6]">이메일</label>
-            <input
-              type="email"
-              placeholder="user@example.com"
-              className="w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-sm text-white placeholder:text-[#a6a6a6] outline-none focus:border-white/20"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs text-[#a6a6a6]">기간</label>
-            <select className="w-full rounded-lg border border-white/[0.08] bg-[#0a0a0a] px-3 py-2 text-sm text-white outline-none focus:border-white/20">
-              <option>1개월</option>
-              <option>3개월</option>
-              <option>6개월</option>
-              <option>12개월</option>
-              <option>무기한</option>
-            </select>
-          </div>
-          <button
-            type="button"
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
-          >
-            <IconShieldStar size={16} stroke={1.5} />
-            Pro 부여
-          </button>
-        </div>
+        <ProGrantForm />
       </div>
 
       {/* Pro 유저 목록 */}
@@ -85,6 +56,7 @@ export default async function ProGrantPage() {
               <tr className="border-b border-white/[0.06]">
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">이메일</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">부여일</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">만료일</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[#a6a6a6]">플랜</th>
               </tr>
             </thead>
@@ -93,6 +65,7 @@ export default async function ProGrantPage() {
                 <tr key={user.id} className="border-b border-white/[0.04] hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3 text-white">{user.email ?? "-"}</td>
                   <td className="px-4 py-3 text-[#a6a6a6]">{formatDate(user.created_at)}</td>
+                  <td className="px-4 py-3 text-[#a6a6a6]">{formatExpiresAt(user.pro_expires_at)}</td>
                   <td className="px-4 py-3">
                     <span className="rounded-[4px] bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-400">
                       Pro

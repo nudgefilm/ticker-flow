@@ -24,3 +24,4 @@ export * from "./monthly-brief";
 export * from "./youtube-channels";
 export * from "./financials";
 export * from "./top30-outcomes";
+export * from "./pro-expiry";
