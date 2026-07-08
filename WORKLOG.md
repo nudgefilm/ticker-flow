@@ -6,6 +6,40 @@
 
 ---
 
+## 2026-07-08 · 세션 85
+
+### 어드민 "Pro 수동 부여" 미구현 버그 수정(기간별 만료 관리 포함), 블로그 초안 생성 "오늘의 기업동향" 통합 포스팅으로 전환(SNS 요약 추가), Resend 웹훅 트레일링 슬래시 308 리다이렉트 버그 수정 + 재발 방지 자동 검증, 랜딩 히어로 라벨 문구 수정
+
+**어드민 "Pro 수동 부여" 버튼 무반응 버그 수정 (`src/app/admin/users/pro-grant/`, `src/app/api/admin/pro-grant/route.ts`)**
+- 원인: git log로 확인한 결과 이 버튼은 2026-06-24 최초 생성 시점부터 `onClick` 자체가 없는 목업 UI였음("Mock UI for all sections pending real data integration" 커밋 메시지로 확인) — "예전엔 됐는데 갑자기 안 된다"가 아니라 처음부터 미구현 상태였던 케이스
+- `profiles.pro_expires_at`(timestamptz, null=무기한) 컬럼 신규 추가(`supabase/pro-expires-at.sql` + `schema.sql` 19번 섹션), `/api/admin/pro-grant`에서 이메일+기간(1/3/6/12개월/무기한) 받아 만료일 계산·저장
+- 만료 자동 강등: `src/lib/collect/pro-expiry.ts` + `/api/collect/pro-expiry`(매일 00:45 UTC cron 신규 등록) + 어드민 트리거 페이지에 수동 실행 버튼 추가
+- 폼을 정적 마크업에서 클라이언트 컴포넌트(`pro-grant-form.tsx`)로 분리해 실제 API 호출·`router.refresh()`로 목록 갱신되도록 연결, 목록 표에 만료일 컬럼 추가
+
+**블로그 초안 생성 기능 전면 개편 (`src/lib/collect/blog-draft.ts`)**
+- 기존 5개 타입(daily-summary/insider-buying/earnings-surprise/new-entries/macro) 개별 생성 방식을 폐지하고 "오늘의 기업동향" 통합 포스팅 단일 생성으로 전환 — 데이터가 없는 섹션(예: 오늘 내부자 매수 없음)은 LLM이 자연스럽게 생략하도록 프롬프트 재설계, 목표 분량 1,600자 내외
+- 제목 생성 지침 강화(질문형·리스티클형·궁금증 유발형으로 클릭 유도, 단순 수치 나열 금지), 카테고리 선택 1~3개→1~2개로 축소
+- 신규: 본문 생성 완료 후 2차 Claude Haiku 호출로 X/Threads·LinkedIn용 300자 내외 SNS 요약본 생성(플랫폼별 톤 구분, 축약 면책 문구는 코드에서 고정 삽입)
+- 실제 생성 테스트 중 SNS 요약에 `---`, `##` 같은 마크다운 구분선이 섞여 나오는 버그 발견 — 2차 프롬프트에 마크다운 금지 지시가 누락됐던 게 원인, 프롬프트 보강 + 파싱 단계에 기호만으로 된 줄을 걸러내는 방어 로직(`stripMarkdownArtifacts`) 추가
+- 어드민 UI(`/admin/ops/blog-draft`)도 5개 버튼 → 단일 생성 버튼으로 교체, SNS 요약 2종을 각각 복사 버튼과 함께 표시. 사용자 요청으로 본문 textarea에 `no-scrollbar` 적용(휠 스크롤은 유지)
+
+**Resend 웹훅 트레일링 슬래시 308 리다이렉트 버그 수정 (`next.config.ts`) + 재발 방지 자동 검증 (`scripts/verify-webhooks.ts`)**
+- 신고: `support@tickerflow.net` 문의 메일이 관리자에게 포워딩 안 됨, URL을 www로 바꿔도 308 계속 발생
+- curl 실측으로 원인 특정: 정확한 URL(`https://www.tickerflow.net/api/webhooks/resend`, 슬래시 없음)은 이미 200이었지만, 끝에 슬래시가 붙은 변형(`.../resend/`)은 www에서도 여전히 308 — Resend 같은 웹훅 발신자는 리다이렉트를 따라가지 않아 계속 실패
+- 이 308이 middleware.ts보다 먼저 실행되는 Next.js 저수준 라우팅 단계에서 발생한다는 걸 middleware에 디버그 로그를 심어 실측으로 확인(middleware 자체는 원인이 아니었음) — `middleware.ts`로는 가로챌 수 없어 `next.config.ts`에서 `skipTrailingSlashRedirect: true` + `/api/webhooks/*`는 rewrite로 통과, 그 외 전체 경로는 기존과 동일한 308 동작을 커스텀 redirect로 재현
+- 재발 방지: `scripts/verify-webhooks.ts` 신규(웹훅 라우트 자동 탐지 → 슬래시 유무 두 버전으로 요청해 3xx 감지 시 실패) + `postbuild`로 `pnpm build`마다 자동 실행되어 회귀 시 빌드·배포 자체를 막음. 실제로 next.config.ts를 예전 버그 상태로 되돌려 빌드해 가드레일이 정상 작동함을 확인 후 복구. CLAUDE.md 19항에 "웹훅 URL은 슬래시 없이 www 기준으로 등록" 원칙 문서화
+
+**랜딩 히어로 라벨 문구 수정 (`src/app/page.tsx`)**
+- 히어로 상단 라벨을 "미국 기업 동향" → "미국 기업 변화"로 변경
+
+**빌드 검증**: 매 단계 `pnpm build` 통과(신규 postbuild 검증 포함). Resend 웹훅 수정은 curl로 프로덕션 재검증, Vercel 배포 로그에서 신규 `postbuild` 스크립트가 정상 실행됨도 직접 확인.
+
+### 다음 작업 예정
+- 배포 후 어드민에서 실제 테스트 계정에 기간별 Pro 부여 → `pro_expires_at` 저장, 만료 강등 크론 실제 동작 확인 필요
+- 블로그 초안 "오늘의 기업동향" 본문에 "주목을 받은" 표현이 등장 — 금지어 목록의 "주목할 만한"과는 다른 표현이라 통과되지만, 더 엄격하게 막고 싶다면 "주목" 단독 표현도 금지어 목록에 추가 검토
+
+---
+
 ## 2026-07-08 · 세션 84
 
 ### 랜딩/결제/이메일 카피 수정, 대시보드 MarketClock 위젯 신규 추가, 뉴스·공시 피드 버그 다발 수정(요약 누락·스크롤·로딩 지연), 어드민 블로그 초안 생성 기능 신규 추가
