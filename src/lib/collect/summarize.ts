@@ -7,6 +7,9 @@ const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 // 번역이 밀려 누적됨 — /api/collect/news(시간당 1회) + /api/translate(20분당
 // 1회, 시간당 3회) 합산 처리량을 시간당 80건 → 160건으로 상향.
 const BATCH_LIMIT = 40;
+// 와치리스트 종목 뉴스 백로그가 40건을 다 채우면 티커 없는 일반 시장 뉴스(지수
+// 동향, 거시경제 전망 등)가 무기한 밀리는 문제(2026-07-09 확인) 방지용 최소 예약 슬롯.
+const MIN_GENERAL_NEWS_SLOTS = 10;
 
 type AdminClient = SupabaseClient<any, any, any>;
 
@@ -138,10 +141,11 @@ async function fetchNewsRows(
     return data ?? [];
   }
 
+  const priorityLimit = Math.max(limit - MIN_GENERAL_NEWS_SLOTS, 0);
   const { data: priority } = await base
     .in("ticker", priorityTickers)
     .order("published_at", { ascending: false })
-    .limit(limit);
+    .limit(priorityLimit);
 
   const priorityRows = priority ?? [];
   const remaining = limit - priorityRows.length;
