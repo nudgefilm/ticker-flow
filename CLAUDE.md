@@ -673,3 +673,28 @@ WORKLOG.md에 세션이 30개를 초과하면, 가장 오래된 30개 세션을 
   노출 API·화면에 절대 포함하지 않는다.
 * `weights.ts`의 `SCREENER_WEIGHTS` `active` 플래그는 2.5단계에서 변경하지
   않는다.
+
+---
+
+# 19. 웹훅 라우트 운영 원칙
+
+2026-07-08 Resend 웹훅(`/api/webhooks/resend`)이 트레일링 슬래시 때문에
+www 도메인에서도 308을 반환해, 리다이렉트를 따라가지 않는 Resend가 계속
+수신에 실패한 사고가 있었다(`next.config.ts`의 `skipTrailingSlashRedirect` +
+`/api/webhooks/:path*` rewrite로 수정, `scripts/verify-webhooks.ts`로
+재발 방지 자동 검증 추가).
+
+* 신규 웹훅 라우트(`src/app/api/webhooks/<name>/route.ts`)를 추가할 때,
+  `next.config.ts`의 트레일링 슬래시 rewrite 규칙은 `/api/webhooks/:path*`
+  패턴으로 `/api/webhooks/` 하위 전체를 이미 커버하므로 새 경로를 위한
+  별도 조치가 필요 없다. 이 사실을 몰라서 매번 다시 확인하는 혼동을
+  방지하기 위해 명시적으로 기록한다.
+* 외부 서비스(Resend, Polar, Paddle 등)에 웹훅 URL을 등록할 때는 항상
+  ① 트레일링 슬래시 없는 형태로, ② `www` 서브도메인 기준으로 등록한다.
+  apex 도메인(`tickerflow.net`)은 `www.tickerflow.net`으로 308
+  리다이렉트되는데, 웹훅 발신자는 대부분 리다이렉트를 따라가지 않으므로
+  apex로 등록하면 반드시 실패한다.
+* `pnpm build` 시 `postbuild`로 `scripts/verify-webhooks.ts`가 자동
+  실행되어, 웹훅 경로 중 하나라도 트레일링 슬래시 유무에 따라 3xx를
+  반환하면 빌드(및 Vercel 배포)가 실패한다. 프로덕션에 대해 직접 확인하려면
+  `pnpm run verify:webhooks -- --url=https://www.tickerflow.net`을 실행한다.

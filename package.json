@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "tsx scripts/verify-webhooks.ts",
     "start": "next start",
     "lint": "eslint",
+    "verify:webhooks": "tsx scripts/verify-webhooks.ts",
     "gen:types": "npx --yes supabase@latest gen types typescript --project-id bjyceygtamogiikjedlu > src/types/supabase.ts"
   },
   "dependencies": {
@@ -38,6 +40,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.23.0",
     "typescript": "^5"
   }
 }
