@@ -25,7 +25,7 @@ export function SnapshotInsider({
       {trades.length === 0 ? (
         <p className="text-sm text-[#a6a6a6]">최근 내부자 거래 내역이 없습니다.</p>
       ) : (
-        <ScrollHintList maxHeight={320}>
+        <ScrollHintList maxHeight={430}>
           <ul className="divide-y divide-white/[0.06]">
             {trades.slice(0, 10).map((t) => {
               const buy = t.type === "매수";
