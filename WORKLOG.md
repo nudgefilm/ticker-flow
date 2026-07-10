@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-07-11 · 세션 98
+
+### 텔레그램 발송 죽은 코드 삭제 (telegram.ts, telegram-digest.ts)
+
+**삭제: `src/lib/notify/telegram.ts`, `src/lib/notify/telegram-digest.ts`**
+- 배경: 세션97 TOP10/TOP30 전수 점검에서 `telegram.ts`를 "cron/COLLECT_MAP에
+  연결 안 된 비활성 코드"로 판단해 TOP10 로직만 우선 정리했으나, 사용자
+  확인 결과 텔레그램 연동 자체가 의도적으로 완전히 끊긴 상태였음. 실제로
+  `/api/collect/telegram`, `/api/collect/telegram-digest` 라우트 둘 다
+  `runTelegramNotify()`/`runTelegramDigest()`를 호출하지 않고
+  `{ok:false, disabled:true, error:"텔레그램 발송이 중단되었습니다."}`를
+  즉시 반환하도록 이미 막혀 있었음(vercel.json cron 목록에도 없음) — 즉
+  두 lib 파일은 어디서도 호출될 수 없는 완전한 죽은 코드였음.
+- 다른 파일에서의 import 여부 확인(`@/lib/notify/telegram*` 참조 없음) 후
+  두 파일 삭제. 라우트 파일(`/api/collect/telegram`,
+  `/api/collect/telegram-digest`)은 이 lib를 이미 import하지 않고 있어
+  삭제 영향 없음 — 라우트 자체는 이번 요청 범위가 아니라 그대로 유지.
+- `tsc --noEmit` 통과 확인.
+
 ## 2026-07-11 · 세션 97
 
 ### TOP10/TOP30 순위 노출 전수 점검 — BRIEF 포함 공개/사용자 화면 대상 규제 리스크 조치
