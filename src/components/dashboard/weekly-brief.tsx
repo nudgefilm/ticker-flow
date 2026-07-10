@@ -17,11 +17,13 @@ import {
 const WEEKLY_ACCENT = "#60a5fa";
 const WEEKLY_HEADER_BG = "bg-blue-500/[0.05]";
 
+// 2026-07-11: "TOP10"/"TOP30 진입" 표현 제거(세션97 규제 리스크 점검) —
+// TickerFlow 자체 스코어링 기반 순위·선정 결과를 노출하지 않도록 문구를 정리.
 const WEEKLY_SECTION_TITLES = [
-  "이번 주 기업동향 TOP10",
+  "이번 주 활동이 많았던 기업",
   "이번 주 시장 요약",
   "이번 주 시장 변화",
-  "이번 주 처음 TOP30에 진입한 기업",
+  "이번 주 새로 활동이 확인된 기업",
   "지난주 대비 변화",
   "이번 주 섹터 동향",
   "이번 주 주요 공시",
@@ -87,7 +89,7 @@ export default async function WeeklyBrief({ isPro }: { isPro: boolean }) {
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <BriefCard title="이번 주 기업동향 TOP10">
+        <BriefCard title="이번 주 활동이 많았던 기업">
           <BriefCompanyList items={topCompanies} />
         </BriefCard>
         <BriefCard title="이번 주 시장 변화">
@@ -96,7 +98,7 @@ export default async function WeeklyBrief({ isPro }: { isPro: boolean }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <BriefCard title="이번 주 처음 TOP30에 진입한 기업">
+        <BriefCard title="이번 주 새로 활동이 확인된 기업">
           <BriefCompanyList items={newEntrants} />
         </BriefCard>
         <BriefCard title="이번 주 섹터 동향">

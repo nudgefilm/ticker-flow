@@ -149,11 +149,16 @@ export function inboundForwardEmail(from: string, subject: string, body: string)
 }
 
 // ─── 다이제스트 v5 타입 ───────────────────────────────────────────────────────
+//
+// 2026-07-11: TickerFlow 자체 스코어링(top30_daily.rank) 기반 필드를 전부
+// 활동 건수(공시+뉴스+내부자매수) 기반으로 교체했다(세션97 규제 리스크
+// 점검 — 자본시장법 유사투자자문업 "가치에 관한 조언" 소지 제거). "N위"
+// 순위 대신 실제 건수(activityCount)를 그대로 노출한다.
 
 export type DigestTopItem = {
   ticker: string;
   name: string;
-  rank: number;
+  activityCount: number;
   descriptions: string[];
 };
 
@@ -175,12 +180,12 @@ export type DroppedItem = {
   name: string;
 };
 
-export type RankMoverItem = {
+export type ActivityMoverItem = {
   ticker: string;
   name: string;
-  prevRank: number;
-  currRank: number;
-  delta: number; // 양수 = 순위 상승(개선)
+  prevCount: number;
+  currCount: number;
+  delta: number; // 양수 = 활동 건수 증가
 };
 
 export type MarketChangeCounts = {
@@ -198,20 +203,27 @@ export type MacroItem = {
   unit: string;
 };
 
-// TOP30 전체(1~30위) + 원본 reason_tags — 이메일 카드에는 쓰이지 않고,
-// 블로그 초안 생성(blog-draft.ts)에서 타입별(내부자 매수/실적 등)로
-// 종목을 걸러낼 때만 사용한다.
-export type Top30TagItem = {
+// 오늘 내부자 매수/실적 상회가 확인된 기업 — 이메일 카드에는 쓰이지 않고,
+// 블로그 초안 생성(blog-draft.ts)에서 타입별로 종목을 걸러낼 때 사용한다.
+// 둘 다 원문 데이터(insider_trades.value, earnings.actual_eps 등)에서 직접
+// 계산한 사실이며, 스코어링 결과(reason_tags)를 참조하지 않는다.
+export type InsiderBuyItem = {
   ticker: string;
   name: string;
-  rank: number;
-  tags: string[];
+  isLarge: boolean; // 매수 총액 $1M 이상
+};
+
+export type EarningsBeatItem = {
+  ticker: string;
+  name: string;
+  epsBeat: boolean;
+  revenueBeat: boolean;
 };
 
 export type DigestData = {
   kstDate: string;
   headline: {
-    top30Count: number;
+    activeCompanyCount: number;
     newEntrantCount: number;
     institutionalCount: number;
     earningsBeatCount: number;
@@ -219,13 +231,14 @@ export type DigestData = {
   marketMood: string;
   top3: DigestTopItem[];
   top4to10: DigestTopItem[];
-  top30Full: Top30TagItem[];
+  insiderBuyToday: InsiderBuyItem[];
+  earningsBeatToday: EarningsBeatItem[];
   marketChange: MarketChangeCounts;
   earningsTotal: number;
   featured: FeaturedCompany | null;
   newEntrants: NewEntrantItem[];
   dropped: DroppedItem[];
-  rankMovers: RankMoverItem[];
+  activityMovers: ActivityMoverItem[];
   marketSummary: string;
   macros: MacroItem[];
 };
@@ -261,25 +274,25 @@ function digestCard(inner: string): string {
   return `<table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:16px" bgcolor="#1e1e1e">${inner}</td></tr></table>`;
 }
 
-// TOP3 — 큰 카드
+// 활동 상위 3개 — 큰 카드 (2026-07-11: "N위" 순위 배지 → 실제 활동 건수 배지로 교체)
 function digestTopBigCard(item: DigestTopItem): string {
   const bullets = item.descriptions.slice(0, 3)
     .map((d) => `<p style="margin:4px 0 0;font-size:14px;color:#bbbbbb;line-height:1.5">· ${escapeHtml(d)}</p>`)
     .join("");
   return `<table cellpadding="0" cellspacing="0" style="width:100%;margin-bottom:10px"><tr><td style="background:#1e1e1e;border:1px solid #3a3a3a;border-radius:10px;padding:16px" bgcolor="#1e1e1e">
     <p style="margin:0 0 6px;font-size:14px">
-      <span style="display:inline-block;background:#242424;color:#ffffff;font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;margin-right:8px">${item.rank}위</span>
+      <span style="display:inline-block;background:#242424;color:#ffffff;font-weight:700;font-size:12px;border-radius:999px;padding:2px 9px;margin-right:8px">${item.activityCount}건</span>
       ${digestStockLink(item.ticker, item.name)}
     </p>
     ${bullets}
   </td></tr></table>`;
 }
 
-// TOP4~10 — 컴팩트 로우
+// 활동 상위 4~10위 — 컴팩트 로우
 function digestTopCompactRow(item: DigestTopItem): string {
   const desc = item.descriptions[0] ? escapeHtml(item.descriptions[0]) : "최근 시장 변화 확인";
   return `<tr>
-    <td style="padding:9px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#666666;width:24px">${item.rank}</td>
+    <td style="padding:9px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#666666;width:32px">${item.activityCount}건</td>
     <td style="padding:9px 0 9px 8px;border-bottom:1px solid #3a3a3a">
       <p style="margin:0;font-size:14px">${digestStockLink(item.ticker, item.name)}</p>
       <p style="margin:2px 0 0;font-size:12px;color:#bbbbbb">${desc}</p>
@@ -351,17 +364,19 @@ function digestMacroSection(macros: MacroItem[]): string {
 }
 
 export function dailyDigestEmail(data: DigestData): string {
-  const { kstDate, headline, marketMood, top3, top4to10, marketChange, featured, newEntrants, dropped, rankMovers, marketSummary, macros } = data;
+  const { kstDate, headline, marketMood, top3, top4to10, marketChange, featured, newEntrants, dropped, activityMovers, marketSummary, macros } = data;
 
-  const headlineLine = `TOP30 ${headline.top30Count}건 · 신규진입 ${headline.newEntrantCount}건 · 기관편입 ${headline.institutionalCount}건 · 실적상회 ${headline.earningsBeatCount}건`;
+  // 2026-07-11: "TOP30 N건" 등 순위·선정 표현 제거 — 활동 기업 수 등 사실
+  // 집계만 표시(세션97 규제 리스크 점검).
+  const headlineLine = `활동 기업 ${headline.activeCompanyCount}개 · 신규 관측 ${headline.newEntrantCount}건 · 기관편입 ${headline.institutionalCount}건 · 실적상회 ${headline.earningsBeatCount}건`;
 
-  // ② 기업동향 TOP10
+  // ② 오늘 활동이 많았던 기업
   const top3Html = top3.map(digestTopBigCard).join("");
   const top4to10Html = top4to10.length > 0
     ? `<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${top4to10.map(digestTopCompactRow).join("")}</table>`
     : "";
 
-  // ⑤ TOP30 신규 진입
+  // ⑤ 오늘 새로 활동이 확인된 기업
   const newEntrantHtml = newEntrants.length > 0
     ? newEntrants.slice(0, 5).map((item) =>
         `<div style="padding:8px 0;border-bottom:1px solid #3a3a3a">
@@ -369,27 +384,27 @@ export function dailyDigestEmail(data: DigestData): string {
           <p style="margin:3px 0 0;font-size:12px;color:#bbbbbb">· ${escapeHtml(item.description)}</p>
         </div>`
       ).join("")
-    : `<p style="margin:0;font-size:14px;color:#bbbbbb">어제와 동일한 기업들이 TOP30에 유지되었습니다.</p>`;
+    : `<p style="margin:0;font-size:14px;color:#bbbbbb">어제와 비교해 새로 활동이 확인된 기업이 없습니다.</p>`;
 
-  // ⑥ 어제 대비 변화 — 이탈 + 순위 변화
+  // ⑥ 어제 대비 변화 — 활동 감소 + 활동 건수 변화
   const droppedLinks = dropped.length > 0
     ? dropped.slice(0, 5)
         .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#dddddd;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
         .join("")
     : `<span style="font-size:13px;color:#bbbbbb">없음</span>`;
 
-  const moverRows = rankMovers.length > 0
-    ? rankMovers.slice(0, 5).map((m) => {
+  const moverRows = activityMovers.length > 0
+    ? activityMovers.slice(0, 5).map((m) => {
         const up = m.delta > 0;
         const color = up ? "#6ee7b7" : "#f87171";
         const arrow = up ? "▲" : "▼";
         return `<tr>
           <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:13px">${digestStockLink(m.ticker, m.name)}</td>
-          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#dddddd;text-align:right">${m.prevRank}위 → ${m.currRank}위</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#dddddd;text-align:right">${m.prevCount}건 → ${m.currCount}건</td>
           <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:${color};text-align:right;width:48px">${arrow} ${Math.abs(m.delta)}</td>
         </tr>`;
       }).join("")
-    : `<tr><td style="padding:6px 0;font-size:13px;color:#bbbbbb">순위 변화가 크지 않았습니다.</td></tr>`;
+    : `<tr><td style="padding:6px 0;font-size:13px;color:#bbbbbb">활동 건수 변화가 크지 않았습니다.</td></tr>`;
 
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -422,9 +437,9 @@ export function dailyDigestEmail(data: DigestData): string {
       ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
       ${digestSpacer(24)}
 
-      <!-- ② 기업동향 TOP10 -->
+      <!-- ② 오늘 활동이 많았던 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("기업동향 TOP10")}
+        ${digestSecTitle("오늘 활동이 많았던 기업")}
         ${top3Html}
         ${top4to10Html}
       </td></tr></table>
@@ -442,9 +457,9 @@ export function dailyDigestEmail(data: DigestData): string {
         ${digestFeaturedSection(featured)}
       </td></tr></table>
 
-      <!-- ⑤ TOP30 신규 진입 -->
+      <!-- ⑤ 오늘 새로 활동이 확인된 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("TOP30 신규 진입")}
+        ${digestSecTitle("오늘 새로 활동이 확인된 기업")}
         ${digestCard(newEntrantHtml)}
       </td></tr></table>
       ${digestSpacer(24)}
@@ -453,9 +468,9 @@ export function dailyDigestEmail(data: DigestData): string {
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("어제 대비 변화")}
         ${digestCard(`
-          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">순위 변화</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동 건수 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
-          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">TOP30 이탈</p>
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동이 확인되지 않은 기업</p>
           <p style="margin:0">${droppedLinks}</p>
         `)}
       </td></tr></table>

@@ -47,7 +47,7 @@ export default async function MonthlyBrief() {
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <BriefCard title="이번 달 기업동향 TOP20">
+        <BriefCard title="이번 달 활동이 많았던 기업">
           <BriefCompanyList items={topCompanies} />
         </BriefCard>
         <BriefCard title="이번 달 시장 변화">
@@ -56,7 +56,7 @@ export default async function MonthlyBrief() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <BriefCard title="이번 달 처음 TOP30 진입 기업">
+        <BriefCard title="이번 달 새로 활동이 확인된 기업">
           <BriefCompanyList items={newEntrants} />
         </BriefCard>
         <BriefCard title="이번 달 섹터 동향">

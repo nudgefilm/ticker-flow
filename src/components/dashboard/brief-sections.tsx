@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type {
   BriefCompany,
   MarketChangeStats,
-  RankMoverItem,
+  ActivityMoverItem,
   SectorTrend,
   FilingHighlight,
   EarningsHighlight,
@@ -38,15 +38,18 @@ export function TickerLink({ ticker, name }: { ticker: string; name: string }) {
   );
 }
 
-// ── 기업 리스트 (TOP N / 신규 진입 공용) ────────────────────────────────────────
+// ── 기업 리스트 (활동 건수 상위 / 신규 관측 공용) ─────────────────────────────────
+//
+// 2026-07-11: 순위 번호(1, 2, 3...) 대신 실제 활동 건수를 그대로 보여준다 —
+// "왜 이 순서인지"를 숨긴 순위가 아니라, 보이는 숫자(건수) 그대로 정렬 기준이다.
 
-export function BriefCompanyList({ items, rankOffset = 1 }: { items: BriefCompany[]; rankOffset?: number }) {
+export function BriefCompanyList({ items }: { items: BriefCompany[] }) {
   if (items.length === 0) return <BriefEmpty />;
   return (
     <ul className="flex flex-col gap-3">
-      {items.map((item, i) => (
+      {items.map((item) => (
         <li key={item.ticker} className="flex items-start gap-3">
-          <span className="mt-0.5 w-5 shrink-0 text-xs text-[#666666]">{i + rankOffset}</span>
+          <span className="mt-0.5 w-12 shrink-0 text-xs text-[#666666]">{item.activityCount}건</span>
           <div className="min-w-0 flex-1">
             <p className="text-sm">
               <TickerLink ticker={item.ticker} name={item.name} />
@@ -99,20 +102,23 @@ export function BriefChangeBadges({ stats }: { stats: MarketChangeStats }) {
 }
 
 // ── 지난 기간 대비 변화 (주간 전용) ─────────────────────────────────────────────
+//
+// 2026-07-11: "N위 → M위" 순위 변화, "TOP30 이탈" 표현을 실제 활동 건수 변화로
+// 교체 — 스코어링 순위가 아니라 공시·뉴스·내부자매수 건수의 증가/감소만 보여준다.
 
 export function BriefPeriodChange({
   dropped,
   movers,
 }: {
   dropped: { ticker: string; name: string }[];
-  movers: RankMoverItem[];
+  movers: ActivityMoverItem[];
 }) {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#a6a6a6]">순위 변화</p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#a6a6a6]">활동 건수 변화</p>
         {movers.length === 0 ? (
-          <BriefEmpty text="순위 변화가 크지 않았습니다." />
+          <BriefEmpty text="활동 건수 변화가 크지 않았습니다." />
         ) : (
           <table className="w-full border-collapse text-sm">
             <tbody>
@@ -121,7 +127,7 @@ export function BriefPeriodChange({
                 return (
                   <tr key={m.ticker} className="border-t border-white/[0.06] first:border-t-0">
                     <td className="py-1.5"><TickerLink ticker={m.ticker} name={m.name} /></td>
-                    <td className="py-1.5 text-right text-xs text-[#a6a6a6]">{m.prevRank}위 → {m.currRank}위</td>
+                    <td className="py-1.5 text-right text-xs text-[#a6a6a6]">{m.prevCount}건 → {m.currCount}건</td>
                     <td className="py-1.5 pl-3 text-right text-xs" style={{ color: up ? "#6ee7b7" : "#f87171" }}>
                       {up ? "▲" : "▼"} {Math.abs(m.delta)}
                     </td>
@@ -133,7 +139,7 @@ export function BriefPeriodChange({
         )}
       </div>
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#a6a6a6]">TOP30 이탈</p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#a6a6a6]">활동이 확인되지 않은 기업</p>
         {dropped.length === 0 ? (
           <BriefEmpty text="없음" />
         ) : (

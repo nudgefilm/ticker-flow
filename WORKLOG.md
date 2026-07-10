@@ -6,6 +6,113 @@
 
 ---
 
+## 2026-07-11 · 세션 97
+
+### TOP10/TOP30 순위 노출 전수 점검 — BRIEF 포함 공개/사용자 화면 대상 규제 리스크 조치
+
+**배경**: TickerFlow TOP10/TOP30 스코어링(스마트머니 45%+실적품질 30%+기업이벤트
+15%+시장활동 5%+뉴스신뢰도 5%)은 "성장 유망주를 찾아내는" 종합 평가·선정
+로직. 어드민 내부 도구로 쓰는 것은 문제없으나, 그 결과를 "N위/TOP10/TOP30
+진입" 형태로 공개·사용자 화면(블로그, BRIEF, 이메일 다이제스트 등)에 발행하는
+것은 자본시장법 제101조 유사투자자문업의 "가치에 관한 조언"에 해당할 소지가
+있음. 금융위원회 법령해석 요청(고유번호 7909)의 사실관계에 이 기능이
+포함되어 있지 않아, 회신과 무관하게 즉시 자체 점검 필요.
+
+**점검 결과 — 전체 발견 위치(어드민 제외)**
+1. `src/app/page.tsx` + `src/components/landing-top10.tsx` — 랜딩(비로그인
+   공개) "오늘의 기업 동향 TOP10" 섹션, "N위" 배지. **조치 완료(팩트 카운트
+   기반 "최근 7일 활동이 많았던 기업"으로 재설계)**
+2. `src/lib/collect/blog-draft.ts` — 블로그 생성 프롬프트 내부 데이터
+   라벨·예시문에 "TOP10/TOP30/N위" 노출. **조치 완료**
+3. `src/lib/email/templates.ts`의 `dailyDigestEmail()` — Pro+가입7일이내
+   Free 전원에게 매일 발송 중인 활성 이메일. "TOP30 N건", "기업동향 TOP10",
+   "N위" 배지, "TOP30 신규 진입", "N위→M위", "TOP30 이탈" 전면 노출. **조치
+   완료(팩트 카운트 기반으로 재설계)**
+4. `src/app/(dashboard)/alerts/page.tsx` — 위 이메일 기능을 "TOP10" 문구로
+   설명(로그인 화면이나 이메일과 동급 취급 지시에 따라 조치 대상). **조치
+   완료**
+5. `src/components/dashboard/weekly-brief.tsx`, `monthly-brief.tsx`,
+   `brief-sections.tsx` + `src/lib/watchlist-brief.ts`,
+   `src/lib/collect/weekly-brief.ts`, `monthly-brief.ts` — Pro 게이팅된
+   /watchlist 화면. "이번 주 기업동향 TOP10", "이번 달 기업동향 TOP20",
+   "TOP30에 진입한 기업", "N위→M위" 순위 변화, "TOP30 이탈". **조치 완료
+   (팩트 카운트 기반으로 재설계)**
+6. `src/components/dashboard/ticker-badge.tsx` + `src/lib/collect/target-tickers.ts`
+   — 와치리스트 카드 "TOP30 선정" 배지(`getBadgeReasons`). **조치 완료(배지
+   자체 제거, volume/sector 배지는 유지 — 단일 객관 지표라 스코어링 결과가
+   아님)**
+7. `src/lib/notify/telegram.ts`의 `sendTelegramTop10`/`runTelegramNotify` —
+   "오늘의 기업 동향 TOP10"을 텔레그램으로 발송하는 함수. `COLLECT_MAP`/
+   `vercel.json` cron 어디에도 연결되지 않아 **현재 비활성(dead code)**이지만,
+   재활성화 시 리스크를 남기지 않기 위해 **조치 완료(동일한 팩트 카운트
+   기반으로 함께 정리)**.
+
+**문제 없음으로 확인(스코어링 미사용 또는 순위 비노출)**
+- `/watchlist`의 `TrendingCarousel`(`TrendingContent`) — 최근 7일 공시+뉴스
+  건수 단순 합산 상위 10개일 뿐 TickerFlow 가중치 스코어링과 무관, 화면에
+  순위 번호나 "TOP" 라벨 미노출.
+- `src/components/recent-changes.tsx`(랜딩 "최근 7일 주요 변화") — 최신순
+  정렬, 스코어링 미사용.
+- `src/components/dashboard/snapshot/stock-brief.tsx` + `src/lib/collect/brief.ts`
+  (종목별 BRIEF) — 순위/TOP 언급 없음.
+- `src/lib/notify/telegram-digest.ts` — 리스트 번호는 순번일 뿐 스코어링
+  순위 아님.
+
+**조치 완료 (즉시 교체 가능, 구조 변경 없음)**
+- `src/lib/collect/blog-draft.ts`: `BANNED_BLOCK`에 "TOP10/TOP30/N위/순위/
+  랭킹/선정/진입" 추가, 프롬프트 데이터 라벨 4곳("[기업동향 TOP10]" 등)과
+  "N위" 접두사 전부 제거, `ARTICLE_STRUCTURE_GUIDE` 예시문 3곳의 "TOP30"
+  표현 교체, `FIXED_CATEGORIES`의 "TOP30 변동"→"관측 종목 변동", `FOOTER_RULES`
+  자가검증 항목 추가.
+- `src/components/dashboard/ticker-badge.tsx`, `src/lib/collect/target-tickers.ts`:
+  `TickerBadgeReason`에서 `"top30"` 제거(volume/sector는 유지). 내부
+  수집 대상 확장용 `TargetTickerSets.top30` Set 자체는 그대로 둠(사용자
+  노출 배지에서만 뺐음).
+- `src/app/(dashboard)/alerts/page.tsx`: "TOP10"/"포착" 문구를 사실 나열형
+  문구로 교체.
+
+**구조 재설계 완료 (사용자 확인: "팩트 카운트로 재구성" 선택)**
+- `dailyDigestEmail()`(이메일), 주간/월간 BRIEF(`weekly-brief.tsx`/
+  `monthly-brief.tsx`/`brief-sections.tsx`/`watchlist-brief.ts`), 랜딩
+  `LandingTop10` — "상위 N개를 뽑아 순위·배지로 보여주는" 포맷 자체를
+  top30_daily(스코어링) 의존에서 완전히 분리해, 공시+뉴스+내부자매수
+  "건수" 기반으로 재설계.
+  - `src/lib/watchlist-brief.ts`: `fetchTopCompanies`/`fetchPeriodComparison`/
+    `fetchTagLeaders`를 top30_daily 참조 없이 새 헬퍼
+    `fetchActivityCountsAndFacts()`(filings+news+insider_trades 건수 집계,
+    `filings.event_type` 기반 `EVENT_TYPE_KR` 사실 라벨) 기반으로 재작성.
+    `BriefCompany.avgScore`→`activityCount`, `RankMoverItem`→
+    `ActivityMoverItem`(prevRank/currRank→prevCount/currCount)로 교체.
+    `computeRange()`를 UTC 자정 정렬로 수정(기존엔 "지금 이 순간" 기준이라
+    `days=1`일 때 사실상 오늘 데이터를 못 가져오는 버그가 있었음 — 신규
+    daily 사용처 추가하며 발견·수정).
+  - `src/lib/collect/digest.ts`: `gatherDigestData()`를 top30_daily 조회
+    전면 제거, `computeRange(1)` + 위 재작성된 함수로 교체. 블로그 초안용
+    내부자매수/실적상회 목록(`Top30TagItem.tags` 의존)은 `insider_trades`/
+    `earnings` 원본 테이블에서 직접 계산하는 `insiderBuyToday`/
+    `earningsBeatToday`로 교체.
+  - `src/lib/email/templates.ts`: `DigestData` 관련 타입 전체 교체
+    (`DigestTopItem.rank`→`activityCount`, `RankMoverItem`→
+    `ActivityMoverItem`, `Top30TagItem`→`InsiderBuyItem`/`EarningsBeatItem`).
+    `dailyDigestEmail()`의 "TOP30 N건"/"기업동향 TOP10"/"N위" 배지/"TOP30
+    신규 진입"/"N위→M위"/"TOP30 이탈"을 전부 활동 건수 기반 표현으로 교체.
+  - `src/components/dashboard/brief-sections.tsx`,`weekly-brief.tsx`,
+    `monthly-brief.tsx`: 순위 인덱스(1,2,3...) 배지 → 실제 활동 건수 배지,
+    섹션 제목의 "TOP10/TOP20/TOP30 진입/이탈" 전부 제거.
+  - `src/components/landing-top10.tsx`: "오늘의 기업 동향 TOP10"(당일
+    top30_daily rank≤10) → "최근 7일 활동이 많았던 기업"(`fetchTopCompanies`,
+    7일 범위)로 교체.
+  - `src/lib/notify/telegram.ts`(비활성 dead code): 동일 원칙으로 함께
+    정리(재활성화 대비).
+  - `src/lib/collect/blog-draft.ts`: `Top30TagItem`/`filterByTags` 의존 제거,
+    `pickRelatedTopics()`를 새 필드(`insiderBuyToday`/`earningsBeatToday`)
+    + description 문자열 매칭 기반으로 재작성.
+  - `tsc --noEmit` 통과 확인.
+
+**향후 금융위 법령해석 요청 보완 판단 자료** — 위 1~7번 발견 기능 목록(어드민
+제외)을 그대로 자료로 남김. 고유번호 7909 사실관계에 TOP10/TOP30/BRIEF/이메일
+다이제스트 기능이 포함되어 있지 않으므로, 보완 제출 여부는 별도 판단 필요.
+
 ## 2026-07-11 · 세션 96
 
 ### CLAUDE.md에 모델 전환 권장 기준 추가

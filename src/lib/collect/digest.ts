@@ -5,39 +5,25 @@ import { dailyDigestEmail } from "@/lib/email/templates";
 import type {
   DigestData,
   DigestTopItem,
-  Top30TagItem,
+  InsiderBuyItem,
+  EarningsBeatItem,
   FeaturedCompany,
   NewEntrantItem,
   DroppedItem,
-  RankMoverItem,
+  ActivityMoverItem,
   MarketChangeCounts,
   MacroItem,
 } from "@/lib/email/templates";
+import { computeRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/watchlist-brief";
 
-// ─── reason_tag → 사람이 읽는 설명 ────────────────────────────────────────────
-
-const TAG_TO_DESC: Record<string, string> = {
-  buyback:           "자사주 매입 발표",
-  ma:                "M&A 공시 확인",
-  ceo_change:        "CEO 변경 공시 확인",
-  cfo_change:        "CFO 변경 공시 확인",
-  guidance:          "가이던스 변경 공시 확인",
-  contract:          "대규모 계약 발표",
-  insider_buy:       "내부자 매수 확인",
-  insider_buy_large: "내부자 대규모 매수 확인",
-  "13f_new":         "기관 신규 편입 확인",
-  "13f_increase":    "기관 보유 증가 확인",
-  eps_beat:          "EPS 예상치 상회",
-  revenue_beat:      "매출 예상치 상회",
-  both_beat:         "EPS·매출 예상치 상회",
-  guidance_up:       "가이던스 상향 발표",
-  price_up_20:       "최근 30일 주가 20% 이상 상승",
-  price_up_10:       "최근 30일 주가 10% 이상 상승",
-  volume_spike:      "최근 거래량 급증",
-  volatility_spike:  "최근 변동성 급증",
-  short_decrease:    "공매도 감소 확인",
-  target_up:         "목표가 상향 발표",
-};
+// 2026-07-11: gatherDigestData()는 이전에는 top30_daily(TickerFlow 자체
+// 스코어링 결과)를 근거로 "오늘의 기업동향 TOP10/TOP30 신규진입/순위변화"를
+// 구성했다. 자본시장법 유사투자자문업 리스크 점검(세션97)에 따라, 가중치
+// 기반 종합 평가·선정 결과를 노출하지 않도록 공시+뉴스+내부자매수 "건수"
+// 기반으로 완전히 재설계했다(watchlist-brief.ts의 fetchTopCompanies/
+// fetchPeriodComparison 재사용 — 주간/월간 BRIEF와 동일한 팩트 카운트 로직).
+// "featured"(오늘의 한 기업)·내부자매수/실적상회 목록은 여전히 사실 집계이며
+// 스코어링을 참조하지 않는다.
 
 const MACRO_SPEC: Record<string, { label: string; unit: string }> = {
   FEDFUNDS: { label: "연방기금금리 (FEDFUNDS)", unit: "%" },
@@ -60,22 +46,7 @@ function kstSubjectDate(): string {
   return `${get("year")}. ${get("month")}. ${get("day")}`;
 }
 
-// ─── 내부 타입 ────────────────────────────────────────────────────────────────
-
-type Top30Row = {
-  ticker: string;
-  rank: number | null;
-  reason_tags: string[] | null;
-  metadata: { filingCount?: number } | null;
-};
-
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
-
-function tagsToDescs(tags: string[] | null, limit: number): string[] {
-  if (!tags || tags.length === 0) return ["최근 시장 변화 확인"];
-  const descs = tags.slice(0, limit).map((t) => TAG_TO_DESC[t] ?? t).filter(Boolean);
-  return descs.length > 0 ? descs : ["최근 시장 변화 확인"];
-}
 
 // 날짜 문자열(YYYY-MM-DD) 하루치 UTC 타임스탬프 범위 — TIMESTAMPTZ 컬럼 필터링용
 function dayRangeUtc(dateStr: string): { gte: string; lt: string } {
@@ -117,7 +88,7 @@ function sparklineUrl(closes: number[]): string | null {
 
 async function generateMarketNarrative(params: {
   latestDate: string;
-  top1Name: string;
+  topCompanyName: string;
   newEntrantCount: number;
   institutionalCount: number;
   insiderCount: number;
@@ -134,8 +105,8 @@ async function generateMarketNarrative(params: {
 
   const prompt = `다음은 ${params.latestDate} 미국 나스닥 주요 기업 동향 데이터입니다.
 
-- 기업동향 TOP1: ${params.top1Name}
-- TOP30 신규 진입: ${params.newEntrantCount}건
+- 오늘 가장 활동이 많았던 기업: ${params.topCompanyName}
+- 오늘 새로 활동이 확인된 기업: ${params.newEntrantCount}건
 - 기관 관련 공시: ${params.institutionalCount}건
 - 내부자 거래: ${params.insiderCount}건
 - 실적 발표: ${params.earningsCount}건 (예상치 상회 ${params.earningsBeatCount}건)
@@ -160,6 +131,8 @@ async function generateMarketNarrative(params: {
 - 강세, 약세, 상승 기대, 하락 우려
 - 투자 매력, 긍정적 신호, 부정적 신호
 - 투자 권유, 매수, 매도, 추천 표현
+- "TOP10", "TOP30", "N위"(순위 표기), 순위, 랭킹, 선정, "~에 진입/편입" 같은
+  순위·선정 뉘앙스 표현 (위 수치는 건수일 뿐 순위·선정 결과가 아니다)
 
 허용 표현 예시
 - ~가 관측됐습니다
@@ -209,101 +182,67 @@ async function generateMarketNarrative(params: {
 // ─── 다이제스트 데이터 수집 (이메일 발송과 무관한 순수 데이터 조회부) ────────────
 //
 // 이메일 발송(runDigestCollect)과 블로그 초안 생성(blog-draft.ts) 양쪽에서
-// "오늘의 기업동향 TOP30 + 시장 변화" 데이터를 동일하게 사용해야 하므로,
-// 수신자 조회·이메일 발송과 무관한 데이터 수집 로직만 이 함수로 분리했다.
-// TOP30 데이터가 없으면 null을 반환한다.
+// "오늘의 기업동향 + 시장 변화" 데이터를 동일하게 사용해야 하므로, 수신자
+// 조회·이메일 발송과 무관한 데이터 수집 로직만 이 함수로 분리했다. 오늘 활동
+// 데이터가 전혀 없으면 null을 반환한다.
 export async function gatherDigestData(): Promise<DigestData | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
-  // 1. 최근 2개 수집일(오늘/전일) 조회 — 주말·공휴일 공백 대응을 위해 달력일 차감 대신 실제 존재하는 직전 날짜 사용
-  const { data: dateRows } = await admin
-    .from("top30_daily")
-    .select("date")
-    .order("date", { ascending: false })
-    .limit(90);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const range = computeRange(1); // "오늘" vs "어제" 1일 구간(활동 건수 비교용)
 
-  const distinctDates = [...new Set(((dateRows ?? []) as { date: string }[]).map((r) => r.date))];
-  const latestDate = distinctDates[0];
-  const prevDate = distinctDates[1] ?? null;
+  // 1. 활동 건수 기반 상위 기업 + 기간 비교(신규 관측/활동 감소/건수 변화)
+  const [topCompanies, comparison] = await Promise.all([
+    fetchTopCompanies(admin, range, 10),
+    fetchPeriodComparison(admin, range),
+  ]);
 
-  if (!latestDate) {
+  if (topCompanies.length === 0) {
     return null;
   }
 
-  // 3. 최신 TOP30 조회
-  const { data: todayRows } = await admin
-    .from("top30_daily")
-    .select("ticker, rank, reason_tags, metadata")
-    .eq("date", latestDate)
-    .order("rank", { ascending: true })
-    .limit(30) as { data: Top30Row[] | null };
+  const top3Items: DigestTopItem[] = topCompanies.slice(0, 3);
+  const top4to10Items: DigestTopItem[] = topCompanies.slice(3, 10);
 
-  const today30 = todayRows ?? [];
-  if (today30.length === 0) {
-    return null;
-  }
+  const newEntrants: NewEntrantItem[] = comparison.newEntrants.slice(0, 5).map((e) => ({
+    ticker:      e.ticker,
+    name:        e.name,
+    description: e.descriptions[0] ?? "최근 활동 확인",
+  }));
 
-  // 4. 전일 TOP30 조회 (신규진입·이탈·순위변화 계산용)
-  const { data: prevRows } = prevDate
-    ? await admin
-        .from("top30_daily")
-        .select("ticker, rank")
-        .eq("date", prevDate)
-        .order("rank", { ascending: true })
-        .limit(30) as { data: { ticker: string; rank: number | null }[] | null }
-    : { data: [] as { ticker: string; rank: number | null }[] };
+  const dropped: DroppedItem[] = comparison.dropped.slice(0, 5);
+  const activityMovers: ActivityMoverItem[] = comparison.movers;
 
-  const prev30 = prevRows ?? [];
-  const prevRankMap = new Map<string, number>();
-  for (const r of prev30) if (r.rank != null) prevRankMap.set(r.ticker, r.rank);
-
-  // 5. 티커 이름 + 기업 소개 조회
-  const allTickers = [...new Set([...today30.map((r) => r.ticker), ...prev30.map((r) => r.ticker)])];
-  const nameMap = new Map<string, string>();
+  // 2. 티커 이름 + 기업 소개 조회 (오늘 활동 상위 기업 + 신규 관측 기업)
+  const allTickers = [...new Set([
+    ...topCompanies.map((c) => c.ticker),
+    ...comparison.newEntrants.map((c) => c.ticker),
+  ])];
   const descMap = new Map<string, string>();
 
   if (allTickers.length > 0) {
     const { data: tickerRows } = await admin
       .from("tickers")
-      .select("ticker, name_kr, name_en, description_kr")
-      .in("ticker", allTickers) as {
-        data: { ticker: string; name_kr: string | null; name_en: string | null; description_kr: string | null }[] | null;
-      };
+      .select("ticker, description_kr")
+      .in("ticker", allTickers) as { data: { ticker: string; description_kr: string | null }[] | null };
     for (const t of tickerRows ?? []) {
-      nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
       if (t.description_kr) descMap.set(t.ticker, t.description_kr);
     }
   }
 
-  // 6. 신규 진입 / 이탈 / 순위 변화 계산
-  const todaySet = new Set(today30.map((r) => r.ticker));
-  const newEntrantRows = today30.filter((r) => !prevRankMap.has(r.ticker));
-  const droppedTickers = prev30.filter((r) => !todaySet.has(r.ticker)).map((r) => r.ticker);
+  // 3. 오늘 날짜 기준 시장 변화 집계 (filings, insider_trades, institutional_holdings, earnings)
+  const filingsRange = dayRangeUtc(todayStr);
+  const insiderRange = dayRangeUtc(todayStr);
+  const institutionalRange = dayRangeUtc(todayStr);
 
-  const rankMovers: RankMoverItem[] = today30
-    .filter((r) => r.rank != null && prevRankMap.has(r.ticker))
-    .map((r) => {
-      const prevRank = prevRankMap.get(r.ticker)!;
-      const currRank = r.rank!;
-      return {
-        ticker: r.ticker,
-        name: nameMap.get(r.ticker) ?? r.ticker,
-        prevRank,
-        currRank,
-        delta: prevRank - currRank,
-      };
-    })
-    .filter((m) => m.delta !== 0)
-    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-    .slice(0, 5);
-
-  // 7. 오늘 날짜 기준 시장 변화 집계 (filings, insider_trades, institutional_holdings, earnings)
-  const filingsRange = dayRangeUtc(latestDate);
-  const insiderRange = dayRangeUtc(latestDate);
-  const institutionalRange = dayRangeUtc(latestDate);
-
-  const [{ count: filingsCount }, { count: insiderCount }, { count: institutionalCount }, { data: earningsRows }] = await Promise.all([
+  const [
+    { count: filingsCount },
+    { count: insiderCount },
+    { count: institutionalCount },
+    { data: earningsRows },
+    { data: insiderBuyRows },
+  ] = await Promise.all([
     admin.from("filings").select("id", { count: "exact", head: true })
       .gte("filed_at", filingsRange.gte).lt("filed_at", filingsRange.lt),
     admin.from("insider_trades").select("id", { count: "exact", head: true })
@@ -312,30 +251,69 @@ export async function gatherDigestData(): Promise<DigestData | null> {
       .gte("filed_at", institutionalRange.gte).lt("filed_at", institutionalRange.lt),
     admin.from("earnings")
       .select("ticker, eps_estimate, actual_eps, revenue_estimate, actual_revenue")
-      .eq("report_date", latestDate),
+      .eq("report_date", todayStr),
+    admin.from("insider_trades")
+      .select("ticker, value")
+      .eq("transaction_type", "buy")
+      .gte("filed_at", insiderRange.gte).lt("filed_at", insiderRange.lt),
   ]) as [
     { count: number | null },
     { count: number | null },
     { count: number | null },
     { data: { ticker: string; eps_estimate: number | null; actual_eps: number | null; revenue_estimate: number | null; actual_revenue: number | null }[] | null },
+    { data: { ticker: string; value: number | null }[] | null },
   ];
 
   const earningsToday = earningsRows ?? [];
-  const earningsBeatCount = earningsToday.filter((e) =>
-    (e.actual_eps != null && e.eps_estimate != null && e.actual_eps > e.eps_estimate) ||
-    (e.actual_revenue != null && e.revenue_estimate != null && e.actual_revenue > e.revenue_estimate)
-  ).length;
+  const earningsBeatToday: EarningsBeatItem[] = [];
+  for (const e of earningsToday) {
+    const epsBeat = e.actual_eps != null && e.eps_estimate != null && e.actual_eps > e.eps_estimate;
+    const revenueBeat = e.actual_revenue != null && e.revenue_estimate != null && e.actual_revenue > e.revenue_estimate;
+    if (epsBeat || revenueBeat) earningsBeatToday.push({ ticker: e.ticker, name: e.ticker, epsBeat, revenueBeat });
+  }
+
+  // 내부자 매수 총액 $1M 이상이면 "대규모"로 분류 — 사실 집계 기준일 뿐, 점수화하지 않는다.
+  const insiderValueByTicker = new Map<string, number>();
+  for (const r of insiderBuyRows ?? []) {
+    if (r.value == null) continue;
+    insiderValueByTicker.set(r.ticker, (insiderValueByTicker.get(r.ticker) ?? 0) + r.value);
+  }
+  const insiderBuyToday: InsiderBuyItem[] = [...insiderValueByTicker.entries()].map(([ticker, value]) => ({
+    ticker,
+    name: ticker,
+    isLarge: value >= 1_000_000,
+  }));
 
   const marketChange: MarketChangeCounts = {
     institutionalCount: institutionalCount ?? 0,
-    earningsBeatCount,
+    earningsBeatCount: earningsBeatToday.length,
     insiderCount: insiderCount ?? 0,
     filingsCount: filingsCount ?? 0,
   };
 
-  // 8. 오늘의 한 기업 — TOP10 중 description_kr 있는 첫 종목 (TOP1 우선)
-  const top10Rows = today30.slice(0, 10);
-  const featuredRow = top10Rows.find((r) => descMap.has(r.ticker));
+  // 이름 맵 보강 (insiderBuyToday/earningsBeatToday에 필요한 티커까지 포함)
+  const nameLookupTickers = [...new Set([
+    ...allTickers,
+    ...insiderBuyToday.map((i) => i.ticker),
+    ...earningsBeatToday.map((e) => e.ticker),
+  ])];
+  const nameMap = new Map<string, string>();
+  if (nameLookupTickers.length > 0) {
+    const { data: nameRows } = await admin
+      .from("tickers")
+      .select("ticker, name_kr, name_en")
+      .in("ticker", nameLookupTickers) as { data: { ticker: string; name_kr: string | null; name_en: string | null }[] | null };
+    for (const t of nameRows ?? []) nameMap.set(t.ticker, t.name_kr ?? t.name_en ?? t.ticker);
+  }
+  for (const item of [...top3Items, ...top4to10Items]) item.name = nameMap.get(item.ticker) ?? item.name;
+  for (const item of newEntrants) item.name = nameMap.get(item.ticker) ?? item.name;
+  for (const item of dropped) item.name = nameMap.get(item.ticker) ?? item.name;
+  for (const item of activityMovers) item.name = nameMap.get(item.ticker) ?? item.name;
+  for (const item of insiderBuyToday) item.name = nameMap.get(item.ticker) ?? item.name;
+  for (const item of earningsBeatToday) item.name = nameMap.get(item.ticker) ?? item.name;
+
+  // 4. 오늘의 한 기업 — 활동 상위 기업 중 description_kr 있는 첫 종목
+  const featuredRow = topCompanies.find((c) => descMap.has(c.ticker));
   let featured: FeaturedCompany | null = null;
 
   if (featuredRow) {
@@ -350,13 +328,13 @@ export async function gatherDigestData(): Promise<DigestData | null> {
 
     featured = {
       ticker: featuredRow.ticker,
-      name: nameMap.get(featuredRow.ticker) ?? featuredRow.ticker,
+      name: nameMap.get(featuredRow.ticker) ?? featuredRow.name,
       descriptionKr: descMap.get(featuredRow.ticker)!,
       sparklineUrl: sparklineUrl(closes),
     };
   }
 
-  // 9. 주요 경제지표 (FEDFUNDS, CPI 최신 1건씩)
+  // 5. 주요 경제지표 (FEDFUNDS, CPI 최신 1건씩)
   const { data: macroRows } = await admin
     .from("macro_indicators")
     .select("indicator_name, value, previous_value, released_at")
@@ -379,7 +357,7 @@ export async function gatherDigestData(): Promise<DigestData | null> {
       return { key, label: spec.label, value: row.value, previousValue: row.previous_value, unit: spec.unit };
     });
 
-  // 10. 시장 분위기 판단 (Haiku 실패 시 폴백)
+  // 6. 시장 분위기 판단 (Haiku 실패 시 폴백)
   const maxSig = Math.max(marketChange.institutionalCount, marketChange.insiderCount, marketChange.earningsBeatCount);
   let fallbackMood: string;
   if (maxSig === 0) {
@@ -392,13 +370,13 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     fallbackMood = "오늘은 실적 발표 이후 관련 공시가 다수 확인됐습니다.";
   }
 
-  const fallbackSummary = `오늘은 관련 공시 ${marketChange.filingsCount}건, 실적 발표 ${earningsToday.length}건(예상치 상회 ${marketChange.earningsBeatCount}건)이 집계되었습니다. TOP30 신규 진입은 ${newEntrantRows.length}건입니다.`;
+  const fallbackSummary = `오늘은 관련 공시 ${marketChange.filingsCount}건, 실적 발표 ${earningsToday.length}건(예상치 상회 ${marketChange.earningsBeatCount}건)이 집계되었습니다. 새로 활동이 확인된 기업은 ${newEntrants.length}건입니다.`;
 
-  const top1Name = nameMap.get(today30[0]?.ticker ?? "") ?? today30[0]?.ticker ?? "";
+  const topCompanyName = topCompanies[0]?.name ?? "";
   const { mood: marketMood, summary: marketSummary } = await generateMarketNarrative({
-    latestDate,
-    top1Name,
-    newEntrantCount: newEntrantRows.length,
+    latestDate: todayStr,
+    topCompanyName,
+    newEntrantCount: newEntrants.length,
     institutionalCount: marketChange.institutionalCount,
     insiderCount: marketChange.insiderCount,
     earningsCount: earningsToday.length,
@@ -408,7 +386,7 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     fallbackSummary,
   });
 
-  // 11. DigestData 구성
+  // 7. DigestData 구성
   const kstDate = new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     year:     "numeric",
@@ -416,58 +394,25 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     day:      "numeric",
   }).format(new Date());
 
-  const top3Items: DigestTopItem[] = today30.slice(0, 3).map((r) => ({
-    ticker:       r.ticker,
-    name:         nameMap.get(r.ticker) ?? r.ticker,
-    rank:         r.rank ?? 0,
-    descriptions: tagsToDescs(r.reason_tags, 3),
-  }));
-
-  const top4to10Items: DigestTopItem[] = today30.slice(3, 10).map((r) => ({
-    ticker:       r.ticker,
-    name:         nameMap.get(r.ticker) ?? r.ticker,
-    rank:         r.rank ?? 0,
-    descriptions: tagsToDescs(r.reason_tags, 1),
-  }));
-
-  const newEntrants: NewEntrantItem[] = newEntrantRows.slice(0, 5).map((r) => ({
-    ticker:      r.ticker,
-    name:        nameMap.get(r.ticker) ?? r.ticker,
-    description: tagsToDescs(r.reason_tags, 1)[0],
-  }));
-
-  const dropped: DroppedItem[] = droppedTickers.slice(0, 5).map((t) => ({
-    ticker: t,
-    name:   nameMap.get(t) ?? t,
-  }));
-
-  // 1~30위 전체 + 원본 reason_tags — 블로그 초안 생성에서 타입별(내부자
-  // 매수/실적 등)로 종목을 걸러낼 때 사용 (이메일 카드에는 사용하지 않음).
-  const top30Full: Top30TagItem[] = today30.map((r) => ({
-    ticker: r.ticker,
-    name:   nameMap.get(r.ticker) ?? r.ticker,
-    rank:   r.rank ?? 0,
-    tags:   r.reason_tags ?? [],
-  }));
-
   return {
     kstDate,
     headline: {
-      top30Count: today30.length,
-      newEntrantCount: newEntrantRows.length,
+      activeCompanyCount: comparison.totalActiveCount,
+      newEntrantCount: newEntrants.length,
       institutionalCount: marketChange.institutionalCount,
       earningsBeatCount: marketChange.earningsBeatCount,
     },
     marketMood,
     top3: top3Items,
     top4to10: top4to10Items,
-    top30Full,
+    insiderBuyToday,
+    earningsBeatToday,
     marketChange,
     earningsTotal: earningsToday.length,
     featured,
     newEntrants,
     dropped,
-    rankMovers,
+    activityMovers,
     marketSummary,
     macros,
   };
@@ -498,7 +443,7 @@ export async function runDigestCollect(): Promise<CollectResult> {
   if (targetEmails.length === 0) return { ok: true, sent: 0, message: "발송 대상 없음" };
 
   const digestData = await gatherDigestData();
-  if (!digestData) return { ok: true, sent: 0, message: "TOP30 데이터 없음" };
+  if (!digestData) return { ok: true, sent: 0, message: "오늘 활동 데이터 없음" };
 
   // 2. HTML 생성 및 발송
   // Resend 기본 rate limit(2req/s)을 준수하기 위해 발송 간 550ms 간격을 둔다.

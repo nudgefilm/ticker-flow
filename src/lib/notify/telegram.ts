@@ -1,6 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "@/lib/collect/types";
-import { TAG_LABELS_KR } from "@/lib/collect/scoring";
+import { computeRange, fetchTopCompanies } from "@/lib/watchlist-brief";
+
+// 2026-07-11: 이 함수는 어떤 cron/트리거에도 연결되어 있지 않은 비활성(dead
+// code) 상태였다(세션97 규제 리스크 점검에서 발견). 재활성화 시를 대비해,
+// top30_daily.rank(TickerFlow 자체 스코어링 순위) 기반 "오늘의 기업 동향
+// TOP10"을 다른 공개 지면과 동일하게 최근 7일 공시+뉴스+내부자매수 건수
+// 기반(fetchTopCompanies)으로 미리 교체해둔다.
 
 const TELEGRAM_API = "https://api.telegram.org";
 
@@ -17,61 +23,28 @@ async function postMessage(botToken: string, chatId: string, text: string): Prom
   }
 }
 
-type Top10Row = {
-  ticker: string;
-  rank: number;
-  reason_tags: string[] | null;
-};
-
-type TickerRow = { ticker: string; name_kr: string | null; name_en: string | null };
-
-export async function sendTelegramTop10(): Promise<void> {
+export async function sendTelegramActivitySummary(): Promise<void> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId   = process.env.TELEGRAM_CHAT_ID;
   if (!botToken || !chatId) throw new Error("TELEGRAM_BOT_TOKEN 또는 TELEGRAM_CHAT_ID 없음");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const admin = createAdminClient();
+  const range = computeRange(7);
+  const companies = await fetchTopCompanies(admin, range, 10);
 
-  const { data: top10, error } = await admin
-    .from("top30_daily")
-    .select("ticker, rank, reason_tags")
-    .eq("date", todayStr)
-    .lte("rank", 10)
-    .order("rank", { ascending: true });
-
-  if (error) throw new Error(error.message);
-  if (!top10 || top10.length === 0) throw new Error("오늘 TOP10 데이터 없음 — top30 먼저 실행");
-
-  const { data: tickerRows } = await admin
-    .from("tickers")
-    .select("ticker, name_kr, name_en")
-    .in("ticker", (top10 as Top10Row[]).map(r => r.ticker));
-
-  const nameMap = new Map<string, string>(
-    ((tickerRows ?? []) as TickerRow[]).map(r => [
-      r.ticker, r.name_kr ?? r.name_en ?? r.ticker,
-    ])
-  );
+  if (companies.length === 0) throw new Error("최근 7일 활동 데이터 없음");
 
   const now = new Date();
   const dateLabel = `${now.getMonth() + 1}월 ${now.getDate()}일`;
 
   const lines: string[] = [
-    `📊 오늘의 기업 동향 TOP10 (${dateLabel})`,
+    `📊 최근 7일 활동이 많았던 기업 (${dateLabel} 기준)`,
     "",
   ];
 
-  for (const row of top10 as Top10Row[]) {
-    const name = nameMap.get(row.ticker) ?? row.ticker;
-    const tagStr = (row.reason_tags ?? [])
-      .slice(0, 3)
-      .map(t => TAG_LABELS_KR[t] ?? t)
-      .join(" · ");
-
-    lines.push(`${row.rank}. $${row.ticker} ${name}`);
-    if (tagStr) lines.push(`   ${tagStr}`);
+  for (const company of companies) {
+    lines.push(`· $${company.ticker} ${company.name} — ${company.activityCount}건`);
+    if (company.descriptions.length > 0) lines.push(`   ${company.descriptions.join(" · ")}`);
   }
 
   lines.push("");
@@ -83,7 +56,7 @@ export async function sendTelegramTop10(): Promise<void> {
 
 export async function runTelegramNotify(): Promise<CollectResult> {
   try {
-    await sendTelegramTop10();
+    await sendTelegramActivitySummary();
     return { ok: true, sent: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "텔레그램 발송 실패";

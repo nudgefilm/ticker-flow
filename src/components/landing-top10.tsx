@@ -1,36 +1,17 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TAG_LABELS_KR } from "@/lib/collect/scoring";
+import { computeRange, fetchTopCompanies } from "@/lib/watchlist-brief";
 
-type Top10Row = { ticker: string; rank: number; reason_tags: string[] | null };
-type TickerRow = { ticker: string; name_kr: string | null; name_en: string | null };
-
+// 2026-07-11: top30_daily.rank(TickerFlow 자체 스코어링 결과) 기반 "오늘의
+// 기업 동향 TOP10" + "N위" 배지를 제거했다(세션97 규제 리스크 점검 — 자본시장법
+// 유사투자자문업 "가치에 관한 조언" 소지 제거). 최근 7일 공시+뉴스+내부자매수
+// 건수 기반(fetchTopCompanies, 주간/월간 BRIEF와 동일한 팩트 카운트 로직)으로
+// 교체하고, 순위 배지 대신 실제 활동 건수를 그대로 보여준다.
 export default async function LandingTop10() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const admin = createAdminClient();
+  const range = computeRange(7);
+  const companies = await fetchTopCompanies(admin, range, 10);
 
-  const { data: rows } = await admin
-    .from("top30_daily")
-    .select("ticker, rank, reason_tags")
-    .eq("date", todayStr)
-    .lte("rank", 10)
-    .order("rank", { ascending: true });
-
-  if (!rows || rows.length === 0) return null;
-
-  const { data: tickerRows } = await admin
-    .from("tickers")
-    .select("ticker, name_kr, name_en")
-    .in("ticker", (rows as Top10Row[]).map(r => r.ticker));
-
-  const nameMap = new Map<string, string>(
-    ((tickerRows ?? []) as TickerRow[]).map(r => [
-      r.ticker, r.name_kr ?? r.name_en ?? r.ticker,
-    ])
-  );
-
-  const now = new Date();
-  const dateLabel = `${now.getMonth() + 1}월 ${now.getDate()}일`;
+  if (companies.length === 0) return null;
 
   return (
     <section className="py-16 lg:py-20">
@@ -38,41 +19,41 @@ export default async function LandingTop10() {
 
         <div className="mb-8 text-center">
           <span className="inline-block rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
-            TODAY
+            최근 7일
           </span>
           <h2 className="mt-3 text-2xl font-semibold text-foreground md:text-3xl">
-            오늘의 기업 동향 TOP10
+            최근 7일 활동이 많았던 기업
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {dateLabel} 기준 · 공시·내부자 거래·실적 변화가 많은 기업
+            공시·내부자 거래·관련 뉴스 건수를 합산한 기준입니다
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {(rows as Top10Row[]).map((row) => {
-            const tags = (row.reason_tags ?? []).slice(0, 3);
+          {companies.map((company) => {
+            const tags = company.descriptions.slice(0, 3);
             return (
               <div
-                key={row.ticker}
+                key={company.ticker}
                 className="rounded-[12px] border border-border bg-card p-4"
               >
                 <div className="flex items-center justify-between">
                   <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
-                    ${row.ticker}
+                    ${company.ticker}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">{row.rank}위</span>
+                  <span className="text-[10px] text-muted-foreground">{company.activityCount}건</span>
                 </div>
                 <p className="mt-2 truncate text-sm font-medium text-foreground">
-                  {nameMap.get(row.ticker) ?? row.ticker}
+                  {company.name}
                 </p>
                 {tags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {tags.map(tag => (
+                    {tags.map((tag) => (
                       <span
                         key={tag}
                         className="rounded-[3px] bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
                       >
-                        {TAG_LABELS_KR[tag] ?? tag}
+                        {tag}
                       </span>
                     ))}
                   </div>

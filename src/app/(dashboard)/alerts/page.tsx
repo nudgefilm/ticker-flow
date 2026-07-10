@@ -7,9 +7,12 @@ import {
   IconBuildingStore,
 } from "@tabler/icons-react";
 
+// 2026-07-11: "TOP10"/"포착" 표현 제거(세션97 규제 리스크 점검) — TickerFlow
+// 자체 스코어링 기반 순위·선정 결과를 노출하지 않고, 이메일에 포함되는 사실
+// 항목만 나열하도록 문구를 정리했다.
 const EMAIL_ITEMS = [
-  { icon: IconBell,          text: "매일 오전 10시, 오늘의 기업동향 TOP10 요약 발송" },
-  { icon: IconBuildingStore, text: "나스닥 전체에서 주요 변화가 포착된 기업 자동 큐레이션" },
+  { icon: IconBell,          text: "매일 오전 10시, 나스닥 기업동향 요약 발송" },
+  { icon: IconBuildingStore, text: "나스닥 전체 기업의 공시·뉴스 등 주요 변화 자동 정리" },
   { icon: IconChartBar,      text: "기관 수급 변화·내부자 매수·실적 발표·전일 대비 변화 포함" },
 ];
 
@@ -37,9 +40,9 @@ export default function AlertsPage() {
             </span>
           </div>
           <p className="text-sm leading-relaxed text-[#cccccc]">
-            매일 오전 10시, 오늘의 기업동향 TOP10을 이메일로 발송합니다.
-            나스닥 전체 기업 중 주요 변화가 포착된 기업을 자동 큐레이션하며,
-            와치리스트와 무관하게 구성됩니다.
+            매일 오전 10시, 나스닥 기업동향 요약을 이메일로 발송합니다.
+            나스닥 전체 기업의 공시·뉴스·내부자 거래 등 주요 변화를 자동으로
+            정리하며, 와치리스트와 무관하게 구성됩니다.
           </p>
         </div>
 

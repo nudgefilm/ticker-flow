@@ -1,7 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export type TickerBadgeReason = "top30" | "volume" | "sector";
+// 2026-07-11: "top30" 배지 사유는 제거했다(세션97 규제 리스크 점검 — ticker-badge.tsx
+// 참고). 아래 top30 Set 자체는 getCollectTargetTickers()의 수집 대상 확장에는
+// 계속 쓰이므로 TargetTickerSets에서 지우지 않는다 — 사용자 노출 배지에서만 뺀다.
+export type TickerBadgeReason = "volume" | "sector";
 
 export interface TargetTickerSets {
   watchlist: Set<string>;
@@ -166,13 +169,12 @@ export async function getCollectTargetTickers(): Promise<string[]> {
   return [...new Set([...sets.watchlist, ...sets.top30, ...sets.volume, ...sets.sector])];
 }
 
-/** 특정 티커가 어떤 뱃지(TOP30 선정/거래량 상위/섹터 주목)에 해당하는지 판정한다. */
+/** 특정 티커가 어떤 뱃지(거래량 상위/섹터 주목)에 해당하는지 판정한다. */
 export function getBadgeReasons(
   ticker: string,
-  sets: Pick<TargetTickerSets, "top30" | "volume" | "sector">
+  sets: Pick<TargetTickerSets, "volume" | "sector">
 ): TickerBadgeReason[] {
   const reasons: TickerBadgeReason[] = [];
-  if (sets.top30.has(ticker)) reasons.push("top30");
   if (sets.volume.has(ticker)) reasons.push("volume");
   if (sets.sector.has(ticker)) reasons.push("sector");
   return reasons;
