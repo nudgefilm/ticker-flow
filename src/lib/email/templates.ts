@@ -237,7 +237,7 @@ export type DigestData = {
 const BASE_URL = "https://tickerflow.net";
 
 const DIGEST_DISCLAIMER = `
-  <p style="margin:0;font-size:11px;color:#777777;line-height:1.7">
+  <p style="margin:0;font-size:11px;color:#a6a6a6;line-height:1.7">
     본 서비스는 공개된 정보를 기반으로 기업 활동과 시장 흐름을 정리한 참고용 도구입니다.<br>
     특정 종목에 대한 투자 권유 또는 투자 자문을 제공하지 않습니다.<br>
     투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.
@@ -308,22 +308,25 @@ function digestChangeBadges(counts: MarketChangeCounts): string {
   return `<table cellpadding="0" cellspacing="0" style="width:100%"><tr>${cells}</tr></table>`;
 }
 
+function digestSplitSentences(text: string): string[] {
+  return text.split(/(?<=다\.)\s+/).map((s) => s.trim()).filter(Boolean);
+}
+
 function digestFeaturedSection(featured: FeaturedCompany | null): string {
   if (!featured) return "";
   const chart = featured.sparklineUrl
-    ? `<img src="${featured.sparklineUrl}" width="140" height="48" alt="${escapeHtml(featured.ticker)} 최근 30일 종가 추이" style="display:block;width:140px;height:48px;border:0">`
-    : `<div style="width:140px;height:48px"></div>`;
+    ? `<img src="${featured.sparklineUrl}" width="560" height="160" alt="${escapeHtml(featured.ticker)} 최근 30일 종가 추이" style="display:block;width:100%;max-width:560px;height:auto;border:0">`
+    : "";
+  const descriptionHtml = digestSplitSentences(featured.descriptionKr)
+    .map((s) => escapeHtml(s))
+    .join("<br><br>");
   return `
     ${digestSecTitle("이 기업")}
     ${digestCard(`
-      <table cellpadding="0" cellspacing="0" style="width:100%"><tr>
-        <td valign="top">
-          <p style="margin:0 0 8px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
-          <p style="margin:0;font-size:14px;color:#bbbbbb;line-height:1.6">${escapeHtml(featured.descriptionKr)}</p>
-          <p style="margin:12px 0 0"><a href="${BASE_URL}/stocks/${escapeHtml(featured.ticker)}" style="color:#60a5fa;text-decoration:none;font-size:13px;font-weight:600">종목 스냅샷 보기 →</a></p>
-        </td>
-        <td valign="top" width="150" align="right" style="padding-left:12px">${chart}</td>
-      </tr></table>
+      <p style="margin:0 0 12px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
+      ${chart ? `<div style="margin:0 0 14px">${chart}</div>` : ""}
+      <p style="margin:0;font-size:14px;color:#bbbbbb;line-height:1.7">${descriptionHtml}</p>
+      <p style="margin:12px 0 0"><a href="${BASE_URL}/stocks/${escapeHtml(featured.ticker)}" style="color:#60a5fa;text-decoration:none;font-size:13px;font-weight:600">종목 스냅샷 보기 →</a></p>
     `)}
     ${digestSpacer(24)}
   `;
@@ -401,6 +404,8 @@ export function dailyDigestEmail(data: DigestData): string {
       <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#0f0f0f" bgcolor="#0f0f0f">
         <tr><td style="padding:0 12px">
 
+      ${digestSpacer(24)}
+
       <!-- 헤더 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e3a5f;border-radius:10px;padding:28px 16px 20px" bgcolor="#1e3a5f">
         <p style="margin:0 0 10px">
@@ -411,6 +416,7 @@ export function dailyDigestEmail(data: DigestData): string {
         <p style="margin:0 0 10px;font-size:12px;color:#93c5fd">${escapeHtml(kstDate)} · KST</p>
         <p style="margin:0;font-size:13px;color:#dddddd">${escapeHtml(headlineLine)}</p>
       </td></tr></table>
+      ${digestSpacer(16)}
 
       <!-- ① 오늘 시장 분위기 -->
       ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketMood)}</p>`)}
@@ -468,7 +474,7 @@ export function dailyDigestEmail(data: DigestData): string {
         ${digestMacroSection(macros)}
         ${digestSpacer(16)}
         <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td align="center">
-          <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#ffffff;color:#0a0a0a;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none">대시보드에서 더 보기</a>
+          <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#3b82f6;color:#ffffff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none">대시보드에서 더 보기</a>
         </td></tr></table>
       </td></tr></table>
       ${digestSpacer(32)}
@@ -487,12 +493,12 @@ export function dailyDigestEmail(data: DigestData): string {
         <p style="margin:0 0 14px;font-size:11px;color:#dddddd">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
         ${DIGEST_DISCLAIMER}
         ${digestSpacer(12)}
-        <p style="margin:0;font-size:11px;color:#666666">
-          <a href="${BASE_URL}/alerts" style="color:#666666;text-decoration:underline">수신거부</a>
+        <p style="margin:0;font-size:11px;color:#a6a6a6">
+          <a href="${BASE_URL}/alerts" style="color:#a6a6a6;text-decoration:underline">수신거부</a>
           <span style="margin:0 6px">·</span>
-          <a href="${BASE_URL}/privacy" style="color:#666666;text-decoration:underline">개인정보처리방침</a>
+          <a href="${BASE_URL}/privacy" style="color:#a6a6a6;text-decoration:underline">개인정보처리방침</a>
         </p>
-        <p style="margin:10px 0 0;font-size:11px;color:#555555">© 2026 언폴드랩(UNFOLD LAB). All rights reserved.</p>
+        <p style="margin:10px 0 0;font-size:11px;color:#999999">© 2026 언폴드랩(UNFOLD LAB). All rights reserved.</p>
       </td></tr></table>
 
         </td></tr>

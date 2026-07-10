@@ -110,7 +110,7 @@ function sparklineUrl(closes: number[]): string | null {
     },
   };
   const encoded = encodeURIComponent(JSON.stringify(config));
-  return `https://quickchart.io/chart?c=${encoded}&width=280&height=96&backgroundColor=transparent&version=4`;
+  return `https://quickchart.io/chart?c=${encoded}&width=1120&height=320&backgroundColor=transparent&version=4`;
 }
 
 // ─── Claude Haiku 시장 분위기 + 시장 요약 (1회 호출) ──────────────────────────
