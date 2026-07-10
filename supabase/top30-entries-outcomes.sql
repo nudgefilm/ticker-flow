@@ -14,6 +14,13 @@
 -- 발생해도 이미 생성된 행은 그대로 유지한다. 운영 중 DELETE도 하지 않으며,
 -- 데이터 수정이 필요해도 기존 행을 바꾸지 않고 새 Entry를 생성하는 방향을
 -- 우선한다(명백한 수집 오류에 대한 관리자 수동 보정만 예외).
+-- 좁은 예외 — 당일 재실행: 스크리너를 같은 날 여러 번 수동 재실행하면
+-- (ticker, selected_date) UNIQUE 제약 위반이 발생해, upsert_top30_with_entries()
+-- 함수가 INSERT 직전에 "오늘 날짜(selected_date)"에 해당하는 행만 먼저
+-- DELETE한다(아래 함수 정의 참고). 이미 하루가 지나 확정된 과거 날짜의
+-- entries는 이 DELETE 대상이 아니므로 "과거 기록은 절대 수정하지 않는다"는
+-- 불변 원칙과는 충돌하지 않는다 — entry_price 백필과 마찬가지로 "확정된 과거
+-- 값의 수정"이 아니라 "아직 하루가 끝나지 않은 오늘 스냅샷의 재계산"이다.
 CREATE TABLE IF NOT EXISTS public.top30_entries (
   id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   ticker                TEXT        NOT NULL REFERENCES public.tickers(ticker) ON DELETE CASCADE,
@@ -93,7 +100,20 @@ DECLARE
   e jsonb;
   new_entry_id uuid;
   d integer;
+  v_today date;
 BEGIN
+  -- top30_daily는 (date, ticker) UNIQUE라 같은 날 재실행해도 UNIQUE 위반은
+  -- 나지 않지만, ON CONFLICT DO UPDATE는 "이번 실행에 없는" 종목의 행을
+  -- 지우지 않는다. 세션93 자격 필터 배포 직후에도 배포 이전 스케줄 실행의
+  -- 잔존 행(CUEN 등 필터 대상 13개 포함)이 계속 남아 오늘자 행이 30개가
+  -- 아니라 43개로 누적된 것을 실측 확인했다. top30_entries와 동일하게, 오늘
+  -- 날짜(p_rows 첫 행의 date)에 해당하는 기존 행을 먼저 전체 DELETE한 뒤
+  -- 이번 실행 결과(자격 필터 통과분, 30개 이하일 수 있음)만 다시 INSERT한다.
+  IF jsonb_array_length(p_rows) > 0 THEN
+    v_today := (p_rows->0->>'date')::date;
+    DELETE FROM public.top30_daily WHERE date = v_today;
+  END IF;
+
   FOR r IN SELECT * FROM jsonb_array_elements(p_rows) LOOP
     INSERT INTO public.top30_daily (
       date, ticker, rank, event_score, smart_score, earnings_score, market_score,
@@ -127,6 +147,22 @@ BEGIN
       model_version  = EXCLUDED.model_version,
       updated_at     = EXCLUDED.updated_at;
   END LOOP;
+
+  -- 같은 날 스크리너를 재실행하면 이전 실행에서 이미 저장한 오늘자
+  -- top30_entries 행이 그대로 남아있어 (ticker, selected_date) UNIQUE 제약을
+  -- 위반한다("duplicate key value violates unique constraint
+  -- top30_entries_ticker_selected_date_key"). v_today(위에서 계산한 오늘
+  -- 날짜)에 해당하는 기존 entries만 delete-then-insert로 교체한다. 과거
+  -- 날짜의 entries는 전혀 건드리지 않으므로 상단에 적어둔 top30_entries
+  -- "불변(과거 기록은 절대 수정하지 않음)" 원칙과 충돌하지 않는다 — 이
+  -- DELETE는 "아직 하루가 끝나지 않은 오늘 스냅샷"만을 대상으로 한다.
+  -- entry_id를 FK로 참조하는 top30_outcome_results도 ON DELETE CASCADE로
+  -- 함께 삭제되는데, 방금 생성된 당일 pending 행(실제 성과 데이터 없음)만
+  -- 사라지므로 데이터 손실이 아니다. 함수 전체가 단일 트랜잭션이라 DELETE와
+  -- 이후 INSERT 사이에 실패해도 부분 삭제 상태로 남지 않는다.
+  IF v_today IS NOT NULL THEN
+    DELETE FROM public.top30_entries WHERE selected_date = v_today;
+  END IF;
 
   FOR e IN SELECT * FROM jsonb_array_elements(p_entries) LOOP
     INSERT INTO public.top30_entries (

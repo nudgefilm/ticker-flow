@@ -6,6 +6,84 @@
 
 ---
 
+## 2026-07-11 · 세션 96
+
+### CLAUDE.md에 모델 전환 권장 기준 추가
+
+**`CLAUDE.md` 수정**
+- 배경: 설계 난이도를 사용자가 작업 착수 전에 미리 파악하기 어려운 경우가
+  있어, 특정 조건에 해당하면 코드 수정 전에 먼저 Opus 모델 전환을 권장하고
+  승인받도록 규칙화.
+- "10. Claude Code 작업 규칙" 섹션 18번으로 신규 추가(기존 1~17번은 삭제·
+  순서변경 없이 그대로 유지). 스코어링/알고리즘 재설계, 여러 테이블 걸친
+  마이그레이션·대량 DELETE/UPDATE, 결제·정산·세무 계산 로직, 인증/권한 구조
+  변경, 롤백 경로 불명확한 대규모 리팩터링 — 이 5가지 중 하나라도 해당하면
+  작업 시작 전 사용자에게 먼저 알리고 승인받아야 함(Sonnet 유지 선택도 가능,
+  단 권장 사실은 항상 먼저 고지).
+
+## 2026-07-11 · 세션 95
+
+### top30_daily도 delete-then-insert로 전환 — 탈락 종목 잔존 행 누적 문제 해결 (top30_entries와 동일 패턴 적용)
+
+**`supabase/top30-entries-outcomes.sql` 수정**
+- 배경: 세션94에서 `top30_entries`의 같은 날 재실행 UNIQUE 위반을
+  delete-then-insert로 고친 뒤 실제 프로덕션에서 2회 연속 실행 검증을
+  하던 중, `top30_daily`가 오늘자 43행(정상 30행 초과)으로 오염된 것을
+  발견. 원인은 `top30_daily`의 `ON CONFLICT (date, ticker) DO UPDATE`가
+  "이번 실행에 있는" 종목만 갱신하고 "이번 실행에서 탈락한" 종목의 행은
+  지우지 않기 때문 — 세션93 자격 필터를 배포한 뒤에도, 배포 이전 13:35 UTC
+  정기 실행분(CUEN 등 필터 대상 13개 포함)이 그대로 남아 뒤섞여 있었음.
+- `upsert_top30_with_entries()` 함수 맨 앞, `top30_daily` INSERT 루프 이전에
+  `DELETE FROM top30_daily WHERE date = 오늘(p_rows 첫 행의 date)`을 추가하고,
+  이미 계산해둔 오늘 날짜(`v_today`)를 이어서 `top30_entries` DELETE에도
+  재사용하도록 정리. `top30_daily`/`top30_entries` DELETE·INSERT가 모두 같은
+  함수(=같은 트랜잭션) 안에서 처리되어 별도 트랜잭션으로 쪼개지지 않음.
+- 배포 방식: 이번에도 자동 마이그레이션 러너가 없어 Supabase SQL Editor에서
+  직접 `CREATE OR REPLACE FUNCTION` 실행 필요 — 사용자 확인 후 반영.
+- 기존 오염된 43행은 별도 정리 SQL 없이도, 이 함수가 배포된 뒤 다음
+  스케줄/수동 실행이 한 번만 돌면 해당 실행이 오늘자 기존 행을 전부 지우고
+  이번 실행 결과로만 다시 채우므로 자동으로 정리됨(1회성 DELETE 스크립트
+  불필요).
+
+## 2026-07-11 · 세션 94
+
+### top30_entries 같은 날 재실행 시 unique constraint 충돌 수정 (delete-then-insert 방식 전환)
+
+**`supabase/top30-entries-outcomes.sql`, `CLAUDE.md` 수정**
+- 배경: 스크리너를 같은 날 여러 번 수동 재실행하면 `duplicate key value
+  violates unique constraint "top30_entries_ticker_selected_date_key"` 오류
+  발생. 저장 로직 위치 확인 결과 `src/lib/collect/top30.ts`(TS)는
+  `top30_daily`/`top30_entries`를 단일 트랜잭션으로 묶기 위해 Postgres RPC
+  `upsert_top30_with_entries()`(`supabase/top30-entries-outcomes.sql`)를
+  호출하는 구조. `top30_daily`는 `ON CONFLICT (date, ticker) DO UPDATE`로
+  이미 재실행에 안전하지만, `top30_entries`는 조건 없는 단순 INSERT였음 —
+  같은 날 재실행 시 "어제 top30_daily에 없던 신규 진입 종목"을 다시 계산해도
+  대상 집합이 동일해 같은 (ticker, selected_date) 쌍을 또 INSERT하려다 UNIQUE
+  제약을 위반.
+- `upsert_top30_with_entries()` 함수 내부에서 entries INSERT 루프 직전에
+  `p_rows`의 첫 행 date(=오늘)를 기준으로 `DELETE FROM top30_entries WHERE
+  selected_date = 오늘`을 먼저 실행하도록 수정(delete-then-insert). 함수
+  전체가 단일 트랜잭션이라 DELETE 이후 INSERT가 실패해도 부분 삭제 상태로
+  남지 않음. `top30_outcome_results`는 `entry_id` FK `ON DELETE CASCADE`로
+  함께 정리되지만, 삭제되는 행은 같은 트랜잭션에서 막 만들어진 당일 pending
+  행(실제 성과 데이터 없음)뿐이라 데이터 손실 없음.
+- CLAUDE.md 18항의 `top30_entries` "불변 원칙"에 새 좁은 예외로 추가 기록 —
+  DELETE 대상이 오늘 날짜로 한정되어 과거 확정 기록은 절대 건드리지 않으므로
+  불변 원칙과 충돌하지 않음(기존 entry_price 백필 예외와 동일한 논리).
+- 배포 방식: 이 리포에는 자동 마이그레이션 러너가 없어(다른 schema.sql류와
+  동일하게 "Supabase SQL Editor에서 실행" 관례), 이 함수를 실제 프로덕션에
+  반영하려면 `supabase/top30-entries-outcomes.sql`의
+  `CREATE OR REPLACE FUNCTION public.upsert_top30_with_entries` 블록을
+  Supabase SQL Editor에서 직접 실행해야 함 — 아직 미실행 상태.
+- 실제 2회 연속 실행 테스트는 위 SQL을 프로덕션에 적용한 뒤
+  `/api/admin/run?job=top30`(CRON_SECRET 인증)을 두 번 호출해 검증 예정 —
+  다음 작업 예정 참고.
+
+### 다음 작업 예정
+- `top30-entries-outcomes.sql`의 `upsert_top30_with_entries()` 갱신본을
+  Supabase SQL Editor에서 실행(사용자 확인 필요) → 이후 같은 날 2회 연속
+  `top30` 잡 실행으로 무오류·정합성 확인.
+
 ## 2026-07-11 · 세션 93
 
 ### 어드민 내부용 TOP30 스코어링에 자격 필터(최소주가/시총/거래소) 추가 — 저가·마이크로캡·OTC 종목의 스마트머니 점수 편향 방지
