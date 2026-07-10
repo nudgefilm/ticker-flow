@@ -6,6 +6,54 @@
 
 ---
 
+## 2026-07-11 · 세션 93
+
+### 어드민 내부용 TOP30 스코어링에 자격 필터(최소주가/시총/거래소) 추가 — 저가·마이크로캡·OTC 종목의 스마트머니 점수 편향 방지
+
+**`src/lib/collect/scoring.ts` 수정**
+- 배경: "티커플로우 스크리너(TickerFlow Screener)" 화면(`src/app/admin/page.tsx`,
+  524행 안내)의 TOP30 선정 로직에서 CUEN(종가 $0.48, 시가총액 약 $98만)이
+  소액 내부자 매수만으로 스마트머니 점수가 올라 TOP30 1위로 진입하는 현상을
+  확인. 실제 라이브 데이터로 재현한 결과 CUEN 외에도 DLHC·SNSE·RCG·COE·CRT·
+  EPSN·BGDE·FMBM·NYC·ANIX·POWW·CBKM 등 현재 TOP30(30개 중 13개, 43%)이
+  저가·마이크로캡·거래소 미확인 종목이었음.
+  - 실제 스코어링 위치 확인: 요청서에 언급된 "AdminWatchSection"·"기업 동향
+    (내부용)"이라는 이름은 현재 코드에 존재하지 않음(세션56 이후 리팩터링).
+    화면은 `src/app/admin/page.tsx`(타이틀: 티커플로우 스크리너), 실제 후보
+    풀 구성·스코어링은 `src/lib/collect/scoring.ts`의 `computeScores()`,
+    가중치 정의는 `src/lib/scoring/weights.ts`의 `SCREENER_WEIGHTS`(CLAUDE.md
+    18항, 13개 항목/8개 활성)로 세션56 당시의 "4영역(Event/SmartMoney/
+    Earnings/Market)" 구조에서 이미 세분화되어 있었음.
+- `computeScores()`의 `allCandidates`(후보 풀) 구성 직후, Phase 2(stock_prices
+  30일치 조회) 완료 지점에 자격 필터를 추가. 4영역 가중치 스코어링 로직 자체는
+  변경하지 않음.
+  - 최근 종가(30일 내 최신값) ≥ $2
+  - 시가총액(`tickers.market_cap`, 기존 컬럼 그대로 사용 — 스키마 추가 불필요)
+    ≥ $3억(300,000,000)
+  - 거래소(`tickers.exchange`) = Nasdaq 또는 NYSE만 허용(대소문자 무관 비교).
+    NYSE MKT·NYSE ARCA·OTC·null은 모두 제외(요청서의 "그 외 전부 제외" 원칙).
+    `exchange`는 SEC `company_tickers_exchange.json` 기반으로
+    `seed-tickers.ts`(등재 시)·`filings.ts`(신규 종목 발견 시) 두 경로로
+    채워지는데, 후자는 거래소 필터 없이 아무 CIK나 그대로 받아써서 OTC·미상장
+    종목이 `tickers` 테이블에 유입되는 경로였음이 확인됨 — 이번 필터가 그
+    유입을 스코어링 단계에서 차단.
+  - 3개 조건 중 하나라도 데이터가 없으면(시총 미수집, 거래소 null 등) 통과
+    실패로 처리(불확실하면 배제).
+  - 필터 통과 후 30개 미만이어도 억지로 채우지 않음 — `top30.ts`의
+    `scored.slice(0, 30)`이 있는 그대로 자름(코드 변경 없음).
+  - 제외 사유별 카운트(가격/시총/거래소 미달, 데이터 없음 포함)를
+    `console.log`로 기록(한 종목이 여러 조건에 동시에 걸릴 수 있어 합계가
+    실제 제외 수보다 클 수 있음을 로그에 명시).
+- 적용 범위: 어드민 전용(`computeScores()` → `top30.ts` → `top30_daily`).
+  사용자 노출 와치리스트(`src/app/(dashboard)/watchlist/page.tsx`)의
+  TrendingCarousel은 별도 데이터 경로라 이번 변경의 영향을 받지 않음(코드
+  미수정, 확인만 함).
+- 필터 적용 전/후 실측(진단 스크립트로 실제 프로덕션 후보 풀 조립 로직을
+  동일하게 재현해 라이브 DB에 대해 실행, 확인 후 스크립트는 삭제):
+  적용 전 953개 후보 → 적용 후 615개 후보(가격 미달 131개/시총 미달
+  328개/거래소 제외 49개, 중복 집계 가능). CUEN은 3개 조건 모두 실패로 확인,
+  제외됨.
+
 ## 2026-07-11 · 세션 92
 
 ### SNS용 AI 생성 고지 문구(SHORT_DISCLAIMER) 확정 적용

@@ -357,11 +357,60 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     }
   }
 
+  // ── 자격 필터(eligibility filter) ────────────────────────────────────────────
+  // 저가·마이크로캡·비메인보드(OTC 등) 종목은 소액 내부자 매수만으로도 Smart
+  // Money 점수가 쉽게 올라가 TOP30 스코어링에서 구조적으로 유리해지는 편향이
+  // 있다(예: CUEN — 종가 $0.48, 시총 약 $98만이 스마트머니 점수로 TOP30 1위
+  // 진입). 4영역(Event/SmartMoney/Earnings/Market) 가중치 로직 자체는 건드리지
+  // 않고, 후보 풀 진입 단계에서만 아래 3개 조건을 모두 만족하는 종목만 남긴다.
+  // 통과 개수가 30 미만이어도 top30.ts의 slice(0, 30)이 있는 그대로 잘라 쓰므로
+  // 억지로 채우지 않는다.
+  const ELIGIBILITY_MIN_PRICE = 2;
+  const ELIGIBILITY_MIN_MARKET_CAP = 300_000_000;
+  const ELIGIBILITY_EXCHANGES = new Set(["nasdaq", "nyse"]);
+
+  const { data: eligMetaRows } = await admin
+    .from("tickers")
+    .select("ticker, market_cap, exchange")
+    .in("ticker", Array.from(allCandidates));
+
+  const marketCapByTicker = new Map<string, number | null>();
+  const exchangeByTicker = new Map<string, string | null>();
+  for (const t of (eligMetaRows ?? []) as { ticker: string; market_cap: number | null; exchange: string | null }[]) {
+    marketCapByTicker.set(t.ticker, t.market_cap);
+    exchangeByTicker.set(t.ticker, t.exchange);
+  }
+
+  let priceExcluded = 0, capExcluded = 0, exchangeExcluded = 0;
+  const eligibleCandidates = new Set<string>();
+  for (const ticker of allCandidates) {
+    const tickerPrices = pricesByTicker.get(ticker) ?? [];
+    const latestClose = tickerPrices.length > 0 ? tickerPrices[tickerPrices.length - 1].close : null;
+    const marketCap = marketCapByTicker.get(ticker) ?? null;
+    const exchange = exchangeByTicker.get(ticker) ?? null;
+
+    const priceOk = latestClose != null && latestClose >= ELIGIBILITY_MIN_PRICE;
+    const capOk = marketCap != null && marketCap >= ELIGIBILITY_MIN_MARKET_CAP;
+    const exchangeOk = exchange != null && ELIGIBILITY_EXCHANGES.has(exchange.toLowerCase());
+
+    if (!priceOk) priceExcluded++;
+    if (!capOk) capExcluded++;
+    if (!exchangeOk) exchangeExcluded++;
+
+    if (priceOk && capOk && exchangeOk) eligibleCandidates.add(ticker);
+  }
+
+  console.log(
+    `[collect/scoring] 자격 필터(가격≥$${ELIGIBILITY_MIN_PRICE}/시총≥$${ELIGIBILITY_MIN_MARKET_CAP.toLocaleString("en-US")}/NASDAQ·NYSE): ` +
+    `${allCandidates.size}개 후보 → ${eligibleCandidates.size}개 통과 ` +
+    `(가격 미달 ${priceExcluded} / 시총 미달 ${capExcluded} / 거래소 제외 ${exchangeExcluded} — 한 종목이 여러 조건에 동시에 걸릴 수 있어 합계가 실제 제외 수보다 클 수 있음)`
+  );
+
   // ── 스코어링 루프 ────────────────────────────────────────────────────────────
 
   const scored: ScoredTicker[] = [];
 
-  for (const ticker of allCandidates) {
+  for (const ticker of eligibleCandidates) {
     const filings   = filingsByTicker.get(ticker)     ?? [];
     const newsItems = newsByTicker.get(ticker)         ?? [];
     const insiders  = insiderByTicker.get(ticker)      ?? [];
