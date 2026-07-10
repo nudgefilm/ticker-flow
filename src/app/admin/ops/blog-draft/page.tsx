@@ -15,6 +15,8 @@ const BODY_LENGTH_RANGE: [number, number] = [1400, 1900];
 
 interface BlogDraft {
   title: string;
+  metaDescription: string;
+  slug: string;
   body: string;
   bodyLength: number;
   categories: string[];
@@ -33,6 +35,8 @@ interface DraftResult {
 
 interface DraftState {
   title: string;
+  metaDescription: string;
+  slug: string;
   body: string;
   categories: string;
   hashtags: string;
@@ -89,6 +93,8 @@ export default function BlogDraftPage() {
       const d = data.draft;
       setDraft({
         title: d.title,
+        metaDescription: d.metaDescription,
+        slug: d.slug,
         body: d.body,
         categories: d.categories.join(", "),
         hashtags: d.hashtags.join(" "),
@@ -158,6 +164,46 @@ export default function BlogDraftPage() {
                 onChange={(e) => updateDraft("title", e.target.value)}
                 className="w-full rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/20"
               />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+                    Meta Description (SEO)
+                  </label>
+                  <span
+                    className={`text-[11px] tabular-nums ${
+                      draft.metaDescription.length >= 120 && draft.metaDescription.length <= 160
+                        ? "text-[#a6a6a6]"
+                        : "text-amber-400"
+                    }`}
+                  >
+                    {draft.metaDescription.length}자 (목표 120~160자)
+                  </span>
+                </div>
+                <textarea
+                  value={draft.metaDescription}
+                  onChange={(e) => updateDraft("metaDescription", e.target.value)}
+                  rows={3}
+                  className="w-full resize-y rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm leading-relaxed text-white focus:outline-none focus:ring-1 focus:ring-white/20"
+                />
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">
+                    URL Slug
+                  </label>
+                  <CopyButton getText={() => draft.slug} label="복사" />
+                </div>
+                <input
+                  type="text"
+                  value={draft.slug}
+                  onChange={(e) => updateDraft("slug", e.target.value)}
+                  className="w-full rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-3 py-2 text-sm text-[#93c5fd] focus:outline-none focus:ring-1 focus:ring-white/20"
+                />
+              </div>
             </div>
 
             <div>

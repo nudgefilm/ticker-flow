@@ -6,6 +6,56 @@
 
 ---
 
+## 2026-07-11 · 세션 92
+
+### SNS용 AI 생성 고지 문구(SHORT_DISCLAIMER) 확정 적용
+
+**`src/lib/collect/blog-draft.ts` 수정**
+- 배경: 세션 91 이후 블로그 하단 `DISCLAIMER`를 인공지능 자동 요약 고지
+  문구로 교체했으나, X/Threads·LinkedIn용 SNS 요약본에 붙는 축약 문구
+  `SHORT_DISCLAIMER`는 이전 문구("정보 제공 목적이며 투자 권유가
+  아닙니다...")로 남아있어 불일치 상태였음.
+- `SHORT_DISCLAIMER` 값을 사용자 확정 문구 "※ 인공지능 자동 요약 | 투자
+  권유 아님 | TickerFlow"로 교체(어미·구두점 변경 없이 그대로 적용).
+- 사용처 확인: `generateBlogDraft()` 반환값 `snsX`/`snsLinkedIn` 필드
+  생성 시 각각 `${sns.x}${SHORT_DISCLAIMER}`, `${sns.linkedin}${SHORT_DISCLAIMER}`
+  형태로 실제 append됨(`src/lib/collect/blog-draft.ts:773-774`). 이 두
+  필드는 어드민 화면(`src/app/admin/ops/blog-draft/page.tsx`)의 "X /
+  Threads 요약", "LinkedIn 요약" 텍스트영역에 그대로 표시되어 수동 게시
+  시 복사되는 경로 — 상수 교체가 실제 출력에 반영됨을 확인.
+
+## 2026-07-11 · 세션 91
+
+### 일일 블로그 포스팅 생성 프롬프트 전면 개선 (리포트형 → 기사형)
+
+**`src/lib/collect/blog-draft.ts`, `src/app/admin/ops/blog-draft/page.tsx` 수정**
+- 배경: 기존 `buildUnifiedPrompt()`가 생성하는 글이 TOP30·내부자거래·실적 등
+  데이터를 슬라이스별로 순서대로 나열하는 "리포트" 형태에 가까웠음. 데이터
+  수집량은 그대로 유지한 채, 경제신문 "오늘의 시장 브리핑" 형식의 "기사"로
+  재구성.
+- 글 구조 템플릿 7단계를 명문화(`ARTICLE_STRUCTURE_GUIDE`): ①제목(SEO)
+  →②한줄요약→③오늘 가장 주목할 변화 3가지→④오늘 가장 눈에 띈 기업→⑤실적·
+  공시·내부자거래로 보는 오늘 데이터→⑥오늘 시장에서 읽을 포인트→⑦TickerFlow
+  함께 확인. ⑦과 내부 링크(관련 글 추천)는 모델 표현 편차·과장 리스크를
+  없애기 위해 LLM이 아니라 코드가 고정 문구로 이어붙임(`buildFollowUpBlock`,
+  `buildRelatedArticlesBlock` + `GLOSSARY_TOPIC_MAP`로 오늘 태그 기반 3개 선정).
+- 종목 나열 최소화(`TICKER_LISTING_GUIDE`, 3~5개 이내 실명 언급, 나머지는
+  "여러 기업/다수 종목" 등으로 요약), 기업 소개 간결화(`COMPANY_INTRO_GUIDE`,
+  150~200자, "오늘 왜 주목받았는가" 중심), 데이터 해석 지침
+  (`DATA_INTERPRETATION_GUIDE`, 건수 나열이 아니라 "다수 확인/동시에 관측"
+  같은 사실 서술체 특징 설명 — 투자 의견성 해석은 계속 금지) 신규 추가.
+- SEO 메타 자동생성: `[TITLE]`(SEO 고려) 외에 `[META_DESCRIPTION]`(120~160자),
+  `[SLUG_KEYWORDS]`(영문 키워드, LLM 제안 → 코드가 날짜와 결합해 최종 슬러그
+  생성, `buildSlug`/`slugify`/`parseKstDateToIso`)을 새 출력 섹션으로 추가.
+  `BlogDraft`에 `metaDescription`/`slug` 필드 추가, 어드민 화면에 입력·복사 UI
+  추가.
+- `BANNED_BLOCK`에 금지 표현 보강: 투자 추천/투자 인사이트/투자 전략/매수
+  기회/급등 예상/저평가/고평가/종목 분석/투자 분석 추가(요청서 6번 사용금지
+  목록 반영).
+- `parseDraft()` 파싱 섹션 6개로 확장(`[TITLE]→[META_DESCRIPTION]→
+  [SLUG_KEYWORDS]→[BODY]→[CATEGORIES]→[HASHTAGS]`), `FOOTER_RULES`도 동일하게
+  갱신.
+
 ## 2026-07-10 · 세션 90
 
 ### 금융위원회 법령해석 요청 접수 — TickerFlow 유사투자자문업 해당여부
