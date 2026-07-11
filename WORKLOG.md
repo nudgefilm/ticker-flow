@@ -6,6 +6,82 @@
 
 ---
 
+## 2026-07-11 · 세션 99
+
+### 스코어링 엔진 v2 — analyst_ratings·재무4팩터 활성화, 종목별 동적 정규화, 비보통주 필터
+
+**배경**: 어드민 스크리너 3개 섹션(티커플로우 스크리너 / Top30 Ticker Overlay /
+TOP30 Entry·Outcome)에 데이터를 공급하는 단일 엔진(`computeScores()`) 재설계.
+세션56 개편 때 `analyst_ratings` 반영이 사용자 확인 없이 누락된 사고가 발단.
+CLAUDE.md 10-18항 대상(가중치 체계 재설계)이라 Opus 전환 후 진행. 커밋 `3171c5b`.
+
+**Phase 1 — 사전 조사 (읽기 전용)**
+- `financial_metrics`: 값(revenue_growth_yoy·eps_growth_yoy·fcf·roic·roe)이 수집
+  시점에 컬럼으로 이미 계산·저장됨 → 스코어링은 조회만. ROIC/ROE는 **소수·분기값**
+  (실측 roic p50 0.011 / p90 0.047, roe p50 0.022), tiny denominator 이상치 존재
+  (roic max 176 / roe min −3718).
+- 정규화 구조 판단: 기존 `computeFinalScore()`는 **전역 고정 분모**(`getActiveWeightSum`,
+  0.78)라 활성 팩터가 종목별 null이면 분자 0·분모 유지 = 0점 페널티. 사용자 요구
+  ("null이면 미반영, 데이터 쌓이면 자동 반영")를 충족하려면 **종목별 동적 정규화
+  리팩터링 선행 필요**로 판단·승인.
+
+**Phase 2 — 가중치 설계 (승인)**
+- analyst = 독립 팩터 8%(Estimate Revision 12% 슬롯 중 8% 승계, 4%는 보류).
+  내부자거래(10%)보다 낮게 — sell-side 편향·후행성 반영.
+- 공시이벤트 6종: cfo_change +4·guidance +3·dividend +3·lawsuit −4 편입,
+  earnings/other는 제외(실적 팩터와 중복 / 무방향 volume 보상 방지).
+- discoveryBonus 비활성 유지(정규화 밖 가산이라 별도 팩터 설계 필요), TODO만 정정.
+
+**Phase 3 — 구현 / Phase 4 — 문서·문구 동기화**
+- `weights.ts`: 13개 활성 팩터 재정의(합 96% + 보류 4%), `revision` 제거·`analyst`
+  추가, `getActiveWeightSum` 제거·`RESERVED_WEIGHT` 추가.
+- `scoring.ts`: 종목별 동적 정규화, analyst/재무4 raw 계산(analyst 최신 1건·최소
+  3명, ROIC/ROE 이상치 가드 `|roic|≤1`·`|roe|≤2`), EVENT_WEIGHTS 4종 추가,
+  비보통주 정규식 `-(WT[A-Z]?|U|R|RT|P[A-Z]?)$` 자격 필터, analyst/재무 쿼리
+  (자격통과 종목 한정 chunk 조회), factorLog 재구성, 내부 주석 % 갱신.
+- `version.ts`: SCORING_MODEL_VERSION v1 → v2.
+- `admin/page.tsx`: 스크리너 라벨을 신 가중치로 재작성 + 신규 태그 라벨·색상.
+- `CLAUDE.md` 18항: 표·원칙·2.5단계 노트 개정.
+- `scripts/seed-financials.ts`(별도 생성): 재무 전종목 백필 + 비보통주 필터.
+
+**최종 가중치 (활성 13개, 합 96% + 보류 4%)**
+
+| 팩터 | 비중 | | 팩터 | 비중 |
+| --- | --- | --- | --- | --- |
+| 실적·가이던스 | 18% | | 공매도변화 | 5% |
+| 기관수급(13F) | 15% | | 가격모멘텀 | 4% |
+| 기업이벤트(공시) | 12% | | 매출성장률(YoY) | 4% |
+| 내부자거래 | 10% | | EPS성장률(YoY) | 3% |
+| 목표주가변화 | 9% | | FCF | 2% |
+| **애널리스트 의견(신규)** | **8%** | | ROIC/ROE | 1% |
+| 뉴스 | 5% | | (보류, 미배분) | 4% |
+
+- 기존 8개 신호 팩터: 데이터 없어도 0(분모 유지). 재무4·analyst: null이면 종목별
+  분자·분모 제외 → 데이터 축적 시 코드 변경 없이 자동 편입.
+- Estimate Revision: 활성 제외, 3단계 로드맵으로만 유지.
+
+**Phase 5 — 검증 (읽기 전용 `computeScores()` 실행)**
+- 562종목 산출. 재무 보유 545 / analyst 보유 519 / 비보통주 결과 0개.
+- 전/후: NVDA 109→219·RBRK 86→154(강한 재무+긍정 애널 상승), KMX 413→271(약한
+  재무+부정 애널 하락) — 일괄 상승이 아니라 펀더멘털 기반 **재분배**.
+- null 안전: 재무·애널 전무 종목(FCBM)도 정상 산출(신호팩터만으로 정규화).
+- 규제: `factor_log`/`reason_tags`는 어드민 전용, 비어드민 소비처(landing-top10·
+  email·blog-draft·watchlist-brief)는 팩트카운트 전환으로 미참조 — analyst 등급
+  유출 없음.
+- 미실행(사용자 직접): `/api/collect/top30` 트리거 + 3섹션 브라우저 확인
+  (프로덕션 쓰기 + `/admin` OAuth 전용).
+
+**발견된 부수 문제**
+1. 공시이벤트 15종 중 6종(cfo_change/guidance/dividend/lawsuit/earnings/other)이
+   그동안 배점에서 누락 → 4종 편입, 2종 의도적 제외.
+2. `discoveryBonus` TODO가 "market_cap 컬럼 없음"을 근거로 남아있었으나 실제로는
+   자격 필터에서 이미 사용 중 → 주석 현실화.
+3. 스코어링 finalScore는 100 초과 가능한 상대 내부 점수(v1도 585 등 존재).
+   신규 주석의 "0~100" 표기 오기를 "상대 내부 점수"로 정정. 어드민 시각화는
+   점수를 텍스트로만 노출(막대/게이지 없음)이라 값 커져도 깨지지 않음 확인.
+4. 우선주·워런트(-PA/-WT 등) 파생 티커가 자격 필터를 통과할 수 있던 구조 →
+   정규식 필터로 스코어링·백필 양쪽에서 차단.
+
 ## 2026-07-11 · 세션 98
 
 ### 텔레그램 발송 죽은 코드 삭제 (telegram.ts, telegram-digest.ts)
