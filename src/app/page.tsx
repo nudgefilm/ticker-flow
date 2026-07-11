@@ -17,8 +17,17 @@ import ScreenTabs from "@/components/landing/screen-tabs";
 import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
 import { CtaCard } from "@/components/cta-card";
+import { normalizeSector, SECTOR_KR } from "@/lib/sectors";
 
 export const dynamic = "force-dynamic";
+
+const HERO_TYPE_COLORS: Record<string, string> = {
+  "8-K": "#fbbf24",
+  "10-K": "#60a5fa",
+  "10-Q": "#93c5fd",
+  "Form 4": "#c084fc",
+  "기타": "#6b7280",
+};
 
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -54,7 +63,7 @@ export default async function HomePage() {
   const SKIP_FORMS = new Set(["S-1", "S-1/A", "DEF 14A", "424B4", "S-3", "S-3/A"]);
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: rawFilings }, { data: newsList }, weeklyFilingsRaw, weeklyNewsRaw] = await Promise.all([
+  const [{ data: rawFilings }, { data: newsList }, weeklyFilingsRaw, weeklyNewsRaw, heroSectorRaw] = await Promise.all([
     admin
       .from("filings")
       .select("id, ticker, form_type, filed_at")
@@ -66,8 +75,9 @@ export default async function HomePage() {
       .not("summary_kr", "is", null)
       .order("published_at", { ascending: false })
       .limit(5),
-    admin.from("filings").select("filed_at").gte("filed_at", sevenDaysAgo),
+    admin.from("filings").select("form_type, filed_at").gte("filed_at", sevenDaysAgo),
     admin.from("news").select("published_at").gte("published_at", sevenDaysAgo),
+    admin.from("filings").select("tickers!inner(sector)").gte("filed_at", sevenDaysAgo),
   ]);
 
   const priorityFilings = (rawFilings ?? [])
@@ -127,6 +137,62 @@ export default async function HomePage() {
     return { day: dayNames[d.getDay()], value: weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0 };
   });
 
+  // ── 히어로 목업: 최근 7일 공시 유형 분포 + 일별 트렌드 + 섹터별 활동 ──────────
+  const heroFilings = weeklyFilingsRaw.data ?? [];
+
+  const heroTypeCounts: Record<string, number> = {};
+  const heroTrendMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    heroTrendMap[`${d.getMonth() + 1}/${d.getDate()}`] = 0;
+  }
+  for (const f of heroFilings) {
+    const typeKey =
+      f.form_type.startsWith("8-K") ? "8-K" :
+      f.form_type.startsWith("10-K") ? "10-K" :
+      f.form_type.startsWith("10-Q") ? "10-Q" :
+      f.form_type.startsWith("4") ? "Form 4" :
+      "기타";
+    heroTypeCounts[typeKey] = (heroTypeCounts[typeKey] ?? 0) + 1;
+
+    const d = new Date(f.filed_at);
+    const trendKey = `${d.getMonth() + 1}/${d.getDate()}`;
+    if (trendKey in heroTrendMap) heroTrendMap[trendKey]++;
+  }
+
+  const heroTotal = heroFilings.length;
+  const heroTypeData = Object.entries(heroTypeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value]) => ({ name, value, color: HERO_TYPE_COLORS[name] ?? "#6b7280" }));
+  const heroTrendData = Object.entries(heroTrendMap).map(([day, count]) => ({ day, count }));
+  const heroTrendMax = Math.max(...heroTrendData.map((d) => d.count), 1);
+
+  const heroConicGradient = heroTypeData
+    .reduce<{ cumulative: number; parts: string[] }>(
+      (acc, item) => {
+        const pct = heroTotal > 0 ? (item.value / heroTotal) * 100 : 0;
+        const to = acc.cumulative + pct;
+        return { cumulative: to, parts: [...acc.parts, `${item.color} ${acc.cumulative}% ${to}%`] };
+      },
+      { cumulative: 0, parts: [] }
+    )
+    .parts.join(", ");
+
+  type HeroSectorRow = { tickers: { sector: string | null } | null };
+  const heroSectorCounts: Record<string, number> = {};
+  for (const row of (heroSectorRaw.data ?? []) as unknown as HeroSectorRow[]) {
+    const raw = row.tickers?.sector;
+    if (raw) {
+      const sector = normalizeSector(raw);
+      heroSectorCounts[sector] = (heroSectorCounts[sector] ?? 0) + 1;
+    }
+  }
+  const heroSectorData = Object.entries(heroSectorCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([sector, count]) => ({ sector, sectorKr: SECTOR_KR[sector] ?? sector, count }));
+  const heroSectorMax = Math.max(...heroSectorData.map((d) => d.count), 1);
+
   return (
     <div id="site-content" className="min-h-screen bg-background">
       <LandingShell>
@@ -174,56 +240,60 @@ export default async function HomePage() {
                       {/* 좌: 도넛 차트 */}
                       <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
                         <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">공시 유형 분포</p>
-                        <div className="flex flex-1 flex-col items-center gap-4">
-                          <div className="relative h-32 w-32 shrink-0">
-                            <div className="h-full w-full rounded-full" style={{ background: "conic-gradient(#fbbf24 0% 42%, #60a5fa 42% 65%, #93c5fd 65% 82%, #c084fc 82% 95%, #6b7280 95% 100%)" }} />
-                            <div className="absolute inset-[30px] flex items-center justify-center rounded-full bg-[#111111]">
-                              <span className="text-lg font-semibold text-white">142</span>
+                        {heroTotal === 0 ? (
+                          <p className="flex flex-1 items-center justify-center text-xs text-[#a6a6a6]">데이터 없음</p>
+                        ) : (
+                          <div className="flex flex-1 flex-col items-center gap-4">
+                            <div className="relative h-32 w-32 shrink-0">
+                              <div className="h-full w-full rounded-full" style={{ background: `conic-gradient(${heroConicGradient})` }} />
+                              <div className="absolute inset-[30px] flex items-center justify-center rounded-full bg-[#111111]">
+                                <span className="text-lg font-semibold text-white">{heroTotal}</span>
+                              </div>
                             </div>
+                            <ul className="flex w-full flex-1 flex-col justify-between">
+                              {heroTypeData.map((item) => (
+                                <li key={item.name} className="flex items-center gap-2">
+                                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
+                                  <span className="text-[11px] text-[#a6a6a6]">{item.name}</span>
+                                  <span className="ml-auto text-[11px] font-medium text-white">
+                                    {Math.round((item.value / heroTotal) * 100)}%
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <ul className="flex w-full flex-1 flex-col justify-between">
-                            {[
-                              { label: "8-K", pct: 42, color: "#fbbf24" },
-                              { label: "10-K", pct: 23, color: "#60a5fa" },
-                              { label: "10-Q", pct: 17, color: "#93c5fd" },
-                              { label: "Form 4", pct: 13, color: "#c084fc" },
-                              { label: "기타", pct: 5, color: "#6b7280" },
-                            ].map((item) => (
-                              <li key={item.label} className="flex items-center gap-2">
-                                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-                                <span className="text-[11px] text-[#a6a6a6]">{item.label}</span>
-                                <span className="ml-auto text-[11px] font-medium text-white">{item.pct}%</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                        )}
                       </div>
                       {/* 우: 트렌드 + 섹터 */}
                       <div className="flex flex-col gap-3">
                         <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
                           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 7일 트렌드</p>
                           <div className="flex items-end gap-1" style={{ height: "44px" }}>
-                            {[18, 24, 32, 15, 27, 20, 11].map((v, i) => (
-                              <div key={i} className="flex flex-1 items-end">
-                                <div className="w-full rounded-sm bg-[#60a5fa]" style={{ height: `${Math.max(2, Math.round((v / 32) * 36))}px` }} />
+                            {heroTrendData.map((d) => (
+                              <div key={d.day} className="flex flex-1 items-end">
+                                <div className="w-full rounded-sm bg-[#60a5fa]" style={{ height: `${Math.max(2, Math.round((d.count / heroTrendMax) * 36))}px` }} />
                               </div>
                             ))}
                           </div>
                         </div>
                         <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
                           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">섹터별 활동</p>
-                          <div className="flex flex-col gap-2">
-                            {[["기술", 100], ["금융", 62], ["헬스케어", 47], ["소비재", 33]].map(([label, pct]) => (
-                              <div key={label as string}>
-                                <div className="mb-1 flex justify-between">
-                                  <span className="text-[10px] text-[#a6a6a6]">{label}</span>
+                          {heroSectorData.length === 0 ? (
+                            <p className="py-2 text-center text-[11px] text-[#a6a6a6]">데이터 없음</p>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              {heroSectorData.map((d) => (
+                                <div key={d.sector}>
+                                  <div className="mb-1 flex justify-between">
+                                    <span className="text-[10px] text-[#a6a6a6]">{d.sectorKr}</span>
+                                  </div>
+                                  <div className="h-1 w-full rounded-full bg-white/[0.06]">
+                                    <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${(d.count / heroSectorMax) * 100}%` }} />
+                                  </div>
                                 </div>
-                                <div className="h-1 w-full rounded-full bg-white/[0.06]">
-                                  <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
