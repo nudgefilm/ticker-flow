@@ -19,7 +19,8 @@ export const dynamic = "force-dynamic";
 
 const TAG_LABELS: Record<string, string> = {
   fda_approval: "FDA승인", contract: "대형계약", buyback: "자사주매입", ma: "M&A",
-  dividend_increase: "배당증가", ceo_change: "CEO교체",
+  dividend_increase: "배당증가", dividend: "배당공시", ceo_change: "CEO교체", cfo_change: "CFO교체",
+  guidance: "가이던스공시", lawsuit: "소송",
   offering: "유상증자", sec_investigation: "SEC조사", bankruptcy: "파산",
   insider_buy: "내부자취득", insider_buy_large: "대규모취득",
   "13f_new": "13F신규", "13f_increase": "13F증가",
@@ -29,6 +30,7 @@ const TAG_LABELS: Record<string, string> = {
   price_up_20: "30일+20%", price_up_10: "30일+10%",
   volume_spike: "거래량급증", volatility_spike: "변동성급증",
   short_decrease: "공매도↓", target_up: "목표가↑",
+  analyst_bullish: "애널긍정", analyst_bearish: "애널부정",
 };
 
 function tagStyle(tag: string): string {
@@ -42,9 +44,9 @@ function tagStyle(tag: string): string {
       return "bg-orange-500/10 text-orange-400 border border-orange-500/20";
     case "bankruptcy":
       return "bg-red-500/10 text-red-400 border border-red-500/20";
-    case "offering": case "guidance_down":
+    case "offering": case "guidance_down": case "lawsuit":
       return "bg-red-500/10 text-red-400 border border-red-500/20";
-    case "ceo_change":
+    case "ceo_change": case "cfo_change":
     case "eps_beat": case "revenue_beat": case "both_beat": case "beat_streak_4":
       return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
     case "buyback": case "ma": case "contract":
@@ -52,8 +54,12 @@ function tagStyle(tag: string): string {
       return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
     case "insider_buy": case "insider_buy_large":
       return "bg-green-500/10 text-green-400 border border-green-500/20";
-    case "guidance_up":
+    case "guidance_up": case "guidance": case "dividend":
       return "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+    case "analyst_bullish":
+      return "bg-purple-500/10 text-purple-400 border border-purple-500/20";
+    case "analyst_bearish":
+      return "bg-red-500/10 text-red-400 border border-red-500/20";
     case "volume_spike": case "volatility_spike": case "short_decrease":
       return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
     case "target_up":
@@ -527,7 +533,10 @@ export default async function AdminPage() {
           <div>
             <h2 className="text-sm font-medium text-white">티커플로우 스크리너(TickerFlow Screener)</h2>
             <p className="mt-1 text-xs text-red-400/70">
-              스마트머니(45%) + 실적품질(30%) + 기업이벤트(15%) + 시장활동(5%) + 뉴스신뢰도(5%) | 시간감쇠 적용 | 섹터 분산 보정 | 음수 종목 제외 | 상위 30개 선정
+              13팩터 가중: 스마트머니·전문가(기관15+내부자10+목표주가9+애널리스트8=42%) + 실적·재무품질(실적·가이던스18+성장·FCF·ROIC10=28%) + 기업이벤트 공시12% + 시장·수급·뉴스(모멘텀4+공매도5+뉴스5=14%) · 보류 4%(구 Estimate Revision, 미배분)
+            </p>
+            <p className="mt-0.5 text-[11px] text-red-400/50">
+              종목별 동적 정규화(데이터 있는 팩터만 반영) · 시간감쇠 · 섹터 분산 보정 · 음수/비보통주 제외 · 상위 30개 선정
             </p>
           </div>
           <Suspense fallback={null}>

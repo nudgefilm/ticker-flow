@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { SCREENER_WEIGHTS, getActiveWeightSum, type FactorLog } from "@/lib/scoring/weights";
+import { SCREENER_WEIGHTS, type FactorLog } from "@/lib/scoring/weights";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -37,20 +37,27 @@ export type ScoredTicker = {
 };
 
 // ─── 가중치 ───────────────────────────────────────────────────────────────────
-// 최종 목표 구조(13개 항목, 100%)는 src/lib/scoring/weights.ts에서 관리한다.
-// 활성 항목(현재 8개, 합계 78%)끼리만 정규화하여 100점 만점으로 산출 —
-// computeFinalScore() 참고. 데이터 미존재 항목(revision 등)이 나중에 활성화돼도
-// 각 항목의 최종 비중 자체는 바뀌지 않는다 (weights.ts 상단 주석 참고).
+// 가중치 구조(13개 활성 팩터, 합계 96% + 보류 4%)는 src/lib/scoring/weights.ts에서
+// 관리한다. 아래 computeFinalScore()는 종목별 동적 정규화 — 그 종목에서 실제로 값이
+// 존재하는(non-null) 활성 팩터만 분자·분모에 넣는다.
 
-// factorLog의 활성 항목을 SCREENER_WEIGHTS로 가중합산 → 활성 비중 합계로 정규화(0~100).
+// factorLog의 활성 팩터 중 값이 있는(non-null) 것만 SCREENER_WEIGHTS로 가중합산한 뒤,
+// 그 종목에 참여한 팩터들의 가중치 합으로 나눠 정규화한다(상대 내부 점수 — 팩터 raw가
+// 0~10 범위를 넘을 수 있어 결과가 100을 초과할 수 있음. 절대값이 아닌 종목 간 비교용).
+// - 기존 8개 신호 팩터는 데이터가 없어도 숫자 0을 넣으므로 항상 분모에 남는다.
+// - 신규 재무 4팩터·analyst는 데이터가 없으면 null → 그 종목 한정으로 분자·분모에서
+//   제외된다(0점 페널티가 아님). 데이터가 쌓이면 코드 변경 없이 자동 편입된다.
 function computeFinalScore(factorLog: FactorLog): number {
   let weightedSum = 0;
+  let participatingWeight = 0;
   for (const [factor, config] of Object.entries(SCREENER_WEIGHTS)) {
     if (!config.active) continue;
-    const raw = factorLog[factor as keyof FactorLog] ?? 0;
+    const raw = factorLog[factor as keyof FactorLog];
+    if (raw == null) continue; // 종목별 동적 정규화: null(데이터 없음) 팩터는 제외
     weightedSum += raw * config.weight;
+    participatingWeight += config.weight;
   }
-  return (weightedSum / getActiveWeightSum()) * 100;
+  return participatingWeight > 0 ? (weightedSum / participatingWeight) * 100 : 0;
 }
 
 export const TAG_LABELS_KR: Record<string, string> = {
@@ -59,10 +66,16 @@ export const TAG_LABELS_KR: Record<string, string> = {
   buyback:           "자사주매입",
   ma:                "M&A",
   dividend_increase: "배당증가",
+  dividend:          "배당공시",
   ceo_change:        "CEO변경",
+  cfo_change:        "CFO변경",
+  guidance:          "가이던스공시",
+  lawsuit:           "소송",
   offering:          "유상증자",
   sec_investigation: "SEC조사",
   bankruptcy:        "파산",
+  analyst_bullish:   "애널의견긍정",
+  analyst_bearish:   "애널의견부정",
   insider_buy:       "내부자취득",
   insider_buy_large: "내부자대규모취득",
   "13f_new":         "기관신규편입",
@@ -81,9 +94,13 @@ export const TAG_LABELS_KR: Record<string, string> = {
   volatility_spike:  "변동성급증",
 };
 
-// Corporate Events(15%) 카테고리별 가중치 — event_type 기준.
-// 이 9종 외 event_type(cfo_change/guidance/dividend/lawsuit/earnings/other 등)은
-// 새 설계에 명시되지 않아 0점 처리(스킵)한다.
+// 기업이벤트(filing, 12%) 팩터의 event_type별 가중치.
+// 2026-07-11: classify-filings가 분류하는 15종 중 그동안 9종만 배점돼 있었다.
+// cfo_change/guidance/dividend/lawsuit 4종을 추가 배분한다(CLAUDE.md 2항 핵심
+// 예시인 CFO 교체·가이던스 변경 포함). earnings/other 2종은 의도적으로 제외한다:
+//   - earnings: 실적 팩터(EPS/매출 Beat·streak·가이던스)와 완전 중복 — 8-K는 래퍼일 뿐
+//   - other: 방향성 없는 catch-all — 배점 시 "공시 건수 보상"이 되어 5d724c0에서
+//     제거한 volume 보너스가 부활함
 const EVENT_WEIGHTS: Record<string, number> = {
   fda_approval:       10,
   contract:            9,
@@ -91,6 +108,10 @@ const EVENT_WEIGHTS: Record<string, number> = {
   ma:                  8,
   dividend_increase:   6,
   ceo_change:          5,
+  cfo_change:          4,
+  guidance:            3,  // 무방향 "가이던스 활동" 신호. 방향성(up/down)은 실적 팩터에서 별도 반영
+  dividend:            3,  // 일반 배당 이벤트(인상 아님) — dividend_increase(+6)보다 낮게
+  lawsuit:            -4,
   offering:           -5,
   sec_investigation:  -8,
   bankruptcy:         -10,
@@ -169,6 +190,57 @@ function isBeat(row: { actual_eps: number | null; eps_estimate: number | null; a
   const epsBeat = row.actual_eps != null && row.eps_estimate != null && row.actual_eps > row.eps_estimate;
   const revBeat = row.actual_revenue != null && row.revenue_estimate != null && row.actual_revenue > row.revenue_estimate;
   return epsBeat || revBeat;
+}
+
+// analyst(8%) — 의견 분포를 평균 등급으로 환산. 최신 1건, 최소 3명 커버리지 요구.
+// meanRating ∈ [-2,2] → ×5 로 [-10,10] raw(target=5 등과 같은 스케일대). 미달 시 null(제외).
+function analystRawScore(
+  row: { strong_buy: number | null; buy: number | null; hold: number | null; sell: number | null; strong_sell: number | null } | undefined
+): number | null {
+  if (!row) return null;
+  const sb = row.strong_buy ?? 0, b = row.buy ?? 0, h = row.hold ?? 0, s = row.sell ?? 0, ss = row.strong_sell ?? 0;
+  const total = sb + b + h + s + ss;
+  if (total < 3) return null; // 커버리지 부족 → 이 종목 분자·분모에서 제외
+  return ((sb * 2 + b * 1 - s * 1 - ss * 2) / total) * 5;
+}
+
+// 매출/EPS 성장률(YoY, %) → 티어 점수. financial_metrics에 이미 % 로 계산·저장돼 있음.
+// 극단 outlier(EPS성장 수백 %)는 티어 상한(+8)/하한(-3)으로 자연 캡. 데이터 없으면 null.
+function growthTier(pct: number | null | undefined): number | null {
+  if (pct == null) return null;
+  if (pct >= 25) return 8;
+  if (pct >= 10) return 5;
+  if (pct >= 0) return 2;
+  return -3;
+}
+
+// FCF — 가능하면 FCF마진(fcf/revenue) 티어, 매출 정보 없으면 부호만. fcf null이면 제외.
+function fcfRawScore(fcf: number | null | undefined, revenue: number | null | undefined): number | null {
+  if (fcf == null) return null;
+  if (revenue != null && revenue > 0) {
+    const margin = fcf / revenue;
+    if (margin >= 0.15) return 6;
+    if (margin >= 0.05) return 4;
+    if (margin > 0) return 2;
+    return -3;
+  }
+  return fcf > 0 ? 2 : -3;
+}
+
+// ROIC/ROE — FMP key-metrics는 소수(0.15=15%)·분기값(실측: roic p50 0.011, p90 0.047).
+// tiny denominator로 생기는 이상치(roic |값|>1, roe |값|>2)는 잡음이라 배제하고 폴백.
+// 둘 다 없거나 모두 이상치면 null(제외).
+function roicRawScore(roic: number | null | undefined, roe: number | null | undefined): number | null {
+  const pick =
+    roic != null && Math.abs(roic) <= 1 ? roic :
+    roe != null && Math.abs(roe) <= 2 ? roe :
+    null;
+  if (pick == null) return null;
+  if (pick >= 0.04) return 6;
+  if (pick >= 0.02) return 4;
+  if (pick >= 0.01) return 2;
+  if (pick >= 0) return 0;
+  return -2;
 }
 
 // ─── 스코어링 함수 ────────────────────────────────────────────────────────────
@@ -368,6 +440,10 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   const ELIGIBILITY_MIN_PRICE = 2;
   const ELIGIBILITY_MIN_MARKET_CAP = 300_000_000;
   const ELIGIBILITY_EXCHANGES = new Set(["nasdaq", "nyse"]);
+  // 우선주(-PA/-PB…)·워런트(-WT)·유닛(-U)·권리(-R/-RT) 등 파생·비보통주 심볼 제외.
+  // 이들은 공시·뉴스가 모회사 보통주 CIK로 잡혀 후보에 거의 안 들지만, 내부자 신고
+  // 등으로 조용히 낄 수 있어 후보 단계에서 명시적으로 배제한다(seed-financials.ts와 동일 규칙).
+  const NON_COMMON_STOCK = /-(WT[A-Z]?|U|R|RT|P[A-Z]?)$/;
 
   const { data: eligMetaRows } = await admin
     .from("tickers")
@@ -381,9 +457,11 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     exchangeByTicker.set(t.ticker, t.exchange);
   }
 
-  let priceExcluded = 0, capExcluded = 0, exchangeExcluded = 0;
+  let priceExcluded = 0, capExcluded = 0, exchangeExcluded = 0, nonCommonExcluded = 0;
   const eligibleCandidates = new Set<string>();
   for (const ticker of allCandidates) {
+    if (NON_COMMON_STOCK.test(ticker)) { nonCommonExcluded++; continue; }
+
     const tickerPrices = pricesByTicker.get(ticker) ?? [];
     const latestClose = tickerPrices.length > 0 ? tickerPrices[tickerPrices.length - 1].close : null;
     const marketCap = marketCapByTicker.get(ticker) ?? null;
@@ -401,10 +479,44 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   }
 
   console.log(
-    `[collect/scoring] 자격 필터(가격≥$${ELIGIBILITY_MIN_PRICE}/시총≥$${ELIGIBILITY_MIN_MARKET_CAP.toLocaleString("en-US")}/NASDAQ·NYSE): ` +
+    `[collect/scoring] 자격 필터(가격≥$${ELIGIBILITY_MIN_PRICE}/시총≥$${ELIGIBILITY_MIN_MARKET_CAP.toLocaleString("en-US")}/NASDAQ·NYSE/보통주): ` +
     `${allCandidates.size}개 후보 → ${eligibleCandidates.size}개 통과 ` +
-    `(가격 미달 ${priceExcluded} / 시총 미달 ${capExcluded} / 거래소 제외 ${exchangeExcluded} — 한 종목이 여러 조건에 동시에 걸릴 수 있어 합계가 실제 제외 수보다 클 수 있음)`
+    `(비보통주 제외 ${nonCommonExcluded} / 가격 미달 ${priceExcluded} / 시총 미달 ${capExcluded} / 거래소 제외 ${exchangeExcluded} — 한 종목이 여러 조건에 동시에 걸릴 수 있어 합계가 실제 제외 수보다 클 수 있음)`
   );
+
+  // ── analyst_ratings · financial_metrics 조회 (자격 통과 종목만) ──────────────
+  // stock_prices/eligMeta와 동일하게 candidate 목록으로 좁혀 조회한다(전체 4,883
+  // 종목·수만 행을 끌어오지 않음). 종목별 최신 1건만 남긴다.
+  const eligibleList = Array.from(eligibleCandidates);
+
+  type AnalystRow = { ticker: string; period: string | null; strong_buy: number | null; buy: number | null; hold: number | null; sell: number | null; strong_sell: number | null };
+  const analystByTicker = new Map<string, AnalystRow>();
+  type FinancialRow = { ticker: string; period_end: string; revenue: number | null; revenue_growth_yoy: number | null; eps_growth_yoy: number | null; fcf: number | null; roic: number | null; roe: number | null };
+  const financialByTicker = new Map<string, FinancialRow>();
+
+  if (eligibleList.length > 0) {
+    // 종목당 여러 period가 있어 period desc로 받아 첫 등장(=최신)만 보관.
+    for (let i = 0; i < eligibleList.length; i += 300) {
+      const chunk = eligibleList.slice(i, i + 300);
+      const [{ data: aRows }, { data: fRows }] = await Promise.all([
+        admin.from("analyst_ratings")
+          .select("ticker, period, strong_buy, buy, hold, sell, strong_sell")
+          .in("ticker", chunk)
+          .order("period", { ascending: false }),
+        admin.from("financial_metrics")
+          .select("ticker, period_end, revenue, revenue_growth_yoy, eps_growth_yoy, fcf, roic, roe")
+          .eq("period_type", "quarter")
+          .in("ticker", chunk)
+          .order("period_end", { ascending: false }),
+      ]);
+      for (const r of (aRows ?? []) as AnalystRow[]) {
+        if (!analystByTicker.has(r.ticker)) analystByTicker.set(r.ticker, r);
+      }
+      for (const r of (fRows ?? []) as FinancialRow[]) {
+        if (!financialByTicker.has(r.ticker)) financialByTicker.set(r.ticker, r);
+      }
+    }
+  }
 
   // ── 스코어링 루프 ────────────────────────────────────────────────────────────
 
@@ -481,7 +593,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     // smart_score(DB 하위호환 컬럼) = 4개 팩터 합계 — 구 smartRaw와 동일한 값
     const smartScore = insiderRaw + institutionRaw + shortRaw + targetRaw;
 
-    // ── Earnings Quality (30%) — 발표일→다음 발표예정일 선형감쇠(없으면 90일) ──
+    // ── 실적·가이던스 (18%) — 발표일→다음 발표예정일 선형감쇠(없으면 90일) ──
     let earningsRaw = 0;
     if (earnData) {
       const epsBeat = earnData.actual_eps     != null && earnData.eps_estimate     != null && earnData.actual_eps     > earnData.eps_estimate;
@@ -514,7 +626,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       earningsScore = earningsRaw * decayEarnings(daysSinceReport, windowDays);
     }
 
-    // ── Corporate Events (15%) — 7일 이내 급감, 뉴스건수/surge 보너스 완전 제거 ─
+    // ── 기업이벤트(공시) (12%) — 7일 이내 급감, 뉴스건수/surge 보너스 완전 제거 ─
     const eventFilings = filings.filter((f) => f.event_type != null && EVENT_WEIGHTS[f.event_type] !== undefined);
     const filingGroups = new Map<string, FilingRow[]>();
     for (const f of eventFilings) {
@@ -537,7 +649,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     const eventsScore = eventsRaw;
     const dedupFilingCount = filingGroups.size;
 
-    // ── Market (5%) — 뉴스와 동일(7일) 감쇠, 데이터 신선도 기준 ──────────────────
+    // ── 가격모멘텀 (4%) — 뉴스와 동일(7일) 감쇠, 데이터 신선도 기준 ──────────────
     let marketRaw = 0;
     if (prices.length >= 2) {
       const fc = prices[0].close;
@@ -579,13 +691,30 @@ export async function computeScores(): Promise<ScoredTicker[]> {
     }
     const newsScore = Math.min(newsRaw, 5);
 
-    // ── Discovery Bonus — tickers 테이블에 market_cap 컬럼 없어 스킵 ────────────
-    // TODO: tickers.market_cap 컬럼 추가 시, 20억~300억 달러 구간 종목에 +5 부여
+    // ── 애널리스트 의견 (8%) — 최신 1건, 최소 3명 커버리지, 없으면 null(제외) ──
+    const analystRaw = analystRawScore(analystByTicker.get(ticker));
+    if (analystRaw != null) {
+      if (analystRaw >= 5) tags.add("analyst_bullish");        // meanRating ≥ 1.0
+      else if (analystRaw <= -2.5) tags.add("analyst_bearish"); // meanRating ≤ -0.5
+    }
+
+    // ── 재무 품질 4팩터 — financial_metrics 최신 분기값. 없으면 null(제외) ──────
+    const finRow = financialByTicker.get(ticker);
+    const revenueGrowthRaw = growthTier(finRow?.revenue_growth_yoy);
+    const epsGrowthRaw = growthTier(finRow?.eps_growth_yoy);
+    const fcfRaw = fcfRawScore(finRow?.fcf, finRow?.revenue);
+    const roicRaw = roicRawScore(finRow?.roic, finRow?.roe);
+
+    // ── Discovery Bonus — 비활성 유지 ───────────────────────────────────────────
+    // market_cap 컬럼은 이미 확보돼 자격 필터(위)에서 사용 중이다. 다만 이 보너스는
+    // 정규화(computeFinalScore) 바깥에서 더해지는 flat 가산이라, 0~100 정규화·
+    // factor_log 기반 모델과 일관되지 않는다. mid-cap 디스커버리 틸트가 필요하면
+    // 정규화된 별도 팩터로 설계해야 하며(13→14 팩터 확장 = 별도 승인), 그전까지 0 유지.
     const discoveryBonus = 0;
 
     // ── 팩터별 기여도 로그 (사용자 비노출, 내부 분석용) ──────────────────────────
-    // 비활성 항목(revision/revenueGrowth/epsGrowth/fcf/roic)은 아직 데이터 소스가
-    // 없어 null — "계산 안 함"을 의미하며 0(계산 결과 무영향)과 구분한다.
+    // 재무4·analyst는 데이터 없으면 null — "계산 안 함"(종목별 정규화에서 분자·분모
+    // 모두 제외)을 의미하며 0(계산 결과 무영향)과 구분한다.
     const factorLog: FactorLog = {
       earnings: earningsScore,
       institution: institutionRaw,
@@ -595,14 +724,14 @@ export async function computeScores(): Promise<ScoredTicker[]> {
       news: newsScore,
       short: shortRaw,
       momentum: marketScore,
-      revision: null,
-      revenueGrowth: null,
-      epsGrowth: null,
-      fcf: null,
-      roic: null,
+      analyst: analystRaw,
+      revenueGrowth: revenueGrowthRaw,
+      epsGrowth: epsGrowthRaw,
+      fcf: fcfRaw,
+      roic: roicRaw,
     };
 
-    // ── Final Score — 활성 팩터만 가중합산 후 활성 비중 합계(현재 0.78)로 정규화 ──
+    // ── Final Score — 종목별 non-null 활성 팩터만 가중합산·정규화(상대 내부 점수) ──
     const finalScore = computeFinalScore(factorLog) + discoveryBonus;
 
     scored.push({

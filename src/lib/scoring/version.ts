@@ -9,4 +9,4 @@
 //
 // 향후 여러 서버 인스턴스·롤백·A/B 테스트 등으로 운영 중 동적 버전 변경이
 // 필요해지기 전까지는 DB 설정 테이블로 이전하지 않는다.
-export const SCORING_MODEL_VERSION = "v1";
+export const SCORING_MODEL_VERSION = "v2";
