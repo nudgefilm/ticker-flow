@@ -9,6 +9,7 @@ import {
   IconCheck,
   IconArrowRight,
 } from "@tabler/icons-react";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import LandingShell from "@/components/landing-shell";
 import Footer from "@/components/footer";
@@ -18,8 +19,15 @@ import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
 import { CtaCard } from "@/components/cta-card";
 import { normalizeSector, SECTOR_KR } from "@/lib/sectors";
+import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
 
 export const dynamic = "force-dynamic";
+
+// 랜딩 캐시 데이터(히어로 차트·통계 카운트·LandingTop10)는 시간 기반 revalidate를
+// 쓰지 않고 LANDING_DATA_CACHE_TAG 태그로만 갱신한다 — 매일 04:00 KST에
+// /api/revalidate/landing 크론이 revalidateTag()로 한 번에 무효화한다
+// (docs: src/lib/landing-cache.ts). 이 문구를 바꾸면 갱신 주기 설명도 맞춰 바꿀 것.
+const HERO_UPDATE_LABEL = "매일 새벽 업데이트";
 
 const HERO_TYPE_COLORS: Record<string, string> = {
   "8-K": "#fbbf24",
@@ -29,116 +37,18 @@ const HERO_TYPE_COLORS: Record<string, string> = {
   "기타": "#6b7280",
 };
 
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "방금 전";
-  if (mins < 60) return `${mins}분 전`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}시간 전`;
-  return `${Math.floor(hrs / 24)}일 전`;
-}
-
-
-function formTypeKr(ft: string): string {
-  if (ft.startsWith("8-K")) return "8-K 주요이벤트";
-  if (ft.startsWith("10-K")) return "10-K 연간보고서";
-  if (ft.startsWith("10-Q")) return "10-Q 분기보고서";
-  if (ft === "4" || ft === "4/A") return "Form 4 내부자거래";
-  return ft;
-}
-
-function SectionLabel({ text }: { text: string }) {
-  return (
-    <span className="inline-block rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
-      {text}
-    </span>
-  );
-}
-
-export default async function HomePage() {
+// 히어로 목업 차트 3종 전용 데이터 fetch — 페이지 전체(force-dynamic)와 분리해
+// LANDING_DATA_CACHE_TAG 태그로만 캐시한다(시간 기반 revalidate 중복 사용 안 함).
+async function fetchHeroChartsData() {
   const admin = createAdminClient();
-
-  // ── 실시간 피드 데이터 ──────────────────────────────────────────────────────
-  const SKIP_FORMS = new Set(["S-1", "S-1/A", "DEF 14A", "424B4", "S-3", "S-3/A"]);
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: rawFilings }, { data: newsList }, weeklyFilingsRaw, weeklyNewsRaw, heroSectorRaw] = await Promise.all([
-    admin
-      .from("filings")
-      .select("id, ticker, form_type, filed_at")
-      .order("filed_at", { ascending: false })
-      .limit(20),
-    admin
-      .from("news")
-      .select("id, ticker, summary_kr, published_at")
-      .not("summary_kr", "is", null)
-      .order("published_at", { ascending: false })
-      .limit(5),
+  const [{ data: heroFilingsRaw }, heroSectorRaw] = await Promise.all([
     admin.from("filings").select("form_type, filed_at").gte("filed_at", sevenDaysAgo),
-    admin.from("news").select("published_at").gte("published_at", sevenDaysAgo),
     admin.from("filings").select("tickers!inner(sector)").gte("filed_at", sevenDaysAgo),
   ]);
 
-  const priorityFilings = (rawFilings ?? [])
-    .filter((f) => !SKIP_FORMS.has(f.form_type))
-    .slice(0, 2);
-
-  type FeedItem = { ticker: string; label: string; time: string; category: string };
-  const feedItems: FeedItem[] = [
-    ...priorityFilings.map((f) => ({
-      ticker: f.ticker,
-      label: formTypeKr(f.form_type),
-      time: timeAgo(f.filed_at),
-      category: "공시",
-    })),
-    ...((newsList ?? []).slice(0, 1).map((n) => ({
-      ticker: n.ticker ?? "—",
-      label: n.summary_kr!,
-      time: timeAgo(n.published_at),
-      category: "뉴스",
-    }))),
-  ].slice(0, 3);
-
-  // ── 통계 ────────────────────────────────────────────────────────────────────
-  const counts = await Promise.allSettled([
-    admin.from("tickers").select("ticker", { count: "exact", head: true }),
-    admin.from("filings").select("id", { count: "exact", head: true }),
-    admin.from("news").select("id", { count: "exact", head: true }),
-    (admin as any).from("macro_indicators").select("id", { count: "exact", head: true }),
-    (admin as any).from("insider_trades").select("id", { count: "exact", head: true }),
-    (admin as any).from("earnings_calls").select("id", { count: "exact", head: true }),
-    (admin as any).from("earnings").select("id", { count: "exact", head: true }),
-  ]);
-
-  const [tc, fc, nc, mc, ic, ec, ear] = counts.map((r) =>
-    r.status === "fulfilled" ? (r.value.count ?? 0) : 0
-  );
-
-  // ── 최근 7일 일별 수집량 (공시+뉴스 합산) ──────────────────────────────────
-  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
-  const weeklyMap: Record<string, number> = {};
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = 0;
-  }
-  for (const f of weeklyFilingsRaw.data ?? []) {
-    const d = new Date(f.filed_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (key in weeklyMap) weeklyMap[key]++;
-  }
-  for (const n of weeklyNewsRaw.data ?? []) {
-    const d = new Date(n.published_at);
-    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    if (key in weeklyMap) weeklyMap[key]++;
-  }
-  const weeklyCollection = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
-    return { day: dayNames[d.getDay()], value: weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0 };
-  });
-
-  // ── 히어로 목업: 최근 7일 공시 유형 분포 + 일별 트렌드 + 섹터별 활동 ──────────
-  const heroFilings = weeklyFilingsRaw.data ?? [];
+  const heroFilings = heroFilingsRaw ?? [];
 
   const heroTypeCounts: Record<string, number> = {};
   const heroTrendMap: Record<string, number> = {};
@@ -193,6 +103,145 @@ export default async function HomePage() {
     .map(([sector, count]) => ({ sector, sectorKr: SECTOR_KR[sector] ?? sector, count }));
   const heroSectorMax = Math.max(...heroSectorData.map((d) => d.count), 1);
 
+  return { heroTotal, heroTypeData, heroTrendData, heroTrendMax, heroConicGradient, heroSectorData, heroSectorMax };
+}
+
+const getHeroChartsData = unstable_cache(
+  fetchHeroChartsData,
+  ["landing-hero-charts"],
+  { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
+);
+
+// 통계 카운트 7종(가입자 수는 별도 profiles 카운트로 실시간 유지, 아래는 콘텐츠
+// 수집량 카운트) — 히어로와 동일하게 태그 전용 캐시.
+async function fetchLandingStatsCounts() {
+  const admin = createAdminClient();
+  const counts = await Promise.allSettled([
+    admin.from("tickers").select("ticker", { count: "exact", head: true }),
+    admin.from("filings").select("id", { count: "exact", head: true }),
+    admin.from("news").select("id", { count: "exact", head: true }),
+    (admin as any).from("macro_indicators").select("id", { count: "exact", head: true }),
+    (admin as any).from("insider_trades").select("id", { count: "exact", head: true }),
+    (admin as any).from("earnings_calls").select("id", { count: "exact", head: true }),
+    (admin as any).from("earnings").select("id", { count: "exact", head: true }),
+  ]);
+
+  const [tc, fc, nc, mc, ic, ec, ear] = counts.map((r) =>
+    r.status === "fulfilled" ? (r.value.count ?? 0) : 0
+  );
+  return { tc, fc, nc, mc, ic, ec, ear };
+}
+
+const getLandingStatsCounts = unstable_cache(
+  fetchLandingStatsCounts,
+  ["landing-stats-counts"],
+  { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
+);
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "방금 전";
+  if (mins < 60) return `${mins}분 전`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}시간 전`;
+  return `${Math.floor(hrs / 24)}일 전`;
+}
+
+
+function formTypeKr(ft: string): string {
+  if (ft.startsWith("8-K")) return "8-K 주요이벤트";
+  if (ft.startsWith("10-K")) return "10-K 연간보고서";
+  if (ft.startsWith("10-Q")) return "10-Q 분기보고서";
+  if (ft === "4" || ft === "4/A") return "Form 4 내부자거래";
+  return ft;
+}
+
+function SectionLabel({ text }: { text: string }) {
+  return (
+    <span className="inline-block rounded-full border border-border px-3 py-1 text-xs font-medium text-muted-foreground">
+      {text}
+    </span>
+  );
+}
+
+export default async function HomePage() {
+  const admin = createAdminClient();
+
+  // ── 실시간 피드 데이터 ──────────────────────────────────────────────────────
+  const SKIP_FORMS = new Set(["S-1", "S-1/A", "DEF 14A", "424B4", "S-3", "S-3/A"]);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const [{ data: rawFilings }, { data: newsList }, weeklyFilingsRaw, weeklyNewsRaw] = await Promise.all([
+    admin
+      .from("filings")
+      .select("id, ticker, form_type, filed_at")
+      .order("filed_at", { ascending: false })
+      .limit(20),
+    admin
+      .from("news")
+      .select("id, ticker, summary_kr, published_at")
+      .not("summary_kr", "is", null)
+      .order("published_at", { ascending: false })
+      .limit(5),
+    admin.from("filings").select("filed_at").gte("filed_at", sevenDaysAgo),
+    admin.from("news").select("published_at").gte("published_at", sevenDaysAgo),
+  ]);
+
+  const priorityFilings = (rawFilings ?? [])
+    .filter((f) => !SKIP_FORMS.has(f.form_type))
+    .slice(0, 2);
+
+  type FeedItem = { ticker: string; label: string; time: string; category: string };
+  const feedItems: FeedItem[] = [
+    ...priorityFilings.map((f) => ({
+      ticker: f.ticker,
+      label: formTypeKr(f.form_type),
+      time: timeAgo(f.filed_at),
+      category: "공시",
+    })),
+    ...((newsList ?? []).slice(0, 1).map((n) => ({
+      ticker: n.ticker ?? "—",
+      label: n.summary_kr!,
+      time: timeAgo(n.published_at),
+      category: "뉴스",
+    }))),
+  ].slice(0, 3);
+
+  // ── 통계 ──────────────────────────────────────────────────────────────────
+  // 태그 캐시(LANDING_DATA_CACHE_TAG) — 매일 04:00 KST에만 갱신
+  const { tc, fc, nc, mc, ic, ec, ear } = await getLandingStatsCounts();
+
+  // ── 최근 7일 일별 수집량 (공시+뉴스 합산) ──────────────────────────────────
+  const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
+  const weeklyMap: Record<string, number> = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] = 0;
+  }
+  for (const f of weeklyFilingsRaw.data ?? []) {
+    const d = new Date(f.filed_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (key in weeklyMap) weeklyMap[key]++;
+  }
+  for (const n of weeklyNewsRaw.data ?? []) {
+    const d = new Date(n.published_at);
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (key in weeklyMap) weeklyMap[key]++;
+  }
+  const weeklyCollection = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+    return { day: dayNames[d.getDay()], value: weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0 };
+  });
+
+  // ── 히어로 목업: 최근 7일 공시 유형 분포 + 일별 트렌드 + 섹터별 활동 ──────────
+  // 태그 캐시(LANDING_DATA_CACHE_TAG) — 페이지 나머지 데이터(force-dynamic)와
+  // 분리되어 매일 04:00 KST에만 갱신된다.
+  const {
+    heroTotal, heroTypeData, heroTrendData, heroTrendMax, heroConicGradient,
+    heroSectorData, heroSectorMax,
+  } = await getHeroChartsData();
+
   return (
     <div id="site-content" className="min-h-screen bg-background">
       <LandingShell>
@@ -236,6 +285,7 @@ export default async function HomePage() {
                       <div className="h-3 w-3 rounded-full bg-white/10" />
                       <span className="ml-2 font-mono text-xs text-white/30">tickerflow.net</span>
                     </div>
+                    <p className="px-4 pt-3 text-[10px] text-[#a6a6a6]">{HERO_UPDATE_LABEL}</p>
                     <div className="grid grid-cols-2 gap-3 p-4">
                       {/* 좌: 도넛 차트 */}
                       <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">

@@ -1,15 +1,27 @@
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeRange, fetchTopCompanies } from "@/lib/watchlist-brief";
+import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
 
 // 2026-07-11: top30_daily.rank(TickerFlow 자체 스코어링 결과) 기반 "오늘의
 // 기업 동향 TOP10" + "N위" 배지를 제거했다(세션97 규제 리스크 점검 — 자본시장법
 // 유사투자자문업 "가치에 관한 조언" 소지 제거). 최근 7일 공시+뉴스+내부자매수
 // 건수 기반(fetchTopCompanies, 주간/월간 BRIEF와 동일한 팩트 카운트 로직)으로
 // 교체하고, 순위 배지 대신 실제 활동 건수를 그대로 보여준다.
+
+// 태그 캐시(LANDING_DATA_CACHE_TAG) — 매일 04:00 KST에만 갱신(/api/revalidate/landing).
+const getCachedTopCompanies = unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const range = computeRange(7);
+    return fetchTopCompanies(admin, range, 10);
+  },
+  ["landing-top-companies"],
+  { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
+);
+
 export default async function LandingTop10() {
-  const admin = createAdminClient();
-  const range = computeRange(7);
-  const companies = await fetchTopCompanies(admin, range, 10);
+  const companies = await getCachedTopCompanies();
 
   if (companies.length === 0) return null;
 
