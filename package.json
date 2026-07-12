@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/audit-user-copy.ts",
     "build": "next build",
     "postbuild": "tsx scripts/verify-webhooks.ts",
     "start": "next start",
     "lint": "eslint",
     "verify:webhooks": "tsx scripts/verify-webhooks.ts",
+    "audit:copy": "tsx scripts/audit-user-copy.ts",
     "gen:types": "npx --yes supabase@latest gen types typescript --project-id bjyceygtamogiikjedlu > src/types/supabase.ts"
   },
   "dependencies": {
