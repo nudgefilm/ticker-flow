@@ -335,20 +335,38 @@ export async function gatherDigestData(): Promise<DigestData | null> {
   let featured: FeaturedCompany | null = null;
 
   if (featuredRow) {
-    const { data: priceRows } = await admin
-      .from("stock_prices")
-      .select("date, close")
-      .eq("ticker", featuredRow.ticker)
-      .order("date", { ascending: false })
-      .limit(30) as { data: { date: string; close: number }[] | null };
+    const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
+
+    const [{ data: priceRows }, { data: yearPriceRows }]: [
+      { data: { date: string; close: number }[] | null },
+      { data: { close: number }[] | null },
+    ] = await Promise.all([
+      admin
+        .from("stock_prices")
+        .select("date, close")
+        .eq("ticker", featuredRow.ticker)
+        .order("date", { ascending: false })
+        .limit(30),
+      // 종목 스냅샷 페이지(stocks/[symbol]/page.tsx)와 동일하게 최근 1년(52주)
+      // 종가 중 최저/최고를 계산 — 위 30일치 스파크라인용 조회와는 별개 창.
+      admin
+        .from("stock_prices")
+        .select("close")
+        .eq("ticker", featuredRow.ticker)
+        .gte("date", oneYearAgo),
+    ]);
 
     const closes = (priceRows ?? []).slice().reverse().map((r) => r.close);
+    const yearCloses = (yearPriceRows ?? []).map((r) => r.close);
 
     featured = {
       ticker: featuredRow.ticker,
       name: nameMap.get(featuredRow.ticker) ?? featuredRow.name,
       descriptionKr: descMap.get(featuredRow.ticker)!,
       sparklineUrl: sparklineUrl(closes),
+      latestClose: closes.length > 0 ? closes[closes.length - 1] : null,
+      week52Low: yearCloses.length > 0 ? Math.min(...yearCloses) : null,
+      week52High: yearCloses.length > 0 ? Math.max(...yearCloses) : null,
     };
   }
 

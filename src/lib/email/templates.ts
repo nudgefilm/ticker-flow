@@ -167,6 +167,11 @@ export type FeaturedCompany = {
   name: string;
   descriptionKr: string;
   sparklineUrl: string | null;
+  /** sparklineUrl 차트의 최신 종가(52주 범위 바에서 현재가 위치 표시용) */
+  latestClose: number | null;
+  /** 최근 1년(52주) 최저·최고 종가 — 가격 데이터가 없으면 null(52주 범위 바 미노출) */
+  week52Low: number | null;
+  week52High: number | null;
 };
 
 export type NewEntrantItem = {
@@ -331,10 +336,38 @@ function digestSplitSentences(text: string): string[] {
   return text.split(/(?<=다\.)\s+/).map((s) => s.trim()).filter(Boolean);
 }
 
+// 종목 스냅샷(dashboard/snapshot/price-card.tsx의 RangeBar)과 동일한 정보를
+// 이메일에서도 보여주기 위한 정적 버전 — 이메일 클라이언트는 position:absolute
+// 지원이 들쑥날쑥해 인터랙티브 슬라이더 대신, 폭(%)이 다른 3칸짜리 테이블로
+// "트랙-마커-트랙"을 표현하는 이메일 표준 기법(progress bar hack)을 쓴다.
+function digestWeek52Bar(low: number, high: number, close: number): string {
+  const pct = high === low ? 50 : Math.min(Math.max(((close - low) / (high - low)) * 100, 0), 100);
+  const leftPct = pct.toFixed(1);
+  const rightPct = (100 - pct).toFixed(1);
+  return `
+    <table cellpadding="0" cellspacing="0" style="width:100%;margin-top:14px"><tr>
+      <td style="font-size:11px;color:#a6a6a6">52주 최저</td>
+      <td style="font-size:11px;color:#a6a6a6;text-align:right">52주 최고</td>
+    </tr></table>
+    <table cellpadding="0" cellspacing="0" style="width:100%;margin-top:6px"><tr>
+      <td style="width:${leftPct}%;height:6px;background:#2a2a2a;border-radius:3px 0 0 3px;font-size:0;line-height:0">&nbsp;</td>
+      <td style="width:10px;height:6px;background:#60a5fa;font-size:0;line-height:0">&nbsp;</td>
+      <td style="width:${rightPct}%;height:6px;background:#2a2a2a;border-radius:0 3px 3px 0;font-size:0;line-height:0">&nbsp;</td>
+    </tr></table>
+    <table cellpadding="0" cellspacing="0" style="width:100%;margin-top:6px"><tr>
+      <td style="font-size:13px;font-weight:600;color:#ffffff">$${low.toFixed(2)}</td>
+      <td style="font-size:13px;font-weight:600;color:#ffffff;text-align:right">$${high.toFixed(2)}</td>
+    </tr></table>
+  `;
+}
+
 function digestFeaturedSection(featured: FeaturedCompany | null): string {
   if (!featured) return "";
   const chart = featured.sparklineUrl
     ? `<img src="${featured.sparklineUrl}" width="560" height="160" alt="${escapeHtml(featured.ticker)} 최근 30일 종가 추이" style="display:block;width:100%;max-width:560px;height:auto;border:0">`
+    : "";
+  const week52Bar = featured.week52Low != null && featured.week52High != null && featured.latestClose != null
+    ? digestWeek52Bar(featured.week52Low, featured.week52High, featured.latestClose)
     : "";
   const descriptionHtml = digestSplitSentences(featured.descriptionKr)
     .map((s) => escapeHtml(s))
@@ -344,7 +377,8 @@ function digestFeaturedSection(featured: FeaturedCompany | null): string {
     ${digestCard(`
       <p style="margin:0 0 12px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
       ${chart ? `<div style="margin:0 0 14px">${chart}</div>` : ""}
-      <p style="margin:0;font-size:14px;color:#bbbbbb;line-height:1.7">${descriptionHtml}</p>
+      ${week52Bar}
+      <p style="margin:16px 0 0;font-size:14px;color:#bbbbbb;line-height:1.7">${descriptionHtml}</p>
       <p style="margin:12px 0 0"><a href="${BASE_URL}/stocks/${escapeHtml(featured.ticker)}" style="color:#60a5fa;text-decoration:none;font-size:13px;font-weight:600">종목 스냅샷 보기 →</a></p>
     `)}
     ${digestSpacer(24)}
