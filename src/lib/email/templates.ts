@@ -281,29 +281,8 @@ function digestStockLink(ticker: string, name: string): string {
     + (hasRealName ? ` <span style="color:#dddddd;font-size:12px">${escapeHtml(name)}</span>` : "");
 }
 
-// 섹션 제목 아이콘 — @tabler/icons-react(CLAUDE.md 4항)와 같은 스트로크 기반
-// 라인 아이콘 스타일을 인라인 SVG로 직접 그린다(React 아이콘 컴포넌트는 이메일
-// 클라이언트에서 렌더링되지 않으므로 사용 불가). 순위·수익 암시를 피하기 위해
-// 상승/하락 화살표 등 방향성 있는 도형은 쓰지 않고, 기존 다이제스트 액센트
-// 색상(#60a5fa)만 사용한다.
-function digestIcon(paths: string): string {
-  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px">${paths}</svg>`;
-}
-
-const SEC_ICON = {
-  activity:   `<path d="M3 12h4l2 5 4-10 2 5h6"/>`,
-  chartBar:   `<path d="M4 20V10M10 20V4M16 20v-7"/><path d="M3 20h18"/>`,
-  building:   `<rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/>`,
-  sparkle:    `<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>`,
-  compare:    `<path d="M4 7h12M13 4l3 3-3 3"/><path d="M20 17H8M11 14l-3 3 3 3"/>`,
-  notes:      `<path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M9 10h6M9 14h6M9 18h3"/>`,
-  lineChart:  `<path d="M4 19V5"/><path d="M4 19h16"/><path d="M6 15l3.5-4 3 2.5L18 8"/>`,
-  category:   `<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>`,
-  clipboard:  `<rect x="6" y="4" width="12" height="17" rx="1"/><rect x="9" y="2" width="6" height="3" rx="0.5"/><path d="M9 11h6M9 15h6"/>`,
-} as const;
-
-function digestSecTitle(text: string, icon?: string): string {
-  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#cccccc;text-transform:uppercase;letter-spacing:0.06em">${icon ? digestIcon(icon) : ""}${text}</p>`;
+function digestSecTitle(text: string): string {
+  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#cccccc;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
 }
 
 function digestSpacer(px: number): string {
@@ -402,7 +381,7 @@ function digestFeaturedSection(featured: FeaturedCompany | null): string {
     .map((s) => escapeHtml(s))
     .join("<br><br>");
   return `
-    ${digestSecTitle("이 기업", SEC_ICON.building)}
+    ${digestSecTitle("이 기업")}
     ${digestCard(`
       <p style="margin:0 0 12px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
       ${chart ? `<div style="margin:0 0 14px">${chart}</div>` : ""}
@@ -508,7 +487,7 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ② 오늘 활동이 많았던 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("오늘 활동이 많았던 기업", SEC_ICON.activity)}
+        ${digestSecTitle("오늘 활동이 많았던 기업")}
         ${top3Html}
         ${top4to10Html}
       </td></tr></table>
@@ -516,7 +495,7 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ③ 시장에서 관측된 오늘의 주요 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("시장에서 관측된 오늘의 주요 변화", SEC_ICON.chartBar)}
+        ${digestSecTitle("시장에서 관측된 오늘의 주요 변화")}
         ${digestChangeBadges(marketChange)}
         <p style="margin:8px 0 0;font-size:11px;color:#a6a6a6;line-height:1.6">기관수급: 기관투자자 관련 공시 · 실적: 실적 예상치 상회 발표 · 내부자: 임원·대주주 매매 공시 · 시장변화: 관련 공시 건수</p>
       </td></tr></table>
@@ -529,14 +508,14 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ⑤ 오늘 새로 활동이 확인된 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("오늘 새로 활동이 확인된 기업", SEC_ICON.sparkle)}
+        ${digestSecTitle("오늘 새로 활동이 확인된 기업")}
         ${digestCard(newEntrantHtml)}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- ⑥ 어제 대비 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("어제 대비 변화", SEC_ICON.compare)}
+        ${digestSecTitle("어제 대비 변화")}
         ${digestCard(`
           <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동 건수 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
@@ -548,14 +527,14 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ⑦ 시장 요약 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("시장 요약", SEC_ICON.notes)}
+        ${digestSecTitle("시장 요약")}
         ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- ⑧ 주요 경제지표 + CTA -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("주요 경제지표", SEC_ICON.lineChart)}
+        ${digestSecTitle("주요 경제지표")}
         ${digestMacroSection(macros)}
         ${digestSpacer(16)}
         <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td align="center">
@@ -724,7 +703,7 @@ export function weeklyDigestEmail(data: WeeklyBriefData, weekRangeLabel: string)
 
       <!-- 이번 주 활동이 많았던 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 활동이 많았던 기업", SEC_ICON.activity)}
+        ${digestSecTitle("이번 주 활동이 많았던 기업")}
         ${top3Html}
         ${top4to10Html}
       </td></tr></table>
@@ -732,7 +711,7 @@ export function weeklyDigestEmail(data: WeeklyBriefData, weekRangeLabel: string)
 
       <!-- 이번 주 시장 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 시장 변화", SEC_ICON.chartBar)}
+        ${digestSecTitle("이번 주 시장 변화")}
         ${digestChangeBadges(weeklyChangeBadgesData(marketStats))}
         <p style="margin:8px 0 0;font-size:11px;color:#a6a6a6;line-height:1.6">기관수급: 기관투자자 관련 공시 · 실적: 실적 예상치 상회 발표 · 내부자: 임원·대주주 매매 공시 · 시장변화: 관련 공시 건수</p>
       </td></tr></table>
@@ -740,14 +719,14 @@ export function weeklyDigestEmail(data: WeeklyBriefData, weekRangeLabel: string)
 
       <!-- 이번 주 새로 활동이 확인된 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 새로 활동이 확인된 기업", SEC_ICON.sparkle)}
+        ${digestSecTitle("이번 주 새로 활동이 확인된 기업")}
         ${digestCard(newEntrantHtml)}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- 지난주 대비 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("지난주 대비 변화", SEC_ICON.compare)}
+        ${digestSecTitle("지난주 대비 변화")}
         ${digestCard(`
           <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동 건수 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
@@ -759,21 +738,21 @@ export function weeklyDigestEmail(data: WeeklyBriefData, weekRangeLabel: string)
 
       <!-- 이번 주 섹터 동향 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 섹터 동향", SEC_ICON.category)}
+        ${digestSecTitle("이번 주 섹터 동향")}
         ${digestCard(weeklySectorList(sectors))}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- 이번 주 주요 공시 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 주요 공시", SEC_ICON.notes)}
+        ${digestSecTitle("이번 주 주요 공시")}
         ${digestCard(weeklyFilingList(filings))}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- 이번 주 실적 하이라이트 + CTA -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("이번 주 실적 하이라이트", SEC_ICON.clipboard)}
+        ${digestSecTitle("이번 주 실적 하이라이트")}
         ${digestCard(weeklyEarningsList(earningsHighlights))}
         ${digestSpacer(16)}
         <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td align="center">
