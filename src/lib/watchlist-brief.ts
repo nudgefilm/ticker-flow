@@ -89,16 +89,44 @@ export interface BriefRange {
   /** 직전 동일 길이 구간 (예: 지난주, 지난달) — date 전용 */
   prevStartDateOnly: string;
   prevEndDateOnly: string;
+  /** days=1(rolling 24h) 전용 — 있으면 prevStartDateOnly/prevEndDateOnly 대신 이 ISO 경계를 그대로 사용 */
+  prevStartIso?: string;
+  prevEndIso?: string;
 }
 
 // 2026-07-11: 자정(UTC) 기준으로 정렬하도록 수정 — 기존에는 "지금 이 순간"에서
 // (days-1)일을 빼는 방식이라, days=1(일간 다이제스트에서 신규 사용)일 때
 // startIso가 "바로 지금"이 되어 사실상 오늘 데이터를 전부 놓치는 문제가 있었다.
 // days=7/30(주간·월간 BRIEF)은 자정 정렬 전후로 결과가 거의 동일해 영향이 없다.
+//
+// 2026-07-12: days=1 한정으로 다시 rolling(실행 시점 기준 최근 24시간) 방식으로
+// 변경 — 자정 정렬 방식은 이메일 다이제스트가 매일 10:00 KST(=01:00 UTC)에
+// 발송되는데, UTC 자정 이후 겨우 1시간 지난 시점이라 당일 구간이 시작한 지
+// 얼마 안 돼 그날 수집된 filings/news/insider_trades를 거의 반영하지 못하는
+// 문제가 있었다. days=7/30(주간·월간 BRIEF)·랜딩 TOP10은 자정 정렬을 그대로
+// 유지한다 — 이 함수 호출부 목록: digest.ts(days=1), weekly-brief.ts(days=7),
+// monthly-brief.ts(days=30), landing-top10.tsx(days=7).
 export function computeRange(days: number): BriefRange {
+  const dayMs = 86_400_000;
+
+  if (days === 1) {
+    const nowMs = Date.now();
+    const startIso = new Date(nowMs - dayMs).toISOString();
+    const prevStartIso = new Date(nowMs - 2 * dayMs).toISOString();
+    const prevEndIso = startIso;
+    return {
+      days,
+      startDateOnly: startIso.slice(0, 10),
+      startIso,
+      prevStartDateOnly: prevStartIso.slice(0, 10),
+      prevEndDateOnly: prevEndIso.slice(0, 10),
+      prevStartIso,
+      prevEndIso,
+    };
+  }
+
   const now = new Date();
   now.setUTCHours(0, 0, 0, 0);
-  const dayMs = 86_400_000;
   const startDateOnly = new Date(now.getTime() - (days - 1) * dayMs).toISOString().slice(0, 10);
   const startIso = new Date(now.getTime() - (days - 1) * dayMs).toISOString();
   const prevEndDateOnly = new Date(now.getTime() - days * dayMs).toISOString().slice(0, 10);
@@ -248,8 +276,11 @@ export interface PeriodComparison {
 }
 
 export async function fetchPeriodComparison(supabase: Supabase, range: BriefRange): Promise<PeriodComparison> {
-  const prevStartIso = `${range.prevStartDateOnly}T00:00:00.000Z`;
-  const prevEndExclusiveIso = new Date(
+  // days=1(rolling) 구간은 range.prevStartIso/prevEndIso에 이미 정확한 ISO 경계가
+  // 들어있으므로 그대로 쓴다. days=7/30 등은 date-only 필드로부터 자정 기준
+  // 경계를 재구성하는 기존 방식을 그대로 유지한다.
+  const prevStartIso = range.prevStartIso ?? `${range.prevStartDateOnly}T00:00:00.000Z`;
+  const prevEndExclusiveIso = range.prevEndIso ?? new Date(
     new Date(`${range.prevEndDateOnly}T00:00:00.000Z`).getTime() + 86_400_000
   ).toISOString();
 

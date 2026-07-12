@@ -48,14 +48,6 @@ function kstSubjectDate(): string {
 
 // ─── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
-// 날짜 문자열(YYYY-MM-DD) 하루치 UTC 타임스탬프 범위 — TIMESTAMPTZ 컬럼 필터링용
-function dayRangeUtc(dateStr: string): { gte: string; lt: string } {
-  const gte = `${dateStr}T00:00:00.000Z`;
-  const next = new Date(`${dateStr}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  return { gte, lt: next.toISOString() };
-}
-
 function sparklineUrl(closes: number[]): string | null {
   if (closes.length < 2) return null;
   const up = closes[closes.length - 1] >= closes[0];
@@ -189,8 +181,15 @@ export async function gatherDigestData(): Promise<DigestData | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admin = createAdminClient() as any;
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const range = computeRange(1); // "오늘" vs "어제" 1일 구간(활동 건수 비교용)
+  // 2026-07-12: computeRange(1)이 rolling(실행 시점 기준 최근 24시간)으로 바뀌면서
+  // 이 함수 전체의 "오늘" 판정을 range.startIso(=now-24h)와 nowIso(=now) 두 경계로
+  // 통일한다. 아래 filings/insider_trades/institutional_holdings/earnings 집계도
+  // 더 이상 UTC 자정 고정 경계(dayRangeUtc/todayStr)를 쓰지 않는다 — 자정 정렬을
+  // 쓰면 매일 10:00 KST(=01:00 UTC) 다이제스트 발송 시점엔 당일 구간이 시작한 지
+  // 1시간 뿐이라 그날 수집분을 거의 반영하지 못했다.
+  const nowIso = new Date().toISOString();
+  const todayStr = nowIso.slice(0, 10); // generateMarketNarrative 프롬프트 표시용 라벨(필터링에는 미사용)
+  const range = computeRange(1); // "오늘" vs "어제" 1일 구간(활동 건수 비교용, rolling 24h)
 
   // 1. 활동 건수 기반 상위 기업 + 기간 비교(신규 관측/활동 감소/건수 변화)
   const [topCompanies, comparison] = await Promise.all([
@@ -231,10 +230,12 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     }
   }
 
-  // 3. 오늘 날짜 기준 시장 변화 집계 (filings, insider_trades, institutional_holdings, earnings)
-  const filingsRange = dayRangeUtc(todayStr);
-  const insiderRange = dayRangeUtc(todayStr);
-  const institutionalRange = dayRangeUtc(todayStr);
+  // 3. 최근 24시간(rolling) 기준 시장 변화 집계 (filings, insider_trades, institutional_holdings, earnings)
+  // range.startIso = now-24h, nowIso = now — computeRange(1)이 계산한 것과 동일한 경계.
+  // earnings.report_date는 date-only 컬럼이라 시각 경계를 그대로 쓸 수 없어, 24시간 구간이
+  // 걸치는 두 날짜(now-24h의 날짜 ~ now의 날짜)를 포함하는 범위로 근사한다.
+  const earningsStartDateOnly = range.startIso.slice(0, 10);
+  const earningsEndDateOnly = nowIso.slice(0, 10);
 
   const [
     { count: filingsCount },
@@ -244,18 +245,18 @@ export async function gatherDigestData(): Promise<DigestData | null> {
     { data: insiderBuyRows },
   ] = await Promise.all([
     admin.from("filings").select("id", { count: "exact", head: true })
-      .gte("filed_at", filingsRange.gte).lt("filed_at", filingsRange.lt),
+      .gte("filed_at", range.startIso).lt("filed_at", nowIso),
     admin.from("insider_trades").select("id", { count: "exact", head: true })
-      .gte("filed_at", insiderRange.gte).lt("filed_at", insiderRange.lt),
+      .gte("filed_at", range.startIso).lt("filed_at", nowIso),
     admin.from("institutional_holdings").select("id", { count: "exact", head: true })
-      .gte("filed_at", institutionalRange.gte).lt("filed_at", institutionalRange.lt),
+      .gte("filed_at", range.startIso).lt("filed_at", nowIso),
     admin.from("earnings")
       .select("ticker, eps_estimate, actual_eps, revenue_estimate, actual_revenue")
-      .eq("report_date", todayStr),
+      .gte("report_date", earningsStartDateOnly).lte("report_date", earningsEndDateOnly),
     admin.from("insider_trades")
       .select("ticker, value")
       .eq("transaction_type", "buy")
-      .gte("filed_at", insiderRange.gte).lt("filed_at", insiderRange.lt),
+      .gte("filed_at", range.startIso).lt("filed_at", nowIso),
   ]) as [
     { count: number | null },
     { count: number | null },
