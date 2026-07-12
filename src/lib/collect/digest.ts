@@ -15,6 +15,7 @@ import type {
   MacroItem,
 } from "@/lib/email/templates";
 import { computeRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/watchlist-brief";
+import { neutralizeRankLanguage } from "./rank-language";
 
 // 2026-07-11: gatherDigestData()는 이전에는 top30_daily(TickerFlow 자체
 // 스코어링 결과)를 근거로 "오늘의 기업동향 TOP10/TOP30 신규진입/순위변화"를
@@ -135,7 +136,9 @@ async function generateMarketNarrative(params: {
 - 투자 매력, 긍정적 신호, 부정적 신호
 - 투자 권유, 매수, 매도, 추천 표현
 - "TOP10", "TOP30", "N위"(순위 표기), 순위, 랭킹, 선정, "~에 진입/편입" 같은
-  순위·선정 뉘앙스 표현 (위 수치는 건수일 뿐 순위·선정 결과가 아니다)
+  순위·선정 뉘앙스 표현 (위 수치는 건수일 뿐 순위·선정 결과가 아니다). 이 목록은
+  예시일 뿐이니 이와 비슷한 순위·랭킹을 암시하는 표현은 어떤 형태로든 절대
+  쓰지 말고, 처음부터 순위 없는 중립 표현으로만 서술할 것
 - 거래량, 거래가 활발/집중, 매매가 활발, 거래 활동이 집중 등 실제 매매 거래량을
   뜻하는 표현 (이 데이터에는 거래량이 없다 — "관련 공시/뉴스/언급이 많았다"로 쓸 것)
 
@@ -172,12 +175,13 @@ async function generateMarketNarrative(params: {
 
     const moodMatch = text.match(/\[MOOD\]\s*([\s\S]*?)(?=\[SUMMARY\]|$)/);
     const summaryMatch = text.match(/\[SUMMARY\]\s*([\s\S]*)$/);
-    const mood = moodMatch?.[1]?.trim();
-    const summary = summaryMatch?.[1]?.trim();
+    // 프롬프트의 "TOP10/TOP30/N위 금지" 지시를 모델이 어길 경우를 대비한 안전장치.
+    const mood = neutralizeRankLanguage(moodMatch?.[1]?.trim() ?? "");
+    const summary = neutralizeRankLanguage(summaryMatch?.[1]?.trim() ?? "");
 
     return {
-      mood: mood && mood.length > 0 ? mood : fallback.mood,
-      summary: summary && summary.length > 0 ? summary : fallback.summary,
+      mood: mood.length > 0 ? mood : fallback.mood,
+      summary: summary.length > 0 ? summary : fallback.summary,
     };
   } catch {
     return fallback;
