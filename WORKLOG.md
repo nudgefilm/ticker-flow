@@ -7,6 +7,53 @@
 
 ---
 
+## 2026-07-13 · 세션 102
+
+### 52주 범위 바 추가 + TICKERFLOW WEEKLY 위클리 다이제스트 신설 + 아이콘 원복
+
+**1. 데일리 다이제스트 "이 기업" 섹션에 52주 최저·최고 범위 추가** (커밋 `2f05372`)
+- 종목 스냅샷 페이지(`price-card.tsx`의 `RangeBar`)와 동일한 52주 최저/최고
+  정보를 이메일에도 반영. `digest.ts`가 `stock_prices` 1년치를 추가 조회
+  (기존 30일 스파크라인 쿼리와 별개), `templates.ts`에 인터랙티브 슬라이더
+  대신 폭(%) 3칸 테이블로 위치를 표현하는 정적 HTML 바 추가.
+- 실제 데이터로 검증: Realty Income(O) 기준 최저 $55.93~최고 $67.56 —
+  스냅샷 페이지 스크린샷 수치와 정확히 일치 확인.
+- 블로그 초안은 텍스트 기사 형식이라 시각 바를 넣을 화면이 없어 반영 제외
+  (판단 근거 보고, 강제 아님).
+
+**2. TICKERFLOW WEEKLY 위클리 다이제스트 신설** (커밋 `d5993ac`)
+- 선행 점검(최우선 수행): `digest.ts`/`weekly-brief.ts`/`watchlist-brief.ts`
+  전체에 어드민 전용 스코어링 엔진(`top30_daily`, `computeScores()` 등)
+  참조가 **없음**을 재확인(남은 매치는 전부 세션97 제거 이력 주석). import
+  경계 규칙(`eslint.config.mjs`)으로도 구조적으로 강제됨.
+- 평일 히어로: "TICKERFLOW" → "TICKERFLOW DIGEST", 타이틀 "데일리
+  다이제스트" → "미국 기업 데이터 브리핑"(배지·날짜·통계는 그대로).
+- 신규 `computeThisWeekRange()`(`watchlist-brief.ts`) — "이번 주 월요일
+  00:00 UTC ~ 발송 시점"으로 range 계산(기존 `computeRange(7)`은 무수정).
+  신규 `weekly-digest.ts`가 `weekly-brief.ts`와 동일한 집계 함수를 이 range로
+  재호출해 토요일 발송 시점에도 신선한 데이터를 확보(대시보드용
+  `weekly_briefs` 캐시는 건드리지 않음). 수신 대상은 `getDigestRecipientEmails()`
+  로 평일 다이제스트와 동일 쿼리 공유.
+- `vercel.json`: 평일 다이제스트 크론을 월~금으로 제한, 토요일 전용
+  위클리 크론 추가(일요일 미발송). 어드민 트리거 페이지에 수동 실행 버튼 +
+  크론 스케줄 표 갱신. CLAUDE.md 20항에 "v5 전면 재설계 보류, 점진적 개선"
+  방침 기록.
+- 검증: `tsc`/`eslint`/`audit:copy`(191개 파일, 위반 0)/`pnpm build` 전체 통과,
+  실제 데이터로 daily·weekly 히어로 렌더링 결과 직접 확인(시스템 시각 기준
+  일요일 실행 시 "이번 주"가 지난 월~금으로 정확히 계산됨을 실측 확인).
+
+**3. 이메일 섹션 제목 아이콘 추가 → Gmail 접힘 현상으로 원복** (커밋 `c525e26`)
+- 위 2번 작업에 포함해 섹션 제목에 인라인 SVG 아이콘(`digestIcon()`/
+  `SEC_ICON`)을 추가했으나, Gmail에서 본문 일부가 "···"로 접히는 현상 발생.
+  HTML 용량은 16.9KB로 Gmail 공식 클리핑 임계값(~102KB)에 한참 못 미쳐
+  용량 문제가 아님을 실측으로 배제(근본 원인 조사는 하지 않음, 사용자
+  지시대로 아이콘 관련 코드만 원복).
+- `digestIcon()`/`SEC_ICON` 삭제, daily·weekly 14곳의 `digestSecTitle()`
+  호출을 텍스트 전용으로 복원. Resend로 관리자 Gmail에 실제 테스트 메일
+  발송해 해소 확인(사용자 확정: "말끔히 개선됐어").
+- 메모리 기록: 이메일 템플릿에 인라인 SVG 아이콘 사용 금지
+  (`feedback_email_inline_svg_gmail.md`).
+
 ## 2026-07-12 · 세션 101
 
 ### 데일리 다이제스트/블로그 데이터 정확성 버그 3건 + TOP30 순위 표현 재발 방지 구조화
