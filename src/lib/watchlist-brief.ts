@@ -135,6 +135,41 @@ export function computeRange(days: number): BriefRange {
   return { days, startDateOnly, startIso, prevStartDateOnly, prevEndDateOnly };
 }
 
+// 2026-07-13: 주말(토요일) TICKERFLOW WEEKLY 이메일 전용 — computeRange(7)은
+// "지금 이 순간 기준 최근 7일"(자정 정렬) 롤링 창이라, 매주 월요일 09:00
+// KST에 도는 weekly-brief.ts collect 크론과는 잘 맞지만 그 캐시(weekly_briefs)를
+// 그대로 쓰면 토요일 발송 시점엔 최대 5일 지난 데이터가 나간다. 이 함수는
+// weekly-brief.ts의 집계 로직(fetchTopCompanies 등)은 그대로 재사용하되,
+// "이번 주 월요일 00:00 UTC ~ 지금(발송 시점)"으로 range만 새로 계산해
+// 토요일 발송 시점에 그 주 월~금 데이터가 온전히 반영되도록 한다. computeRange
+// 자체는 건드리지 않는다(days=1 rolling, days=7/30 자정 정렬 동작 모두 그대로).
+export function computeThisWeekRange(): BriefRange {
+  const dayMs = 86_400_000;
+  const now = new Date();
+  const utcDay = now.getUTCDay(); // 0=일 ... 1=월 ... 6=토
+  const daysSinceMonday = utcDay === 0 ? 6 : utcDay - 1;
+
+  const monday = new Date(now);
+  monday.setUTCHours(0, 0, 0, 0);
+  monday.setUTCDate(monday.getUTCDate() - daysSinceMonday);
+  const startIso = monday.toISOString();
+
+  // 직전 동일 길이 구간(지난주 월요일 00:00 ~ 이번주 월요일 00:00) — 신규 관측/
+  // 이탈 비교(fetchPeriodComparison)용.
+  const prevStartIso = new Date(monday.getTime() - 7 * dayMs).toISOString();
+  const prevEndIso = startIso;
+
+  return {
+    days: 7,
+    startDateOnly: startIso.slice(0, 10),
+    startIso,
+    prevStartDateOnly: prevStartIso.slice(0, 10),
+    prevEndDateOnly: prevEndIso.slice(0, 10),
+    prevStartIso,
+    prevEndIso,
+  };
+}
+
 // ─── 이름 조회 헬퍼 ────────────────────────────────────────────────────────────
 
 async function fetchNameMap(supabase: Supabase, tickers: string[]): Promise<Map<string, string>> {

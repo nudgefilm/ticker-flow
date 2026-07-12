@@ -35,11 +35,12 @@ const MACRO_SPEC: Record<string, { label: string; unit: string }> = {
 };
 
 // 다이제스트 전용 발신자명 — 다른 이메일(welcome/pro-upgrade/contact 등)의
-// 공용 FROM 상수와 무관하게 이 발송 건에만 적용한다.
-const DIGEST_FROM = "TickerFlow Team <support@tickerflow.net>";
+// 공용 FROM 상수와 무관하게 이 발송 건에만 적용한다. 주말 TICKERFLOW WEEKLY
+// (weekly-digest.ts)도 같은 발신자를 그대로 쓴다.
+export const DIGEST_FROM = "TickerFlow Team <support@tickerflow.net>";
 
 // 제목용 KST 날짜 — "2026. 07. 03" 형식
-function kstSubjectDate(): string {
+export function kstSubjectDate(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year:     "numeric",
@@ -454,28 +455,39 @@ export async function gatherDigestData(): Promise<DigestData | null> {
   };
 }
 
-// ─── 메인 (이메일 발송) ─────────────────────────────────────────────────────────
-
-export async function runDigestCollect(): Promise<CollectResult> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createAdminClient() as any;
-
-  // 1. 발송 대상 조회 — Pro 유저 전원 + 가입 7일(168시간) 이내 Free 유저.
-  // created_at 기준 롤링 윈도우이므로 신규 가입일수록 앞으로 남은 발송 횟수가
-  // 많다. 이 기능 배포일(2026-07-03) 이전에 가입한 Free 유저는 가입일로부터
-  // 계산한 7일 중 이미 지나간 기간만큼 발송 횟수가 줄어드는 것이 정상이다.
+// ─── 발송 대상 조회 (평일 데일리·주말 위클리 공용) ────────────────────────────────
+//
+// Pro 유저 전원 + 가입 7일(168시간) 이내 Free 유저. created_at 기준 롤링
+// 윈도우이므로 신규 가입일수록 앞으로 남은 발송 횟수가 많다. 이 기능
+// 배포일(2026-07-03) 이전에 가입한 Free 유저는 가입일로부터 계산한 7일 중
+// 이미 지나간 기간만큼 발송 횟수가 줄어드는 것이 정상이다. TICKERFLOW
+// WEEKLY(weekly-digest.ts)도 "기존 평일 다이제스트와 동일한 대상"으로
+// 동일 쿼리를 그대로 재사용한다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getDigestRecipientEmails(admin: any): Promise<{ emails: string[]; error?: string }> {
   const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: profiles, error: profileErr } = await admin
     .from("profiles")
     .select("email")
     .or(`plan.eq.pro,and(plan.eq.free,created_at.gte.${sevenDaysAgoIso})`);
 
-  if (profileErr) return { ok: false, error: (profileErr as { message: string }).message };
+  if (profileErr) return { emails: [], error: (profileErr as { message: string }).message };
 
-  const targetEmails = ((profiles ?? []) as { email: string | null }[])
+  const emails = ((profiles ?? []) as { email: string | null }[])
     .map((p) => p.email)
     .filter((e): e is string => typeof e === "string" && e.length > 0);
 
+  return { emails };
+}
+
+// ─── 메인 (이메일 발송) ─────────────────────────────────────────────────────────
+
+export async function runDigestCollect(): Promise<CollectResult> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admin = createAdminClient() as any;
+
+  const { emails: targetEmails, error: recipientError } = await getDigestRecipientEmails(admin);
+  if (recipientError) return { ok: false, error: recipientError };
   if (targetEmails.length === 0) return { ok: true, sent: 0, message: "발송 대상 없음" };
 
   const digestData = await gatherDigestData();

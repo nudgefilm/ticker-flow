@@ -118,7 +118,12 @@ const TRIGGERS: Trigger[] = [
   {
     id: "digest",
     label: "일보 다이제스트 발송 (Pro 유저)",
-    desc: "Pro 플랜 유저에게 오늘의 주요 공시·뉴스를 이메일로 발송합니다.",
+    desc: "Pro 플랜 유저에게 오늘의 주요 공시·뉴스를 이메일로 발송합니다. 평일(월~금)에만 발송.",
+  },
+  {
+    id: "weekly-digest",
+    label: "위클리 다이제스트 발송 (Pro 유저)",
+    desc: "Pro 플랜 유저에게 이번 주(월~금) 주요 공시·뉴스를 이메일로 발송합니다. 토요일에만 발송(일요일 미발송).",
   },
   {
     id: "calls",
@@ -434,7 +439,8 @@ export default function TriggerPage() {
             { name: "실적 어닝서프라이즈",  schedule: "매일 00:35 UTC (09:35 KST)", path: "/api/collect/earnings-actual" },
             { name: "13F 기관 보유",        schedule: "매주 월 00:30 UTC (09:30 KST)", path: "/api/collect/13f"         },
             { name: "종목 프로필",          schedule: "매주 월 01:37 UTC (10:37 KST)", path: "/api/collect/profile"     },
-            { name: "일보 다이제스트",       schedule: "매일 01:00 UTC (10:00 KST)",    path: "/api/email/digest"         },
+            { name: "일보 다이제스트",       schedule: "월~금 01:00 UTC (10:00 KST)",   path: "/api/email/digest"         },
+            { name: "위클리 다이제스트",     schedule: "매주 토 01:00 UTC (10:00 KST)", path: "/api/email/weekly-digest"  },
             { name: "어닝콜 요약 수집",     schedule: "매일 02:22 UTC (11:22 KST)",    path: "/api/collect/calls"              },
             { name: "공시 이벤트 분류",     schedule: "매일 02:00 UTC (11:00 KST)",    path: "/api/collect/classify-filings"   },
             { name: "Short Interest",     schedule: "매주 월 01:50 UTC (10:50 KST)", path: "/api/collect/short-interest"     },

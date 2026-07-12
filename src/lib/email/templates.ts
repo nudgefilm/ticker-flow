@@ -1,3 +1,11 @@
+import type {
+  WeeklyBriefData,
+  MarketChangeStats,
+  SectorTrend,
+  FilingHighlight,
+  EarningsHighlight,
+} from "@/lib/watchlist-brief";
+
 // 이메일 클라이언트(특히 Gmail 앱)는 <head><style> 블록을 무시하는 경우가 있어,
 // 모든 스타일을 요소별 style="" 속성에 직접 명시한다. 아래 상수는 반복되는
 // 인라인 스타일 문자열을 재사용하기 위한 것일 뿐, <style> 클래스에 의존하지 않는다.
@@ -273,8 +281,29 @@ function digestStockLink(ticker: string, name: string): string {
     + (hasRealName ? ` <span style="color:#dddddd;font-size:12px">${escapeHtml(name)}</span>` : "");
 }
 
-function digestSecTitle(text: string): string {
-  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#cccccc;text-transform:uppercase;letter-spacing:0.06em">${text}</p>`;
+// 섹션 제목 아이콘 — @tabler/icons-react(CLAUDE.md 4항)와 같은 스트로크 기반
+// 라인 아이콘 스타일을 인라인 SVG로 직접 그린다(React 아이콘 컴포넌트는 이메일
+// 클라이언트에서 렌더링되지 않으므로 사용 불가). 순위·수익 암시를 피하기 위해
+// 상승/하락 화살표 등 방향성 있는 도형은 쓰지 않고, 기존 다이제스트 액센트
+// 색상(#60a5fa)만 사용한다.
+function digestIcon(paths: string): string {
+  return `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px">${paths}</svg>`;
+}
+
+const SEC_ICON = {
+  activity:   `<path d="M3 12h4l2 5 4-10 2 5h6"/>`,
+  chartBar:   `<path d="M4 20V10M10 20V4M16 20v-7"/><path d="M3 20h18"/>`,
+  building:   `<rect x="6" y="3" width="12" height="18" rx="1"/><path d="M9 7h1M14 7h1M9 11h1M14 11h1M9 15h1M14 15h1"/>`,
+  sparkle:    `<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>`,
+  compare:    `<path d="M4 7h12M13 4l3 3-3 3"/><path d="M20 17H8M11 14l-3 3 3 3"/>`,
+  notes:      `<path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M9 10h6M9 14h6M9 18h3"/>`,
+  lineChart:  `<path d="M4 19V5"/><path d="M4 19h16"/><path d="M6 15l3.5-4 3 2.5L18 8"/>`,
+  category:   `<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>`,
+  clipboard:  `<rect x="6" y="4" width="12" height="17" rx="1"/><rect x="9" y="2" width="6" height="3" rx="0.5"/><path d="M9 11h6M9 15h6"/>`,
+} as const;
+
+function digestSecTitle(text: string, icon?: string): string {
+  return `<p style="margin:0 0 12px;font-size:12px;font-weight:700;color:#cccccc;text-transform:uppercase;letter-spacing:0.06em">${icon ? digestIcon(icon) : ""}${text}</p>`;
 }
 
 function digestSpacer(px: number): string {
@@ -373,7 +402,7 @@ function digestFeaturedSection(featured: FeaturedCompany | null): string {
     .map((s) => escapeHtml(s))
     .join("<br><br>");
   return `
-    ${digestSecTitle("이 기업")}
+    ${digestSecTitle("이 기업", SEC_ICON.building)}
     ${digestCard(`
       <p style="margin:0 0 12px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
       ${chart ? `<div style="margin:0 0 14px">${chart}</div>` : ""}
@@ -464,10 +493,10 @@ export function dailyDigestEmail(data: DigestData): string {
       <!-- 헤더 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e3a5f;border-radius:10px;padding:28px 16px 20px" bgcolor="#1e3a5f">
         <p style="margin:0 0 10px">
-          <span style="font-size:15px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW</span>
+          <span style="font-size:15px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW DIGEST</span>
           <span style="display:inline-block;margin-left:8px;background:#3b82f6;color:#ffffff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;vertical-align:middle">PRO</span>
         </p>
-        <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">데일리 다이제스트</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">미국 기업 데이터 브리핑</p>
         <p style="margin:0 0 10px;font-size:12px;color:#93c5fd">${escapeHtml(kstDate)} · KST</p>
         <p style="margin:0;font-size:13px;color:#dddddd">${escapeHtml(headlineLine)}</p>
       </td></tr></table>
@@ -479,7 +508,7 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ② 오늘 활동이 많았던 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("오늘 활동이 많았던 기업")}
+        ${digestSecTitle("오늘 활동이 많았던 기업", SEC_ICON.activity)}
         ${top3Html}
         ${top4to10Html}
       </td></tr></table>
@@ -487,7 +516,7 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ③ 시장에서 관측된 오늘의 주요 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("시장에서 관측된 오늘의 주요 변화")}
+        ${digestSecTitle("시장에서 관측된 오늘의 주요 변화", SEC_ICON.chartBar)}
         ${digestChangeBadges(marketChange)}
         <p style="margin:8px 0 0;font-size:11px;color:#a6a6a6;line-height:1.6">기관수급: 기관투자자 관련 공시 · 실적: 실적 예상치 상회 발표 · 내부자: 임원·대주주 매매 공시 · 시장변화: 관련 공시 건수</p>
       </td></tr></table>
@@ -500,14 +529,14 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ⑤ 오늘 새로 활동이 확인된 기업 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("오늘 새로 활동이 확인된 기업")}
+        ${digestSecTitle("오늘 새로 활동이 확인된 기업", SEC_ICON.sparkle)}
         ${digestCard(newEntrantHtml)}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- ⑥ 어제 대비 변화 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("어제 대비 변화")}
+        ${digestSecTitle("어제 대비 변화", SEC_ICON.compare)}
         ${digestCard(`
           <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동 건수 변화</p>
           <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
@@ -519,15 +548,233 @@ export function dailyDigestEmail(data: DigestData): string {
 
       <!-- ⑦ 시장 요약 -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("시장 요약")}
+        ${digestSecTitle("시장 요약", SEC_ICON.notes)}
         ${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(marketSummary)}</p>`)}
       </td></tr></table>
       ${digestSpacer(24)}
 
       <!-- ⑧ 주요 경제지표 + CTA -->
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
-        ${digestSecTitle("주요 경제지표")}
+        ${digestSecTitle("주요 경제지표", SEC_ICON.lineChart)}
         ${digestMacroSection(macros)}
+        ${digestSpacer(16)}
+        <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td align="center">
+          <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#3b82f6;color:#ffffff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none">대시보드에서 더 보기</a>
+        </td></tr></table>
+      </td></tr></table>
+      ${digestSpacer(32)}
+
+      <!-- 푸터 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1a1a1a;border-radius:10px;padding:24px 20px" bgcolor="#1a1a1a">
+        <table cellpadding="0" cellspacing="0" style="width:100%"><tr>
+          <td valign="middle">
+            <span style="font-size:13px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW</span>
+            <span style="display:inline-block;margin-left:6px;background:#3b82f6;color:#ffffff;font-size:9px;font-weight:700;border-radius:4px;padding:2px 5px;vertical-align:middle">PRO</span>
+          </td>
+        </tr></table>
+        ${digestSpacer(16)}
+        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">대표: 정재우 | 사업자등록번호: 136-11-23540 | 통신판매업신고: 제 2026-서울강남-03723 호</p>
+        <p style="margin:0 0 2px;font-size:11px;color:#dddddd">주소: 서울특별시 강남구 압구정로2길 46, 214-S46호</p>
+        <p style="margin:0 0 14px;font-size:11px;color:#dddddd">연락처: 02-518-2022 | 이메일: support@tickerflow.net</p>
+        ${DIGEST_DISCLAIMER}
+        ${digestSpacer(12)}
+        <p style="margin:0;font-size:11px;color:#a6a6a6">
+          <a href="${BASE_URL}/alerts" style="color:#a6a6a6;text-decoration:underline">수신거부</a>
+          <span style="margin:0 6px">·</span>
+          <a href="${BASE_URL}/privacy" style="color:#a6a6a6;text-decoration:underline">개인정보처리방침</a>
+        </p>
+        <p style="margin:10px 0 0;font-size:11px;color:#999999">© 2026 언폴드랩(UNFOLD LAB). All rights reserved.</p>
+      </td></tr></table>
+
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ─── 주말(토요일) 다이제스트 — TICKERFLOW WEEKLY (v5 전면 재설계 보류, 2026-07-13) ──
+//
+// dailyDigestEmail과 동일한 다크 톤·카드 구조를 그대로 쓰되, 데이터 소스는
+// weekly-brief.ts가 만드는 WeeklyBriefData(활동 건수 기반, 스코어링 미참조 —
+// gatherWeeklyDigestData()의 computeThisWeekRange() 호출부 주석 참고)다.
+// "이 기업"(featured) 섹션은 WeeklyBriefData에 해당 데이터가 없어 생략한다.
+
+function weeklyChangeBadgesData(stats: MarketChangeStats): MarketChangeCounts {
+  // digestChangeBadges()는 일간 카운트 4종(MarketChangeCounts) 기준으로 만들어져
+  // 있어, 주간 통계(MarketChangeStats)를 같은 4개 항목으로 매핑해 재사용한다.
+  // priceTargetUpCount/volumeSpikeCount는 배지에 넣지 않는다(일간 배지와 동일한
+  // 4항목 유지 + "거래량" 관련 표현은 별도로 금지 처리 중이라 배지로도 노출하지 않음).
+  return {
+    institutionalCount: stats.institutionalCount,
+    earningsBeatCount: stats.epsBeatCount,
+    insiderCount: stats.insiderBuyCount,
+    filingsCount: stats.filingsCount,
+  };
+}
+
+function weeklySectorList(sectors: SectorTrend[]): string {
+  if (sectors.length === 0) {
+    return `<p style="margin:0;font-size:14px;color:#bbbbbb">이번 주 섹터별 활동 데이터가 충분하지 않습니다.</p>`;
+  }
+  const rows = sectors.map((s) => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:13px;color:#ffffff">${escapeHtml(s.sector)}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#dddddd;text-align:right">공시 ${s.filingsCount}건 · 내부자 매수 ${s.insiderCount}건</td>
+    </tr>`).join("");
+  return `<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${rows}</table>`;
+}
+
+function weeklyFilingList(filings: FilingHighlight[]): string {
+  if (filings.length === 0) {
+    return `<p style="margin:0;font-size:14px;color:#bbbbbb">이번 주 주요 공시가 확인되지 않았습니다.</p>`;
+  }
+  return filings.slice(0, 8).map((f) => `
+    <div style="padding:8px 0;border-bottom:1px solid #3a3a3a">
+      <p style="margin:0;font-size:14px">${digestStockLink(f.ticker, f.name)}</p>
+      <p style="margin:3px 0 0;font-size:12px;color:#bbbbbb">${escapeHtml(f.formType)} · ${escapeHtml(f.filedAt.slice(0, 10))}</p>
+    </div>`).join("");
+}
+
+function weeklyEarningsList(items: EarningsHighlight[]): string {
+  if (items.length === 0) {
+    return `<p style="margin:0;font-size:14px;color:#bbbbbb">이번 주 실적 예상치 상회 종목이 확인되지 않았습니다.</p>`;
+  }
+  return items.slice(0, 8).map((e) => {
+    const desc = e.epsBeat && e.revenueBeat ? "EPS·매출 예상치 상회"
+      : e.revenueBeat ? "매출 예상치 상회"
+      : "EPS 예상치 상회";
+    return `<div style="padding:8px 0;border-bottom:1px solid #3a3a3a">
+      <p style="margin:0;font-size:14px">${digestStockLink(e.ticker, e.name)}</p>
+      <p style="margin:3px 0 0;font-size:12px;color:#bbbbbb">${escapeHtml(desc)} · 발표일 ${escapeHtml(e.reportDate.slice(0, 10))}</p>
+    </div>`;
+  }).join("");
+}
+
+export function weeklyDigestEmail(data: WeeklyBriefData, weekRangeLabel: string): string {
+  const { topCompanies, marketStats, newEntrants, dropped, movers, sectors, filings, earningsHighlights, summary } = data;
+
+  const headlineLine = `활동 기업 ${topCompanies.length}개 · 신규 관측 ${newEntrants.length}건 · 기관편입 ${marketStats.institutionalCount}건 · 실적상회 ${marketStats.epsBeatCount}건`;
+
+  const top3Items = topCompanies.slice(0, 3);
+  const top4to10Items = topCompanies.slice(3, 10);
+  const top3Html = top3Items.map(digestTopBigCard).join("");
+  const top4to10Html = top4to10Items.length > 0
+    ? `<table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${top4to10Items.map(digestTopCompactRow).join("")}</table>`
+    : "";
+
+  const newEntrantHtml = newEntrants.length > 0
+    ? newEntrants.slice(0, 5).map((item) =>
+        `<div style="padding:8px 0;border-bottom:1px solid #3a3a3a">
+          <p style="margin:0;font-size:14px">${digestStockLink(item.ticker, item.name)}</p>
+          <p style="margin:3px 0 0;font-size:12px;color:#bbbbbb">· ${escapeHtml(item.descriptions[0] ?? "최근 활동 확인")}</p>
+        </div>`
+      ).join("")
+    : `<p style="margin:0;font-size:14px;color:#bbbbbb">지난주와 비교해 새로 활동이 확인된 기업이 없습니다.</p>`;
+
+  const droppedLinks = dropped.length > 0
+    ? dropped.slice(0, 5)
+        .map((item) => `<a href="${BASE_URL}/stocks/${escapeHtml(item.ticker)}" style="color:#dddddd;text-decoration:none;font-size:13px;margin-right:10px">${escapeHtml(item.ticker)}</a>`)
+        .join("")
+    : `<span style="font-size:13px;color:#bbbbbb">없음</span>`;
+
+  const moverRows = movers.length > 0
+    ? movers.slice(0, 5).map((m) => {
+        const up = m.delta > 0;
+        const color = up ? "#6ee7b7" : "#f87171";
+        const arrow = up ? "▲" : "▼";
+        return `<tr>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:13px">${digestStockLink(m.ticker, m.name)}</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:#dddddd;text-align:right">${m.prevCount}건 → ${m.currCount}건</td>
+          <td style="padding:6px 0;border-bottom:1px solid #3a3a3a;font-size:12px;color:${color};text-align:right;width:48px">${arrow} ${Math.abs(m.delta)}</td>
+        </tr>`;
+      }).join("")
+    : `<tr><td style="padding:6px 0;font-size:13px;color:#bbbbbb">활동 건수 변화가 크지 않았습니다.</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TickerFlow 위클리 다이제스트</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif" bgcolor="#ffffff">
+  <table cellpadding="0" cellspacing="0" style="width:100%;background:#ffffff" bgcolor="#ffffff">
+    <tr><td align="center" style="padding:24px 12px">
+      <table cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:#0f0f0f" bgcolor="#0f0f0f">
+        <tr><td style="padding:0 12px">
+
+      ${digestSpacer(24)}
+
+      <!-- 헤더 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="background:#1e3a5f;border-radius:10px;padding:28px 16px 20px" bgcolor="#1e3a5f">
+        <p style="margin:0 0 10px">
+          <span style="font-size:15px;font-weight:800;color:#ffffff;letter-spacing:0.04em">TICKERFLOW WEEKLY</span>
+          <span style="display:inline-block;margin-left:8px;background:#3b82f6;color:#ffffff;font-size:10px;font-weight:700;border-radius:4px;padding:2px 6px;vertical-align:middle">PRO</span>
+        </p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#ffffff">이번 주 미국 기업 데이터 브리핑</p>
+        <p style="margin:0 0 10px;font-size:12px;color:#93c5fd">${escapeHtml(weekRangeLabel)} · KST</p>
+        <p style="margin:0;font-size:13px;color:#dddddd">${escapeHtml(headlineLine)}</p>
+      </td></tr></table>
+      ${digestSpacer(16)}
+
+      <!-- 이번 주 시장 요약 -->
+      ${summary ? `${digestCard(`<p style="margin:0;font-size:14px;color:#ffffff;line-height:1.7">${escapeHtml(summary)}</p>`)}${digestSpacer(24)}` : ""}
+
+      <!-- 이번 주 활동이 많았던 기업 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 활동이 많았던 기업", SEC_ICON.activity)}
+        ${top3Html}
+        ${top4to10Html}
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 이번 주 시장 변화 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 시장 변화", SEC_ICON.chartBar)}
+        ${digestChangeBadges(weeklyChangeBadgesData(marketStats))}
+        <p style="margin:8px 0 0;font-size:11px;color:#a6a6a6;line-height:1.6">기관수급: 기관투자자 관련 공시 · 실적: 실적 예상치 상회 발표 · 내부자: 임원·대주주 매매 공시 · 시장변화: 관련 공시 건수</p>
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 이번 주 새로 활동이 확인된 기업 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 새로 활동이 확인된 기업", SEC_ICON.sparkle)}
+        ${digestCard(newEntrantHtml)}
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 지난주 대비 변화 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("지난주 대비 변화", SEC_ICON.compare)}
+        ${digestCard(`
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동 건수 변화</p>
+          <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin-bottom:12px">${moverRows}</table>
+          <p style="margin:0 0 6px;font-size:11px;color:#cccccc;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">활동이 확인되지 않은 기업</p>
+          <p style="margin:0">${droppedLinks}</p>
+        `)}
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 이번 주 섹터 동향 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 섹터 동향", SEC_ICON.category)}
+        ${digestCard(weeklySectorList(sectors))}
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 이번 주 주요 공시 -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 주요 공시", SEC_ICON.notes)}
+        ${digestCard(weeklyFilingList(filings))}
+      </td></tr></table>
+      ${digestSpacer(24)}
+
+      <!-- 이번 주 실적 하이라이트 + CTA -->
+      <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
+        ${digestSecTitle("이번 주 실적 하이라이트", SEC_ICON.clipboard)}
+        ${digestCard(weeklyEarningsList(earningsHighlights))}
         ${digestSpacer(16)}
         <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td align="center">
           <a href="${BASE_URL}/dashboard" style="display:inline-block;background:#3b82f6;color:#ffffff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none">대시보드에서 더 보기</a>

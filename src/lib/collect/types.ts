@@ -42,6 +42,7 @@ export const COLLECT_JOBS = [
   "seed-tickers",
   "translate",
   "digest",
+  "weekly-digest",
   "classify-filings",
   "short-interest",
   "price-targets",
