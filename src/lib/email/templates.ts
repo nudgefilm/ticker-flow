@@ -257,9 +257,15 @@ const DIGEST_DISCLAIMER = `
   </p>
 `;
 
+// tickers.name_en에는 아직 한글/영문 정식 회사명이 채워지지 않은 종목의 경우
+// 티커 문자열 그대로가 들어있는 경우가 있다(뉴스 수집 중 미등록 티커를 임시로
+// 등록할 때 회사명을 알 수 없어 티커를 그대로 넣는 임시값 — src/lib/collect/news.ts).
+// name이 ticker와 동일하면 "STDN STDN"처럼 같은 문자열이 중복 노출되므로, 이 경우
+// name span 자체를 생략한다.
 function digestStockLink(ticker: string, name: string): string {
+  const hasRealName = name.trim().length > 0 && name.trim().toUpperCase() !== ticker.trim().toUpperCase();
   return `<a href="${BASE_URL}/stocks/${escapeHtml(ticker)}" style="color:#ffffff;text-decoration:none;font-weight:700;font-size:14px">${escapeHtml(ticker)}</a>`
-    + ` <span style="color:#dddddd;font-size:12px">${escapeHtml(name)}</span>`;
+    + (hasRealName ? ` <span style="color:#dddddd;font-size:12px">${escapeHtml(name)}</span>` : "");
 }
 
 function digestSecTitle(text: string): string {
@@ -449,6 +455,7 @@ export function dailyDigestEmail(data: DigestData): string {
       <table cellpadding="0" cellspacing="0" style="width:100%"><tr><td style="padding:0 8px">
         ${digestSecTitle("시장에서 관측된 오늘의 주요 변화")}
         ${digestChangeBadges(marketChange)}
+        <p style="margin:8px 0 0;font-size:11px;color:#a6a6a6;line-height:1.6">기관수급: 기관투자자 관련 공시 · 실적: 실적 예상치 상회 발표 · 내부자: 임원·대주주 매매 공시 · 시장변화: 관련 공시 건수</p>
       </td></tr></table>
       ${digestSpacer(24)}
 

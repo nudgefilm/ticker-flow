@@ -25,9 +25,12 @@ import { computeRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/wa
 // "featured"(오늘의 한 기업)·내부자매수/실적상회 목록은 여전히 사실 집계이며
 // 스코어링을 참조하지 않는다.
 
+// CPI(소비자물가지수)는 특정 연도를 100으로 놓은 지수 값이라 "%"가 아니라
+// "포인트" 단위로 표시해야 한다(unit이 빈 문자열이면 "전월 대비 +1.57"처럼
+// 단위 없이 노출되어 초보자가 의미를 알기 어렵다 — CLAUDE.md 15항).
 const MACRO_SPEC: Record<string, { label: string; unit: string }> = {
   FEDFUNDS: { label: "연방기금금리 (FEDFUNDS)", unit: "%" },
-  CPI:      { label: "소비자물가지수 (CPI)",      unit: "" },
+  CPI:      { label: "소비자물가지수 (CPI)",      unit: " 포인트" },
 };
 
 // 다이제스트 전용 발신자명 — 다른 이메일(welcome/pro-upgrade/contact 등)의
@@ -104,6 +107,10 @@ async function generateMarketNarrative(params: {
 - 실적 발표: ${params.earningsCount}건 (예상치 상회 ${params.earningsBeatCount}건)
 - 관련 공시: ${params.filingsCount}건
 
+※ 위 "활동"은 공시·뉴스·내부자매수 언급 건수를 합산한 것이다. 실제 매매 거래량
+(trading volume)과는 무관하며, 이 데이터에는 거래량 수치가 전혀 포함되어 있지
+않다. "활동이 많다"를 "거래가 활발하다/거래량이 많다"로 바꿔 쓰지 말 것.
+
 아래 두 항목을 정확히 이 형식으로 작성하라.
 
 [MOOD]
@@ -116,6 +123,10 @@ async function generateMarketNarrative(params: {
 - 사실 기반 서술만 사용할 것
 - 투자 권유·관심 유도 표현을 배제할 것
 - 애널리스트 코멘트 형식을 배제할 것
+- 위에 제시된 데이터에 없는 지수명·통계·사건(예: 특정 벤치마크 지수, 다른 시장
+  지표 등)을 새로 지어내 언급하지 말 것 — 주어진 수치만 사용할 것
+- 전문용어나 약어를 쓸 경우 처음 등장할 때 괄호로 짧은 풀이를 덧붙일 것(주식
+  초보자도 읽을 수 있어야 한다)
 
 금지 표현 (아래 표현 및 이와 유사한 관심·기대 유도 표현 사용 금지)
 - 주목할 만한, 눈여겨볼, 관심이 집중된
@@ -125,6 +136,8 @@ async function generateMarketNarrative(params: {
 - 투자 권유, 매수, 매도, 추천 표현
 - "TOP10", "TOP30", "N위"(순위 표기), 순위, 랭킹, 선정, "~에 진입/편입" 같은
   순위·선정 뉘앙스 표현 (위 수치는 건수일 뿐 순위·선정 결과가 아니다)
+- 거래량, 거래가 활발/집중, 매매가 활발, 거래 활동이 집중 등 실제 매매 거래량을
+  뜻하는 표현 (이 데이터에는 거래량이 없다 — "관련 공시/뉴스/언급이 많았다"로 쓸 것)
 
 허용 표현 예시
 - ~가 관측됐습니다
