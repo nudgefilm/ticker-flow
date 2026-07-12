@@ -8,7 +8,7 @@ export const metadata = {
 const SECTIONS = [
   {
     title: "1. 목적",
-    content: `본 정책은 TickerFlow 서비스의 운영 원칙과 정보 제공 기준을 명확히 하기 위하여 작성되었습니다.\n\nTickerFlow는 미국 상장기업의 공개 정보를 신속하고 이해하기 쉽게 제공하는 데이터 정보 플랫폼으로 운영되며, 서비스 전반에 걸쳐 객관적인 정보 제공 원칙을 유지합니다.`,
+    content: `본 정책은 TickerFlow 서비스의 운영 원칙과 정보 제공 기준을 명확히 하기 위함 입니다.\nTickerFlow는 미국 상장기업의 공개 정보를 신속하고 이해하기 쉽게 제공하는 데이터 정보 플랫폼으로 운영되며, 서비스 전반에 걸쳐 객관적인 정보 제공 원칙을 유지합니다.`,
   },
   {
     title: "2. 서비스 운영 원칙",
@@ -48,7 +48,7 @@ const SECTIONS = [
   },
   {
     title: "11. 결론",
-    content: `TickerFlow는 미국 상장기업의 공개 정보를 신속하고 이해하기 쉽게 제공하는 데이터 정보 플랫폼입니다.\n\n서비스는 객관적인 사실과 공개 데이터를 기반으로 정보를 제공하며, 특정 금융상품에 대한 투자 권유, 투자 자문 또는 투자 판단을 제공하지 않습니다.\n\n2026년 7월\n언폴드랩 (UNFOLD LAB)\nTickerFlow 운영자`,
+    content: `TickerFlow는 공개된 미국 상장기업의 정보를 수집·정리하여 이해하기 쉽게 제공하는 데이터 정보 플랫폼입니다.\n서비스는 객관적인 사실과 공개 데이터를 기반으로 정보를 제공하며, 특정 금융상품에 대한 투자 권유, 투자 자문 또는 투자 판단을 제공하지 않습니다.\n\n2026년 7월\n언폴드랩 (UNFOLD LAB)\nTickerFlow 운영자`,
   },
 ];
 
@@ -64,7 +64,7 @@ export default function PolicyPage() {
           운영사 : 언폴드랩 (UNFOLD LAB)
         </p>
         <p className="text-sm text-muted-foreground">
-          최종 업데이트: 2026년 7월
+          문서 버전 : v1.1  |  최종 개정일 : 2026-07-12
         </p>
 
         {SECTIONS.map((section) => (
