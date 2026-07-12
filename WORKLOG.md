@@ -7,6 +7,74 @@
 
 ---
 
+## 2026-07-12 · 세션 101
+
+### 데일리 다이제스트/블로그 데이터 정확성 버그 3건 + TOP30 순위 표현 재발 방지 구조화
+
+**배경**: 일요일(휴장일) 실행분 블로그 초안·이메일을 스크린샷으로 검토하다가
+"TOP30 데이터가 없습니다" 에러(블로그), "1건 STDN STDN" 표시 버그, "거래량이
+가장 많았으며" 오표현, CPI 단위 누락을 순서대로 발견 → 수정 도중 "TOP30/N위"
+순위 표기가 랜딩·대시보드·리포트에 재발한 근본 원인까지 구조적으로 막기로 확장.
+
+**1. blog-draft.ts "TOP30 데이터가 없음" 원인 조사** (커밋 없음, 진단만)
+- 실제 원인은 top30_daily가 아니라 `gatherDigestData()`가 세션97 리팩터 이후
+  더 이상 top30_daily를 조회하지 않는데도 에러 문구만 예전 그대로 남은 것.
+  진짜 원인은 `fetchTopCompanies()`가 보는 "오늘 UTC 1일" 창에 그날 신규
+  filings/news/insider_trades가 0건(일요일)이라 `[]`가 반환된 것.
+
+**2. 일간 다이제스트/블로그 1일 집계 UTC 자정 정렬 → rolling 24h** (커밋 `8fdda8b`)
+- `computeRange(1)`이 UTC 자정 고정이라 10:00 KST(=01:00 UTC) 발송 시점엔 당일
+  구간이 시작한 지 1시간 뿐이라 그날 수집분을 거의 반영하지 못하던 문제 수정.
+  `days=1`만 `now-24h~now` rolling으로 분기, `days=7/30`(주간·월간 BRIEF)·랜딩
+  TOP10은 기존 자정 정렬 그대로 유지.
+
+**3. STDN 표시 버그 + 거래량 오표현 + CPI 단위 + 초보자 배려** (커밋 `ecad1f1`)
+- STDN처럼 `tickers.name_en`이 아직 없어 티커 문자열 그대로 들어간 종목이
+  이메일/블로그에 "STDN STDN"으로 중복 노출되던 버그 — 이름이 티커와 같으면
+  이름 표시를 생략(`digestStockLink`/`tickerLabel`).
+- "활동"(공시·뉴스·내부자매수 언급 건수)을 "거래량"으로 서술하는 LLM 오표현을
+  금지 목록에 추가하고 데이터 정의를 프롬프트에 명시.
+- CPI(소비자물가지수) 단위가 빈 문자열이라 "전월 대비 +1.57"처럼 단위 없이
+  노출되던 문제 — `" 포인트"`로 수정.
+- 이메일 배지(기관수급/실적/내부자/시장변화) 아래 초보자용 범례 한 줄 추가,
+  프롬프트에 "데이터에 없는 지수·통계를 지어내지 말 것" 가드 추가.
+
+**4. TOP30/TOP10/N위 순위 표현 전수 제거 → 안전장치 재설계** (커밋 `aa6c8ee`)
+- 1차 시도(문장 통째 삭제, `stripRankSentences`)는 실제 생성 샘플로 검증한 결과
+  주변 맥락이 끊기는 부작용 확인 → 폐기.
+- `src/lib/collect/rank-language.ts` 신설: 관용구("TOP30 신규진입" 등)는 어미까지
+  맞춰 중립 표현으로 치환하고, 그 외 단독 사용은 표현+조사만 제거해 나머지
+  문장을 보존하는 `neutralizeRankLanguage()`로 교체(제목/해시태그용
+  `stripRankTerms()`는 유지). digest.ts/blog-draft.ts/watchlist-brief.ts
+  프롬프트에는 "이 금지 목록은 예시일 뿐이니 절대 쓰지 말 것"이라는 1차
+  방어선 지시를 추가.
+
+**5. 어드민 스코어링 import 경계 + 사용자 노출 문구 감사 스크립트** (커밋 `18bedda`, `cc81bd9`)
+- `eslint.config.mjs`: `scoring.ts`/`top30.ts`/`top30-outcomes.ts`/
+  `scoring/**`/`outcomes/**`를 어드민 화면·해당 크론 라우트·자기 자신 외에서
+  import하면 lint/build가 실패하도록 `no-restricted-imports` 경계 추가.
+- `scripts/audit-user-copy.ts` 신설 + `package.json` `prebuild`에 연결 —
+  CLAUDE.md 6항·12항 금지 표현(순위 표기 + 투자 추천/주가 예측/투자 성과
+  암시/투자 등급/종합 투자 점수)을 사용자 노출 코드에서 검사, 위반 시 빌드
+  실패. 최초 190개 파일 스캔까지 확대(`src/app`·`src/components` 재귀 스캔
+  + `summarize.ts`/`brief.ts`/`calls.ts` 등 실제 텍스트 생성 lib 파일 추가) 후
+  위반 0건 확인. CLAUDE.md 10항에 19번 규칙으로 명문화.
+
+**6. 스크롤 최상단 버튼 위치 수정** (커밋 `c7c0ee6`)
+- `scroll-to-top.tsx`: 화살표 아이콘이 원형 배경 정중앙에 오도록
+  `absolute inset-0 m-auto`로 교체.
+
+**7. 운영 정책 페이지 v1.1 반영** (커밋 `269ada8`)
+- `/policy` 본문을 v1.1(2026-07-12) 텍스트로 교체 — 1번(목적)·11번(결론) 문구와
+  상단 버전 표기만 실질적 차이가 있어 두 섹션 + 헤더만 수정.
+
+**검증**: `tsc --noEmit`/`eslint` 통과(신규 회귀 0), `pnpm build` 전체 통과
+(prebuild 감사 190개 파일 위반 0건 → next build 60개 라우트 컴파일·정적생성
+성공 → postbuild 웹훅 검증 통과). 서로 다른 관심사가 같은 파일(digest.ts/
+blog-draft.ts)에 섞여 있어 커밋 분리 시 파일 내 훅 단위로 잘라 4개 커밋
+(`fix(ui)`/`fix(data)`/`fix(compliance)`/`content(policy)`)으로 나눠 각각
+롤백 가능하게 구성.
+
 ## 2026-07-11 · 세션 100
 
 ### 랜딩 히어로 실데이터 연동 + 랜딩 캐시 태그 통일 + 정책 페이지 정리
