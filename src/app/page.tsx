@@ -257,7 +257,7 @@ export default async function HomePage() {
                 {/* 좌측 */}
                 <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
                   <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
-                    미국 기업 변화 데이터 플랫폼
+                    미국 기업의 변화를 추적하는 데이터 플랫폼
                   </p>
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
