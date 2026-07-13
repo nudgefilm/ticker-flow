@@ -3,8 +3,8 @@ import { revalidateTag } from "next/cache";
 import { requireCollectAuth } from "@/lib/collect/auth";
 import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
 
-// 랜딩(/) 캐시 무효화 — 히어로 차트·통계 카운트·LandingTop10을 하나의 태그로
-// 한 번에 갱신한다. 매일 04:00 KST 크론(vercel.json)이 호출하는 내부 배관성
+// 랜딩(/) 캐시 무효화 — 히어로 차트·통계 카운트·최근 7일 활동 기업(page.tsx의
+// getCachedTopCompanies)을 하나의 태그로 한 번에 갱신한다. 매일 04:00 KST 크론(vercel.json)이 호출하는 내부 배관성
 // 엔드포인트라 admin/system/trigger/page.tsx에는 등록하지 않는다(수동 즉시실행
 // 필요 없음 — docs/scoring-engine-rules.md 3-4항과 동일하게 "완료 보고 전
 // 실제 반영 확인" 원칙만 적용, 별도 크론 트리거 버튼은 불필요).

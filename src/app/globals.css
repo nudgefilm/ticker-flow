@@ -22,6 +22,11 @@
   100% { transform: translateY(-50%); }
 }
 
+@keyframes ticker-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ─── Theme mapping (Tailwind v4 → CSS vars) ────────────────────────────── */
 
 @theme inline {
@@ -174,10 +179,15 @@
     animation: ticker-up 180s linear infinite;
     will-change: transform;
   }
+  .animate-ticker-left {
+    animation: ticker-left 60s linear infinite;
+    will-change: transform;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-ticker-up {
+  .animate-ticker-up,
+  .animate-ticker-left {
     animation: none;
   }
 }

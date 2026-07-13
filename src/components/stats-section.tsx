@@ -52,19 +52,13 @@ function FeaturedCounter({ count }: { count: number }) {
 
 function StatItem({ stat }: { stat: DisplayStat }) {
   const { ref, value } = useCountUp(stat.value)
-  const Icon = stat.icon
   return (
-    <div ref={ref} className="flex items-center gap-3">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-chart-1/10 text-chart-1">
-        <Icon className="h-4 w-4" />
+    <div ref={ref} className="flex flex-col gap-0.5">
+      <div className="font-mono text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">
+        {value.toLocaleString("ko-KR")}
+        <span className="text-chart-1">{stat.suffix}</span>
       </div>
-      <div className="min-w-0">
-        <div className="font-mono text-lg font-semibold leading-none tracking-tight text-foreground">
-          {value.toLocaleString("ko-KR")}
-          <span>{stat.suffix}</span>
-        </div>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{stat.label}</p>
-      </div>
+      <p className="truncate text-xs text-muted-foreground">{stat.label}</p>
     </div>
   )
 }
@@ -155,7 +149,7 @@ export function StatsSection({
           <div className="my-8 h-px w-full bg-border" />
 
           {/* 하단: 6개 지표 그리드 */}
-          <div className="relative grid grid-cols-2 gap-x-6 gap-y-6 sm:grid-cols-3">
+          <div className="relative grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-6">
             {stats.map((stat) => (
               <StatItem key={stat.label} stat={stat} />
             ))}

@@ -15,15 +15,15 @@ import LandingShell from "@/components/landing-shell";
 import Footer from "@/components/footer";
 import FaqAccordion from "@/components/landing/faq-accordion";
 import ScreenTabs from "@/components/landing/screen-tabs";
-import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
 import { CtaCard } from "@/components/cta-card";
 import { normalizeSector, SECTOR_KR } from "@/lib/sectors";
 import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
+import { computeRange, fetchTopCompanies } from "@/lib/watchlist-brief";
 
 export const dynamic = "force-dynamic";
 
-// 랜딩 캐시 데이터(히어로 차트·통계 카운트·LandingTop10)는 시간 기반 revalidate를
+// 랜딩 캐시 데이터(히어로 차트·통계 카운트·최근 7일 활동 기업)는 시간 기반 revalidate를
 // 쓰지 않고 LANDING_DATA_CACHE_TAG 태그로만 갱신한다 — 매일 04:00 KST에
 // /api/revalidate/landing 크론이 revalidateTag()로 한 번에 무효화한다
 // (docs: src/lib/landing-cache.ts). 이 문구를 바꾸면 갱신 주기 설명도 맞춰 바꿀 것.
@@ -138,6 +138,18 @@ const getLandingStatsCounts = unstable_cache(
   { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
 );
 
+// 최근 7일 활동이 많았던 기업(구 landing-top10.tsx) — 병합 패널(§1)에서 LIVE
+// 피드와 한 컴포넌트로 묶여야 해서 page.tsx로 이동. 로직은 그대로.
+const getCachedTopCompanies = unstable_cache(
+  async () => {
+    const admin = createAdminClient();
+    const range = computeRange(7);
+    return fetchTopCompanies(admin, range, 10);
+  },
+  ["landing-top-companies"],
+  { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
+);
+
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -192,6 +204,13 @@ export default async function HomePage() {
     .filter((f) => !SKIP_FORMS.has(f.form_type))
     .slice(0, 2);
 
+  // 병합 패널 하단 티커 테이프용 — 새 쿼리 없이 위에서 이미 가져온 rawFilings를
+  // 더 넉넉히(최대 12건) 재사용한다.
+  const tapeFilings = (rawFilings ?? [])
+    .filter((f) => !SKIP_FORMS.has(f.form_type))
+    .slice(0, 12)
+    .map((f) => ({ ticker: f.ticker, label: formTypeKr(f.form_type) }));
+
   type FeedItem = { ticker: string; label: string; time: string; category: string };
   const feedItems: FeedItem[] = [
     ...priorityFilings.map((f) => ({
@@ -211,6 +230,9 @@ export default async function HomePage() {
   // ── 통계 ──────────────────────────────────────────────────────────────────
   // 태그 캐시(LANDING_DATA_CACHE_TAG) — 매일 04:00 KST에만 갱신
   const { tc, fc, nc, mc, ic, ec, ear } = await getLandingStatsCounts();
+
+  // ── 최근 7일 활동이 많았던 기업 (병합 패널용) ─────────────────────────────────
+  const companies = await getCachedTopCompanies();
 
   // ── 최근 7일 일별 수집량 (공시+뉴스 합산) ──────────────────────────────────
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
@@ -257,7 +279,7 @@ export default async function HomePage() {
                 {/* 좌측 */}
                 <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
                   <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
-                    미국 기업 변화 데이터 플랫폼
+                    미국 기업 변화를 추적하는 데이터 플랫폼
                   </p>
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
@@ -354,55 +376,112 @@ export default async function HomePage() {
           </section>
 
           {/* ══════════════════════════════════════════════
-              1-b. 최근 7일 활동이 많았던 기업
+              1-b/2. 실시간 대시보드 패널 — 좌: 최근 7일 활동 랭킹 · 우: LIVE 피드
+              (구 "최근 7일 활동" + "지금 일어나고 있는 변화" 두 섹션을 하나의
+              패널로 병합. 세로 스크롤 대신 좌우로 시선이 이동하는 대시보드형
+              구성 — 왼쪽이 메인 데이터(넓게), 오른쪽이 실시간 피드(사이드바처럼
+              좁게)로 실제 서비스 화면에 가깝게 배치한다.)
           ══════════════════════════════════════════════ */}
-          <LandingTop10 />
-
-          {/* ══════════════════════════════════════════════
-              2. 실시간 변화 피드
-          ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
+          <section className="bg-popover py-10 lg:py-14">
             <div className="mx-auto max-w-7xl px-6">
-              <div className="mb-8 text-center">
-                <SectionLabel text="LIVE" />
-                <h2 className="mt-3 text-2xl font-semibold text-foreground md:text-3xl">
-                  지금 일어나고 있는 변화
-                </h2>
-              </div>
-              {feedItems.length > 0 && (
-                <div className="flex flex-col gap-4 sm:flex-row">
-                  {feedItems.map((item, i) => {
-                    const isNews = item.category === "뉴스";
-                    return (
-                      <div
-                        key={i}
-                        className={`rounded-[12px] border border-border bg-card p-5 transition-colors hover:bg-muted/30 ${
-                          isNews ? "sm:flex-[2]" : "sm:flex-1"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
-                            {item.ticker}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">{item.category}</span>
-                        </div>
-                        <p className="mt-3 text-sm font-medium text-foreground">{item.label}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
+              <div className="overflow-hidden rounded-2xl border border-border">
+                <div className={`grid ${companies.length > 0 ? "lg:grid-cols-[3fr_2fr]" : ""}`}>
+
+                  {/* 좌: 최근 7일 활동이 많았던 기업 (랭킹 리스트) */}
+                  {companies.length > 0 && (
+                    <div className="border-b border-border p-6 lg:border-b-0 lg:border-r lg:p-8">
+                      <div className="mb-5 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-lg font-semibold text-foreground md:text-xl">
+                          최근 7일 활동이 많았던 기업
+                        </h2>
+                        <SectionLabel text="최근 7일" />
                       </div>
-                    );
-                  })}
+                      <div className="flex flex-col divide-y divide-border">
+                        {companies.map((company, i) => (
+                          <div key={company.ticker} className="flex items-center gap-3 py-2.5">
+                            <span className="w-4 shrink-0 font-mono text-xs text-muted-foreground">{i + 1}</span>
+                            <span className="shrink-0 rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                              ${company.ticker}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                              {company.name}
+                            </span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{company.activityCount}건</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-5 text-xs text-muted-foreground">
+                        📌 본 정보는 공개된 데이터를 기반으로 한 참고용입니다.
+                        투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 우: 지금 일어나고 있는 변화 (LIVE 피드) */}
+                  <div className="bg-background/40 p-6 lg:p-8">
+                    <div className="mb-5 flex items-center gap-2">
+                      <SectionLabel text="LIVE" />
+                      <h2 className="text-lg font-semibold text-foreground md:text-xl">
+                        지금 일어나고 있는 변화
+                      </h2>
+                    </div>
+                    {feedItems.length > 0 && (
+                      <div className="flex flex-col gap-3">
+                        {feedItems.map((item, i) => (
+                          <div
+                            key={i}
+                            className="rounded-[12px] border border-border bg-card p-4 transition-colors hover:bg-muted/30"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="rounded-[4px] bg-blue-500/15 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                                {item.ticker}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">{item.category}</span>
+                            </div>
+                            <p className="mt-2 text-sm font-medium text-foreground">{item.label}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{item.time}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="mt-5 text-xs text-muted-foreground">
+                      지금 이 순간에도 새로운 공시와 실적 발표, 내부자 거래가 발생하고 있습니다.
+                    </p>
+                  </div>
+
                 </div>
-              )}
-              <p className="mt-6 text-center text-sm text-muted-foreground">
-                지금 이 순간에도 새로운 공시와 실적 발표, 내부자 거래가 발생하고 있습니다.
-              </p>
+
+                {/* 하단: 실시간 티커 테이프 — 최근 공시 제목을 가로로 흘려보내는 스트립 */}
+                {tapeFilings.length > 0 && (
+                  <div className="border-t border-border bg-background/60 px-6 py-3">
+                    <div
+                      className="overflow-hidden"
+                      style={{
+                        maskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
+                        WebkitMaskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
+                      }}
+                    >
+                      <ul className="animate-ticker-left flex w-max items-center gap-8 whitespace-nowrap">
+                        {[...tapeFilings, ...tapeFilings].map((entry, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="rounded-[4px] bg-blue-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-blue-400">
+                              ${entry.ticker}
+                            </span>
+                            {entry.label}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
           {/* ══════════════════════════════════════════════
               3. 문제 제기
           ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
+          <section className="border-t border-border bg-background py-10 lg:py-14">
             <div className="mx-auto max-w-7xl px-6">
               <div className="mb-10 text-center">
                 <SectionLabel text="PROBLEM" />
@@ -436,7 +515,7 @@ export default async function HomePage() {
           {/* ══════════════════════════════════════════════
               4. TickerFlow 해결 방식
           ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
+          <section className="bg-popover py-10 lg:py-14">
             <div className="mx-auto max-w-7xl px-6">
               <div className="mb-10 text-center">
                 <SectionLabel text="SOLUTION" />
@@ -464,9 +543,9 @@ export default async function HomePage() {
           </section>
 
           {/* ══════════════════════════════════════════════
-              5. 핵심 기능 카드
+              5. 핵심 기능 카드 (벤토 그리드 — 핵심 기능 1개만 크게)
           ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
+          <section className="border-t border-border bg-background py-10 lg:py-14">
             <div className="mx-auto max-w-7xl px-6">
               <div className="mb-10 text-center">
                 <SectionLabel text="FEATURES" />
@@ -474,7 +553,7 @@ export default async function HomePage() {
                   필요한 정보를 한 곳에서
                 </h2>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr]">
                 {[
                   { icon: IconFileText,    title: "공시 인사이트",   desc: "최근 공시와 기업 변화를 빠르게 확인",     pro: true },
                   { icon: IconMicrophone,  title: "어닝콜 요약",     desc: "긴 컨퍼런스콜을 핵심만 한국어로",         pro: true },
@@ -483,25 +562,40 @@ export default async function HomePage() {
                   { icon: IconBookmark,    title: "와치리스트",      desc: "관심 종목의 변화를 자동으로 추적",         pro: false },
                   { icon: IconLayoutBoard, title: "종목 스냅샷",     desc: "기업 정보를 한 페이지에서 확인",           pro: false },
                   { icon: IconChartLine,   title: "경제지표",        desc: "미국 거시경제 흐름 모니터링",              pro: false },
-                ].map(({ icon: Icon, title, desc, pro }) => (
-                  <div
-                    key={title}
-                    className="group relative flex flex-col gap-3 rounded-[12px] border border-border bg-card p-6 transition-colors hover:bg-muted/30"
-                  >
-                    {pro && (
-                      <span className="absolute right-4 top-4 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
-                        Pro
-                      </span>
-                    )}
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-muted">
-                      <Icon size={18} stroke={1.5} className="text-foreground" />
+                ].map(({ icon: Icon, title, desc, pro }, i) => {
+                  const isFeatured = i === 0;
+                  return (
+                    <div
+                      key={title}
+                      className={`group relative flex flex-col gap-3 rounded-[12px] border border-border bg-card p-6 transition-colors hover:bg-muted/30 ${
+                        isFeatured ? "lg:row-span-2 lg:p-8" : ""
+                      }`}
+                    >
+                      {pro && (
+                        <span className="absolute right-4 top-4 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                          Pro
+                        </span>
+                      )}
+                      <div className={`flex items-center justify-center rounded-[8px] bg-muted ${
+                        isFeatured ? "h-11 w-11 lg:h-14 lg:w-14" : "h-9 w-9"
+                      }`}>
+                        <Icon size={isFeatured ? 22 : 18} stroke={1.5} className="text-foreground" />
+                      </div>
+                      <div>
+                        <p className={`font-semibold text-foreground ${isFeatured ? "text-base lg:text-lg" : "text-sm"}`}>
+                          {title}
+                        </p>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
+                        {isFeatured && (
+                          <p className="mt-3 hidden text-xs leading-relaxed text-muted-foreground/90 lg:block">
+                            어떤 공시가 등록됐는지, 그 공시가 왜 중요한지까지 한국어로
+                            정리해 드립니다.
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{title}</p>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{desc}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </section>
@@ -522,9 +616,9 @@ export default async function HomePage() {
           </section>
 
           {/* ══════════════════════════════════════════════
-              7. 왜 TickerFlow인가 (비교표)
+              7. 왜 TickerFlow인가 (비대칭 2단 비교)
           ══════════════════════════════════════════════ */}
-          <section className="py-16 lg:py-20">
+          <section className="bg-popover py-10 lg:py-14">
             <div className="mx-auto max-w-7xl px-6">
               <div className="mb-10 text-center">
                 <SectionLabel text="WHY" />
@@ -532,37 +626,49 @@ export default async function HomePage() {
                   기존 방식과 비교해 보세요
                 </h2>
               </div>
-              <div className="mx-auto max-w-2xl overflow-hidden rounded-[14px] border border-border">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-6 py-4 text-left text-sm font-medium text-muted-foreground">항목</th>
-                      <th className="px-6 py-4 text-center text-sm font-medium text-muted-foreground">기존 방식</th>
-                      <th className="px-6 py-4 text-center text-sm font-semibold text-foreground">TickerFlow</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ["공시 확인", "SEC 직접 검색", "한국어 요약 제공"],
-                      ["어닝콜", "직접 청취 (1시간+)", "핵심만 정리"],
-                      ["정보 수집", "여러 사이트 이동", "한 곳에서 확인"],
-                      ["내부자 거래", "별도 검색 필요", "자동 수집·분류"],
-                      ["정보 형태", "영어 원문", "한국어 정리"],
-                    ].map(([item, before, after]) => (
-                      <tr key={item} className="border-b border-border last:border-0">
-                        <td className="px-6 py-4 text-sm font-medium text-foreground">{item}</td>
-                        <td className="px-6 py-4 text-center text-sm text-muted-foreground">{before}</td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-400">
-                            <IconCheck size={14} stroke={2} />
-                            {after}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                const comparisons = [
+                  ["공시 확인", "SEC 직접 검색", "한국어 요약 제공"],
+                  ["어닝콜", "직접 청취 (1시간+)", "핵심만 정리"],
+                  ["정보 수집", "여러 사이트 이동", "한 곳에서 확인"],
+                  ["내부자 거래", "별도 검색 필요", "자동 수집·분류"],
+                  ["정보 형태", "영어 원문", "한국어 정리"],
+                ] as const;
+                return (
+                  <div className="mx-auto grid max-w-3xl grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
+
+                    {/* 좌: 기존 방식 */}
+                    <div className="rounded-[14px] border border-border bg-card p-6 lg:p-8">
+                      <p className="text-sm font-semibold text-muted-foreground">기존 방식</p>
+                      <div className="mt-5 flex flex-col divide-y divide-border">
+                        {comparisons.map(([item, before]) => (
+                          <div key={item} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                            <span className="text-sm font-medium text-foreground">{item}</span>
+                            <span className="text-sm text-muted-foreground">{before}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 우: TickerFlow (강조) */}
+                    <div className="rounded-[14px] border border-chart-2/30 bg-chart-2/10 p-6 lg:p-8">
+                      <p className="text-sm font-semibold text-foreground">TickerFlow</p>
+                      <div className="mt-5 flex flex-col divide-y divide-chart-2/20">
+                        {comparisons.map(([item, , after]) => (
+                          <div key={item} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                            <span className="text-sm font-medium text-foreground">{item}</span>
+                            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-400">
+                              <IconCheck size={14} stroke={2} />
+                              {after}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })()}
             </div>
           </section>
 
