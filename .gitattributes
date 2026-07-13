@@ -1,0 +1,18 @@
+# 텍스트 파일의 줄바꿈을 LF로 강제 통일한다.
+#
+# 배경: audit-user-copy.ts(pnpm build의 prebuild 단계)가 주석을 지우고 금지
+# 표현을 검사하는데, 이 스크립트의 주석 제거 정규식은 줄 끝이 CRLF(\r\n)일
+# 때 오작동해 정상적인 주석 안 문구까지 "위반"으로 오탐한다. Git에 저장된
+# 실제 내용은 LF지만 Windows에서 core.autocrlf=true로 체크아웃하면 워킹
+# 디렉터리 파일이 CRLF로 바뀌어 로컬에서만 이 오탐이 재현된다(Vercel/Linux
+# 빌드는 영향 없음). .gitattributes로 리포지토리 차원에서 LF를 강제하면
+# 앞으로 새로 clone/checkout하는 환경에서는 core.autocrlf 설정과 무관하게
+# 항상 LF로 체크아웃된다.
+* text=auto eol=lf
+
+# 바이너리 파일은 text=auto가 자동 감지해 줄바꿈 변환에서 제외하지만,
+# 혼동을 방지하기 위해 명시적으로도 선언한다.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
