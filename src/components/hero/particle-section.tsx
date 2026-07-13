@@ -33,7 +33,7 @@ export function ParticleSection() {
 
   return (
     <section
-      className="border-b pt-32 text-[#f5f5f7] md:pt-40"
+      className="border-b pt-12 text-[#f5f5f7] md:pt-16"
       style={{ backgroundColor: "#0a0a0f", borderColor: `${LIGHT}0.15)` }}
     >
       <div className="grid p-4 sm:p-6 lg:grid-cols-[1fr_280px] lg:gap-6">
