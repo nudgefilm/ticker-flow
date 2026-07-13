@@ -7,6 +7,71 @@
 
 ---
 
+## 2026-07-14 · 세션 104
+
+### 히어로 파티클 캔버스 + LIVE 위젯 통합, 랜딩 리디자인 시도/롤백, 잡다한 정리
+
+**배경**: 사용자가 Three.js 기반 파티클 텍스트 애니메이션 컴포넌트(원본
+참고 코드, GPUComputationRenderer로 "TickerFlow"를 파티클로 렌더링하고
+커서로 흩뜨리는 인터랙션 + 우측 레일에 실시간 시장 상태 위젯)를 히어로에
+통합 요청. 이 작업 전에 랜딩 전체 리디자인 시도가 있었으나 사용자가 "스타일
+개선 효과가 없다"고 판단해 롤백.
+
+**1. 랜딩 전체 리디자인 시도 → 롤백** (커밋 `01a09dd` → `71b8b87`로 되돌림)
+- 병합 대시보드 패널, 벤토 그리드, 비대칭 비교, 통계 스트립 등 11개 섹션
+  개편을 EnterPlanMode로 계획하고 구현까지 완료·커밋했으나, 사용자가 실제
+  화면 확인 후 "전혀 스타일 개선 효과가 없다"고 판단해 `git revert`로
+  되돌림. `.gitattributes`(LF 통일, CRLF발 `audit-user-copy.ts` 오탐 방지
+  — 커밋 `1567f05`)는 무관한 별개 버그 수정이라 되돌리지 않고 유지.
+
+**2. 히어로 좌측 "TickerFlow" 워드마크 → 파티클 캔버스, 우측 목업 → LIVE
+위젯** (커밋 `6f99215`, `fa76e34`)
+- 사용자가 제공한 Three.js 컴포넌트에서 캔버스 조각과 위젯 조각을 분리해
+  히어로 좌/우에 각각 배치(1차 시도, 이후 3번에서 원본 비율로 재조정).
+- `src/lib/market-clock.ts` 신설 — 대시보드 `MarketClock` 위젯의 KR/US
+  개장 상태 계산 로직(`MARKETS`/`computeState`/`statusMeta`)을 공유
+  lib로 분리, 히어로 LIVE 위젯이 더미 데이터 대신 이 실제 로직을 그대로
+  재사용하도록 함.
+- 구현 중 실제 버그 2건 발견·수정: ① `next/dynamic(ssr:false)`는 Server
+  Component에서 직접 호출 불가(Next.js 제약) — 클라이언트 경계 파일로
+  분리. ② `prefers-reduced-motion` 상태에서 캔버스가 완전히 빈 화면으로
+  나오는 버그 — `renderer.dispose()` 후 같은 `<canvas>`에 새
+  `WebGLRenderer`를 재생성하는 패턴(원본 코드 자체의 문제)이 폰트로딩/
+  리사이즈 재초기화 시 렌더를 깨뜨림. renderer를 마운트당 한 번만 만들어
+  재사용하도록 구조 변경.
+
+**3. 히어로 레이아웃을 원본 참고 코드 비율로 재조정** (커밋 `1b897fa`)
+- 1차 분리 배치(좌우 절반 2단 grid)가 원본 컴포넌트의 실제 비율·구성과
+  달라 사용자가 원본 그대로 복원 요청. `particle-section.tsx` 신설 —
+  원본의 `grid lg:grid-cols-[1fr_280px] lg:gap-6` 레이아웃을 그대로
+  재현: 좌측은 캔버스가 박스 배경을 꽉 채우고 그 위 좌하단에 eyebrow/h1을
+  `pointer-events-none` 오버레이로 겹침(마우스 반발 인터랙션은 캔버스가
+  그대로 받음), 우측 레일은 LIVE 위젯 + 카피 카드("Every ticker is a
+  living particle.") + GATHER/SCATTER 모드 버튼 원본 그대로 복원.
+- `particle-canvas.tsx`에 scatter 관련 유니폼(`uScatter`/`uCenter`)과
+  GLSL, `scatterCur` 보간을 복원. mode 상태는 캔버스(prop)와 버튼
+  UI(로컬)가 모두 필요해 `particle-section.tsx`로 끌어올림(state
+  lift-up). GLSL은 tsc가 문법을 못 잡는 순수 문자열이라 `grep -c 'vec2
+  target'`로 변수 중복 선언 여부를 직접 확인하는 절차를 거침.
+- 검증: Playwright로 브라우저 콘솔 셰이더 컴파일 에러 없음 확인, 참고
+  이미지와 실제 스크린샷 비교, GATHER/SCATTER 클릭 인터랙션 확인.
+
+**4. 히어로 상단 여백·폰트 미세조정** (커밋 `f427a1d`, `ed11460`)
+- 파티클 섹션이 `fixed` 네비바(h-16)와 거의 맞닿는 문제 — 기존 히어로가
+  쓰던 `pt-32 md:pt-40`을 적용했으나 과도하게 커서, 40% 수준인
+  `pt-12 md:pt-16`(48px/64px)으로 재축소.
+- eyebrow/h1 텍스트가 캔버스 대비 비중이 커서 미니멀하게 축소
+  (`text-sm`/`text-4xl` → `text-xs`/`text-2xl` 기준, md도 비례 축소,
+  줄간격도 `mb-3`→`mb-1`).
+
+**5. 기타** — 히어로 아이바로우 문구 "미국 기업 변화 데이터 플랫폼" →
+"미국 기업의 변화를 추적하는 데이터 플랫폼" 수정(커밋 `2d527a1`, 랜딩
+리디자인 롤백 과정에서 두 번 적용됨).
+
+**검증**: 매 커밋마다 `tsc`/`eslint`(신규 에러 0) 통과, `pnpm build`
+(prebuild audit 194개 파일 위반 0 → 61개 라우트 → postbuild 웹훅검증)
+전체 통과, Playwright로 데스크톱(1440px)·모바일(390px) 스크린샷 비교.
+
 ## 2026-07-13 · 세션 103
 
 ### 블로그 초안 프롬프트 — 근거 없는 해석 억제 (근거 기반 해석 원칙)
