@@ -59,6 +59,7 @@
 
   --font-sans: var(--font-inter), -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --font-widget-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);

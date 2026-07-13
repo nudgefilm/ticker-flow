@@ -18,8 +18,9 @@ import ScreenTabs from "@/components/landing/screen-tabs";
 import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
 import { CtaCard } from "@/components/cta-card";
-import { normalizeSector, SECTOR_KR } from "@/lib/sectors";
 import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
+import { LiveMarketWidget } from "@/components/hero/live-market-widget";
+import { ParticleCanvas } from "@/components/hero/particle-canvas-loader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,91 +28,6 @@ export const dynamic = "force-dynamic";
 // 쓰지 않고 LANDING_DATA_CACHE_TAG 태그로만 갱신한다 — 매일 04:00 KST에
 // /api/revalidate/landing 크론이 revalidateTag()로 한 번에 무효화한다
 // (docs: src/lib/landing-cache.ts). 이 문구를 바꾸면 갱신 주기 설명도 맞춰 바꿀 것.
-const HERO_UPDATE_LABEL = "매일 새벽 업데이트";
-
-const HERO_TYPE_COLORS: Record<string, string> = {
-  "8-K": "#fbbf24",
-  "10-K": "#60a5fa",
-  "10-Q": "#93c5fd",
-  "Form 4": "#c084fc",
-  "기타": "#6b7280",
-};
-
-// 히어로 목업 차트 3종 전용 데이터 fetch — 페이지 전체(force-dynamic)와 분리해
-// LANDING_DATA_CACHE_TAG 태그로만 캐시한다(시간 기반 revalidate 중복 사용 안 함).
-async function fetchHeroChartsData() {
-  const admin = createAdminClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  const [{ data: heroFilingsRaw }, heroSectorRaw] = await Promise.all([
-    admin.from("filings").select("form_type, filed_at").gte("filed_at", sevenDaysAgo),
-    admin.from("filings").select("tickers!inner(sector)").gte("filed_at", sevenDaysAgo),
-  ]);
-
-  const heroFilings = heroFilingsRaw ?? [];
-
-  const heroTypeCounts: Record<string, number> = {};
-  const heroTrendMap: Record<string, number> = {};
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-    heroTrendMap[`${d.getMonth() + 1}/${d.getDate()}`] = 0;
-  }
-  for (const f of heroFilings) {
-    const typeKey =
-      f.form_type.startsWith("8-K") ? "8-K" :
-      f.form_type.startsWith("10-K") ? "10-K" :
-      f.form_type.startsWith("10-Q") ? "10-Q" :
-      f.form_type.startsWith("4") ? "Form 4" :
-      "기타";
-    heroTypeCounts[typeKey] = (heroTypeCounts[typeKey] ?? 0) + 1;
-
-    const d = new Date(f.filed_at);
-    const trendKey = `${d.getMonth() + 1}/${d.getDate()}`;
-    if (trendKey in heroTrendMap) heroTrendMap[trendKey]++;
-  }
-
-  const heroTotal = heroFilings.length;
-  const heroTypeData = Object.entries(heroTypeCounts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, value]) => ({ name, value, color: HERO_TYPE_COLORS[name] ?? "#6b7280" }));
-  const heroTrendData = Object.entries(heroTrendMap).map(([day, count]) => ({ day, count }));
-  const heroTrendMax = Math.max(...heroTrendData.map((d) => d.count), 1);
-
-  const heroConicGradient = heroTypeData
-    .reduce<{ cumulative: number; parts: string[] }>(
-      (acc, item) => {
-        const pct = heroTotal > 0 ? (item.value / heroTotal) * 100 : 0;
-        const to = acc.cumulative + pct;
-        return { cumulative: to, parts: [...acc.parts, `${item.color} ${acc.cumulative}% ${to}%`] };
-      },
-      { cumulative: 0, parts: [] }
-    )
-    .parts.join(", ");
-
-  type HeroSectorRow = { tickers: { sector: string | null } | null };
-  const heroSectorCounts: Record<string, number> = {};
-  for (const row of (heroSectorRaw.data ?? []) as unknown as HeroSectorRow[]) {
-    const raw = row.tickers?.sector;
-    if (raw) {
-      const sector = normalizeSector(raw);
-      heroSectorCounts[sector] = (heroSectorCounts[sector] ?? 0) + 1;
-    }
-  }
-  const heroSectorData = Object.entries(heroSectorCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([sector, count]) => ({ sector, sectorKr: SECTOR_KR[sector] ?? sector, count }));
-  const heroSectorMax = Math.max(...heroSectorData.map((d) => d.count), 1);
-
-  return { heroTotal, heroTypeData, heroTrendData, heroTrendMax, heroConicGradient, heroSectorData, heroSectorMax };
-}
-
-const getHeroChartsData = unstable_cache(
-  fetchHeroChartsData,
-  ["landing-hero-charts"],
-  { revalidate: false, tags: [LANDING_DATA_CACHE_TAG] }
-);
-
 // 통계 카운트 7종(가입자 수는 별도 profiles 카운트로 실시간 유지, 아래는 콘텐츠
 // 수집량 카운트) — 히어로와 동일하게 태그 전용 캐시.
 async function fetchLandingStatsCounts() {
@@ -234,14 +150,6 @@ export default async function HomePage() {
     return { day: dayNames[d.getDay()], value: weeklyMap[`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`] ?? 0 };
   });
 
-  // ── 히어로 목업: 최근 7일 공시 유형 분포 + 일별 트렌드 + 섹터별 활동 ──────────
-  // 태그 캐시(LANDING_DATA_CACHE_TAG) — 페이지 나머지 데이터(force-dynamic)와
-  // 분리되어 매일 04:00 KST에만 갱신된다.
-  const {
-    heroTotal, heroTypeData, heroTrendData, heroTrendMax, heroConicGradient,
-    heroSectorData, heroSectorMax,
-  } = await getHeroChartsData();
-
   return (
     <div id="site-content" className="min-h-screen bg-background">
       <LandingShell>
@@ -262,11 +170,12 @@ export default async function HomePage() {
 
                   <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
                     나스닥 모니터링
-                    <br />
-                    <span className="text-blue-400" style={{ filter: "drop-shadow(0 0 12px rgba(96,165,250,0.5))" }}>
-                      TickerFlow
-                    </span>
                   </h1>
+                  <span className="sr-only">TickerFlow</span>
+
+                  <div aria-hidden="true" className="mt-2 w-full max-w-md lg:mx-0 lg:max-w-lg">
+                    <ParticleCanvas />
+                  </div>
 
                   <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
                     공시, 어닝콜, 내부자 거래, 뉴스를 한국어로.
@@ -276,78 +185,9 @@ export default async function HomePage() {
 
                 </div>
 
-                {/* 우측: 대시보드 목업 */}
+                {/* 우측: LIVE 시장 상태 위젯 */}
                 <div className="hidden lg:block">
-                  <div className="rounded-2xl border border-white/[0.08] bg-[#0f0f0f] shadow-2xl">
-                    <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-3">
-                      <div className="h-3 w-3 rounded-full bg-white/10" />
-                      <div className="h-3 w-3 rounded-full bg-white/10" />
-                      <div className="h-3 w-3 rounded-full bg-white/10" />
-                      <span className="ml-2 font-mono text-xs text-white/30">tickerflow.net</span>
-                    </div>
-                    <p className="px-4 pt-3 text-[10px] text-[#a6a6a6]">{HERO_UPDATE_LABEL}</p>
-                    <div className="grid grid-cols-2 gap-3 p-4">
-                      {/* 좌: 도넛 차트 */}
-                      <div className="flex flex-col rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
-                        <p className="mb-4 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">공시 유형 분포</p>
-                        {heroTotal === 0 ? (
-                          <p className="flex flex-1 items-center justify-center text-xs text-[#a6a6a6]">데이터 없음</p>
-                        ) : (
-                          <div className="flex flex-1 flex-col items-center gap-4">
-                            <div className="relative h-32 w-32 shrink-0">
-                              <div className="h-full w-full rounded-full" style={{ background: `conic-gradient(${heroConicGradient})` }} />
-                              <div className="absolute inset-[30px] flex items-center justify-center rounded-full bg-[#111111]">
-                                <span className="text-lg font-semibold text-white">{heroTotal}</span>
-                              </div>
-                            </div>
-                            <ul className="flex w-full flex-1 flex-col justify-between">
-                              {heroTypeData.map((item) => (
-                                <li key={item.name} className="flex items-center gap-2">
-                                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: item.color }} />
-                                  <span className="text-[11px] text-[#a6a6a6]">{item.name}</span>
-                                  <span className="ml-auto text-[11px] font-medium text-white">
-                                    {Math.round((item.value / heroTotal) * 100)}%
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                      {/* 우: 트렌드 + 섹터 */}
-                      <div className="flex flex-col gap-3">
-                        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
-                          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">최근 7일 트렌드</p>
-                          <div className="flex items-end gap-1" style={{ height: "44px" }}>
-                            {heroTrendData.map((d) => (
-                              <div key={d.day} className="flex flex-1 items-end">
-                                <div className="w-full rounded-sm bg-[#60a5fa]" style={{ height: `${Math.max(2, Math.round((d.count / heroTrendMax) * 36))}px` }} />
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="rounded-[6px] border border-white/[0.08] bg-[#111111] p-4">
-                          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#a6a6a6]">섹터별 활동</p>
-                          {heroSectorData.length === 0 ? (
-                            <p className="py-2 text-center text-[11px] text-[#a6a6a6]">데이터 없음</p>
-                          ) : (
-                            <div className="flex flex-col gap-2">
-                              {heroSectorData.map((d) => (
-                                <div key={d.sector}>
-                                  <div className="mb-1 flex justify-between">
-                                    <span className="text-[10px] text-[#a6a6a6]">{d.sectorKr}</span>
-                                  </div>
-                                  <div className="h-1 w-full rounded-full bg-white/[0.06]">
-                                    <div className="h-full rounded-full bg-[#60a5fa]" style={{ width: `${(d.count / heroSectorMax) * 100}%` }} />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <LiveMarketWidget />
                 </div>
               </div>
             </div>

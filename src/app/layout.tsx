@@ -1,11 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Chakra_Petch, IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import ScrollToTop from "@/components/scroll-to-top";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+// 히어로 파티클 캔버스(TickerFlow 워드마크)와 LIVE 위젯 전용 — 사이트 전역
+// --font-sans/--font-mono 매핑은 그대로 두고 이 두 폰트만 별도 CSS 변수로
+// 병행 추가한다(globals.css의 --font-widget-mono 참고).
+const chakraPetch = Chakra_Petch({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  variable: "--font-chakra-petch",
+});
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex-mono",
 });
 
 export const metadata: Metadata = {
@@ -54,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className={`${inter.variable} dark`}>
+    <html lang="ko" className={`${inter.variable} ${chakraPetch.variable} ${ibmPlexMono.variable} dark`}>
       <body className="min-h-full antialiased">
         <div id="site-content">{children}</div>
         <ScrollToTop />
