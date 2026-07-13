@@ -33,7 +33,7 @@ export function ParticleSection() {
 
   return (
     <section
-      className="border-b text-[#f5f5f7]"
+      className="border-b pt-32 text-[#f5f5f7] md:pt-40"
       style={{ backgroundColor: "#0a0a0f", borderColor: `${LIGHT}0.15)` }}
     >
       <div className="grid p-4 sm:p-6 lg:grid-cols-[1fr_280px] lg:gap-6">
@@ -44,10 +44,10 @@ export function ParticleSection() {
         >
           <ParticleCanvas mode={mode} />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 sm:p-6">
-            <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
+            <p className="mb-1 text-xs font-medium text-amber-400 md:text-sm">
               미국 기업의 변화를 추적하는 데이터 플랫폼
             </p>
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white md:text-6xl">
+            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-white md:text-3xl">
               나스닥 모니터링
             </h1>
             <span className="sr-only">TickerFlow</span>
