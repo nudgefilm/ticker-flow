@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ChevronDown, ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MARKETS, WEEKDAY_KO, computeState, statusMeta, type MarketDef, type MarketState } from "@/lib/market-clock"
 
 // 전역 scroll-to-top 버튼(scroll-to-top.tsx)은 이 위젯이 떠 있는 동안
 // 스스로를 숨기고, 대신 이 위젯이 같은 fixed 컨테이너 안에 자체 스크롤
@@ -11,69 +12,9 @@ import { cn } from "@/lib/utils"
 // 남는 문제가 있었음).
 const SCROLL_DISPLAY_VAR = "--tf-scroll-display"
 
-type MarketId = "KRX" | "NYSE"
-
-interface MarketDef {
-  id: MarketId
-  label: string
-  city: string
-  timeZone: string
-  open: number  // 정규장 시작 (자정 기준 분)
-  close: number // 정규장 종료 (자정 기준 분)
-}
-
-const MARKETS: MarketDef[] = [
-  { id: "KRX",  label: "KR · KOSPI · KRX",     city: "서울", timeZone: "Asia/Seoul",       open: 9 * 60,      close: 15 * 60 + 30 },
-  { id: "NYSE", label: "US · S&P 500 · NYSE",  city: "뉴욕", timeZone: "America/New_York", open: 9 * 60 + 30, close: 16 * 60 },
-]
-
-function getZonedParts(date: Date, timeZone: string) {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone, hour12: false, weekday: "short",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  })
-  const parts = fmt.formatToParts(date)
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00"
-  const weekday = get("weekday")
-  const hour = Number.parseInt(get("hour"), 10) % 24
-  const minute = Number.parseInt(get("minute"), 10)
-  const second = Number.parseInt(get("second"), 10)
-  const isWeekend = weekday === "Sat" || weekday === "Sun"
-  return { weekday, hour, minute, second, isWeekend }
-}
-
-interface MarketState {
-  def: MarketDef
-  hh: string; mm: string; ss: string
-  weekday: string
-  status: "OPEN" | "CLOSED" | "PRE"
-}
-
-// America/New_York 타임존을 Intl.DateTimeFormat에 넘기면 서머타임(EDT/EST)이
-// 자동 반영된 현지 시각이 나오므로, 별도의 서머타임 계산 로직은 필요 없다.
-function computeState(def: MarketDef, now: Date): MarketState {
-  const { hour, minute, second, weekday, isWeekend } = getZonedParts(now, def.timeZone)
-  const minutesOfDay = hour * 60 + minute
-  const withinHours = minutesOfDay >= def.open && minutesOfDay < def.close
-  const isOpen = withinHours && !isWeekend
-  const status: MarketState["status"] = isOpen
-    ? "OPEN"
-    : !isWeekend && minutesOfDay < def.open ? "PRE" : "CLOSED"
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return { def, hh: pad(hour), mm: pad(minute), ss: pad(second), weekday, status }
-}
-
-const WEEKDAY_KO: Record<string, string> = {
-  Mon: "월", Tue: "화", Wed: "수", Thu: "목", Fri: "금", Sat: "토", Sun: "일",
-}
-
-function statusMeta(status: MarketState["status"]) {
-  switch (status) {
-    case "OPEN": return { text: "정규장", tone: "up" as const }
-    case "PRE":  return { text: "장전",   tone: "warn" as const }
-    default:     return { text: "장마감", tone: "down" as const }
-  }
-}
+// MARKETS/computeState/statusMeta/WEEKDAY_KO는 히어로 LIVE 위젯
+// (src/components/hero/live-market-widget.tsx)과 공유하기 위해
+// src/lib/market-clock.ts로 옮겼다 — 로직 자체는 그대로.
 
 export function MarketClock() {
   const [now, setNow] = useState<Date | null>(null)
