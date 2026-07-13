@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer.js";
 
-// 히어로 좌측 "TickerFlow" 워드마크를 대체하는 장식용 파티클 캔버스.
-// 원본은 우측 레일에 LIVE 위젯 + 카피카드 + GATHER/SCATTER 모드 버튼까지
-// 포함한 하나의 큰 컴포넌트였으나, 이 프로젝트에서는 캔버스 조각만 떼어
-// 히어로 좌측에, 위젯 조각만 떼어 히어로 우측에 각각 배치한다(카피카드·
-// 모드 버튼은 분리 과정에서 갈 곳이 없어져 버림). scatter를 트리거하는
-// UI가 사라졌으므로 관련 유니폼·상태도 함께 제거했다 — 항상 "gather"
-// 상태로만 동작한다.
+// 히어로 좌측 박스를 배경처럼 채우는 파티클 캔버스("TickerFlow" 워드마크).
+// 이 컴포넌트는 부모(particle-section.tsx)가 만든 relative 박스를
+// absolute inset-0로 꽉 채우기만 한다 — 높이/테두리/배경은 전부 부모
+// 책임이다(부모가 그 위에 eyebrow/h1 텍스트를 오버레이로 겹쳐 그리기
+// 때문). mode(GATHER/SCATTER)는 부모가 소유한 상태를 prop으로 받는다.
+
+export type ParticleMode = "gather" | "scatter";
 
 const FIELD_BG = "#0a0a0f";
 const BLUE = new THREE.Color("#7db8f5");
@@ -21,6 +21,8 @@ const velocityFrag = /* glsl */ `
   uniform vec2  uMouse;
   uniform float uMouseActive;
   uniform float uRepel;
+  uniform float uScatter;
+  uniform vec2  uCenter;
   uniform sampler2D uHome;
 
   void main() {
@@ -31,9 +33,12 @@ const velocityFrag = /* glsl */ `
     vec2 home = homeT.xy;
     float phase = homeT.z;
 
-    // 마우스가 없어도 미세하게 부유하는 idle drift
     vec2 drift = vec2( sin( uTime * 0.9 + phase ), cos( uTime * 1.1 + phase ) ) * 1.7;
-    vec2 target = home + drift;
+
+    vec2 fromC = home - uCenter;
+    vec2 scatterT = uCenter + fromC * 2.4 + vec2( sin( phase * 12.0 ), cos( phase * 7.0 ) ) * 90.0;
+
+    vec2 target = mix( home + drift, scatterT, uScatter );
 
     float pull = 0.06;
 
@@ -42,9 +47,9 @@ const velocityFrag = /* glsl */ `
       float dist = length( d );
       if ( dist < uRepel && dist > 0.001 ) {
         float k = 1.0 - dist / uRepel;
-        float force = k * k;           // ease-out, 커서 근처일수록 강함
+        float force = k * k;
         vel += ( d / dist ) * force * 26.0;
-        pull *= 1.0 - force * 0.85;    // 밀리는 동안 홈 스프링 약화
+        pull *= 1.0 - force * 0.85;
       }
     }
 
@@ -85,7 +90,6 @@ const renderFrag = /* glsl */ `
   precision mediump float;
   varying vec3 vColor;
   void main() {
-    // 부드러운 파스텔 그레인 (하드 엣지 방지)
     float d = length( gl_PointCoord - 0.5 ) * 2.0;
     float alpha = smoothstep( 1.0, 0.0, d );
     alpha = pow( alpha, 1.6 );
@@ -94,11 +98,16 @@ const renderFrag = /* glsl */ `
   }
 `;
 
-export function ParticleCanvas() {
+export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const rectRef = useRef({ left: 0, top: 0 });
   const pointerRef = useRef({ x: -9999, y: -9999, active: false });
+  const modeRef = useRef<ParticleMode>(mode);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   const updatePointer = useCallback((clientX: number, clientY: number) => {
     const { left, top } = rectRef.current;
@@ -113,11 +122,6 @@ export function ParticleCanvas() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    // renderer는 마운트당 하나만 만들어 재사용한다 — 같은 <canvas>에 대해
-    // WebGLRenderer를 dispose() 후 다시 new로 만들면(리사이즈/폰트로딩 재초기화
-    // 시점) GL 컨텍스트가 정상적으로 재바인딩되지 않아 이후 렌더가 빈 화면으로
-    // 나오는 문제가 실측으로 확인됐다. init()은 이 renderer의 setSize()만
-    // 호출하고, gpu/geometry/material/scene만 매번 새로 만든다.
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
     renderer.setPixelRatio(dpr);
     renderer.setClearColor(new THREE.Color(FIELD_BG), 1);
@@ -132,6 +136,7 @@ export function ParticleCanvas() {
     let velVar!: ReturnType<GPUComputationRenderer["addVariable"]>;
     let raf = 0;
     let disposed = false;
+    let scatterCur = 0;
 
     function sampleText(w: number, h: number) {
       const off = document.createElement("canvas");
@@ -221,7 +226,9 @@ export function ParticleCanvas() {
         uTime: { value: 0 },
         uMouse: { value: new THREE.Vector2(-9999, -9999) },
         uMouseActive: { value: 0 },
-        uRepel: { value: 110 }, // 반발 반경 (px)
+        uRepel: { value: 110 },
+        uScatter: { value: 0 },
+        uCenter: { value: new THREE.Vector2(cx, cy) },
         uHome: { value: homeTex },
       });
 
@@ -274,16 +281,15 @@ export function ParticleCanvas() {
       const p = pointerRef.current;
       vu.uMouseActive.value = p.active && !reduce ? 1 : 0;
       (vu.uMouse.value as THREE.Vector2).set(p.x, p.y);
+      const scatterTarget = modeRef.current === "scatter" ? 1 : 0;
+      scatterCur += (scatterTarget - scatterCur) * 0.08;
+      vu.uScatter.value = scatterCur;
       gpu.compute();
       material.uniforms.texturePosition.value = gpu.getCurrentRenderTarget(posVar).texture;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(frame);
     }
 
-    // prefers-reduced-motion: 애니메이션 루프 없이 60스텝만 미리 계산해 정적인
-    // 한 프레임만 그린다. init()을 다시 호출하는 지점(폰트 로딩 완료, 리사이즈)
-    // 마다 이 정적 프레임도 다시 그려줘야 한다 — 안 그리면 재초기화된 캔버스가
-    // 빈 화면(배경색만)으로 남는다.
     function renderStaticFrame() {
       for (let i = 0; i < 60; i++) gpu.compute();
       material.uniforms.texturePosition.value = gpu.getCurrentRenderTarget(posVar).texture;
@@ -351,8 +357,7 @@ export function ParticleCanvas() {
   return (
     <div
       ref={wrapRef}
-      className="relative h-[200px] w-full cursor-crosshair overflow-hidden rounded-xl border touch-none sm:h-[240px] lg:h-[280px]"
-      style={{ borderColor: "rgba(245,245,247,0.15)" }}
+      className="absolute inset-0 cursor-crosshair touch-none"
       onMouseEnter={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
         rectRef.current = { left: r.left, top: r.top };

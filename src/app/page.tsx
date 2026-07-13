@@ -19,8 +19,7 @@ import LandingTop10 from "@/components/landing-top10";
 import { StatsSection } from "@/components/stats-section";
 import { CtaCard } from "@/components/cta-card";
 import { LANDING_DATA_CACHE_TAG } from "@/lib/landing-cache";
-import { LiveMarketWidget } from "@/components/hero/live-market-widget";
-import { ParticleCanvas } from "@/components/hero/particle-canvas-loader";
+import { ParticleSection } from "@/components/hero/particle-section";
 
 export const dynamic = "force-dynamic";
 
@@ -156,42 +155,9 @@ export default async function HomePage() {
         <main>
 
           {/* ══════════════════════════════════════════════
-              1. HERO
+              1. HERO — 파티클 캔버스(전체 폭) + 우측 LIVE 레일
           ══════════════════════════════════════════════ */}
-          <section className="pb-16 pt-32 md:pt-40">
-            <div className="mx-auto max-w-7xl px-6">
-              <div className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
-
-                {/* 좌측 */}
-                <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-                  <p className="mb-3 text-sm font-medium text-amber-400 md:text-base">
-                    미국 기업의 변화를 추적하는 데이터 플랫폼
-                  </p>
-
-                  <h1 className="text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-                    나스닥 모니터링
-                  </h1>
-                  <span className="sr-only">TickerFlow</span>
-
-                  <div aria-hidden="true" className="mt-2 w-full max-w-md lg:mx-0 lg:max-w-lg">
-                    <ParticleCanvas />
-                  </div>
-
-                  <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                    공시, 어닝콜, 내부자 거래, 뉴스를 한국어로.
-                    <br />
-                    여러 사이트를 오갈 필요 없이 하나의 화면에서 확인하세요.
-                  </p>
-
-                </div>
-
-                {/* 우측: LIVE 시장 상태 위젯 */}
-                <div className="hidden lg:block">
-                  <LiveMarketWidget />
-                </div>
-              </div>
-            </div>
-          </section>
+          <ParticleSection />
 
           {/* ══════════════════════════════════════════════
               1-b. 최근 7일 활동이 많았던 기업
