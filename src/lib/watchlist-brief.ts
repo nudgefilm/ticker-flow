@@ -106,7 +106,7 @@ export interface BriefRange {
 // 얼마 안 돼 그날 수집된 filings/news/insider_trades를 거의 반영하지 못하는
 // 문제가 있었다. days=7/30(주간·월간 BRIEF)·랜딩 TOP10은 자정 정렬을 그대로
 // 유지한다 — 이 함수 호출부 목록: digest.ts(days=1), weekly-brief.ts(days=7),
-// monthly-brief.ts(days=30), page.tsx의 getCachedTopCompanies(days=7, 구 landing-top10.tsx).
+// monthly-brief.ts(days=30), landing-top10.tsx(days=7).
 export function computeRange(days: number): BriefRange {
   const dayMs = 86_400_000;
 
