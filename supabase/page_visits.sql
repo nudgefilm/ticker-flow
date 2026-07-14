@@ -13,14 +13,17 @@ CREATE TABLE public.page_visits (
 );
 
 -- 로그인 유저: 같은 날 동일 user_id 재방문은 중복 집계하지 않음
+-- (동일 유저가 여러 IP에서 접속해도 하루 1회로 유지)
 CREATE UNIQUE INDEX idx_page_visits_user_date
   ON public.page_visits (visited_date, user_id)
   WHERE user_id IS NOT NULL;
 
--- 비로그인: 같은 날 동일 IP 해시 재방문은 중복 집계하지 않음
+-- 같은 날 동일 IP 해시 재방문은 로그인/비로그인 무관하게 중복 집계하지 않음.
+-- ip_hash는 이제 모든 방문(로그인 포함)에 기록되므로 부분 인덱스(WHERE user_id IS NULL)가
+-- 아닌 전체 유니크 인덱스로 둔다. 과거 로그인 방문 행은 ip_hash가 NULL이라 서로 충돌하지
+-- 않으며(PostgreSQL은 NULL을 유니크 인덱스에서 서로 다른 값으로 취급), 신규 방문부터 적용된다.
 CREATE UNIQUE INDEX idx_page_visits_ip_date
-  ON public.page_visits (visited_date, ip_hash)
-  WHERE user_id IS NULL;
+  ON public.page_visits (visited_date, ip_hash);
 
 -- RLS 활성화
 ALTER TABLE public.page_visits ENABLE ROW LEVEL SECURITY;

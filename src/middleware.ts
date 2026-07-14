@@ -34,8 +34,10 @@ function todayUtcDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// 미들웨어 응답을 지연시키지 않도록 after()로 응답 전송 후 실행. 같은 날 재방문은
-// page_visits의 부분 유니크 인덱스가 막아주므로, upsert 대신 insert 후 중복키(23505)를 무시한다.
+// 미들웨어 응답을 지연시키지 않도록 after()로 응답 전송 후 실행. 같은 날 동일 IP
+// 재방문은 page_visits의 (visited_date, ip_hash) 유니크 인덱스가 로그인 여부와
+// 무관하게 막아주므로, upsert 대신 insert 후 중복키(23505)를 무시한다. user_id는
+// 로그인/비로그인 집계 구분용으로 계속 기록하되, 중복 제거 기준은 IP 하나로 통일한다.
 async function logPageVisit(userId: string | null, ip: string) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,7 +50,7 @@ async function logPageVisit(userId: string | null, ip: string) {
   const { error } = await admin.from("page_visits").insert({
     visited_date: todayUtcDateString(),
     user_id: userId,
-    ip_hash: userId ? null : await sha256Hex(ip),
+    ip_hash: await sha256Hex(ip),
   });
 
   if (error && error.code !== "23505") {

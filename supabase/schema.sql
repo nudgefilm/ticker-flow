@@ -372,10 +372,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_page_visits_user_date
   ON public.page_visits (visited_date, user_id)
   WHERE user_id IS NOT NULL;
 
--- 비로그인: 같은 날 동일 IP 해시 재방문은 중복 집계하지 않음
+-- 같은 날 동일 IP 해시 재방문은 로그인/비로그인 무관하게 중복 집계하지 않음
+-- (ip_hash는 모든 방문에 기록 — 부분 인덱스가 아닌 전체 유니크 인덱스)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_page_visits_ip_date
-  ON public.page_visits (visited_date, ip_hash)
-  WHERE user_id IS NULL;
+  ON public.page_visits (visited_date, ip_hash);
 
 ALTER TABLE public.page_visits ENABLE ROW LEVEL SECURITY;
 
