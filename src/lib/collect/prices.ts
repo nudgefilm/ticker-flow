@@ -1,6 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
 
+// 한 배치에서 처리할 종목 수. 티커당 실측 ~0.53s(50ms 슬립 포함) 기준 250개 ≈ 131s로
+// Vercel maxDuration=300s 대비 큰 안전 마진. prices route의 자기연쇄(self-chain)가 이
+// 값으로 전체 배치 수(= ceil(total / PRICES_BATCH_SIZE))를 계산하므로 export한다.
+export const PRICES_BATCH_SIZE = 250;
+
+// 티커 간 슬립(ms). FMP 한도는 3,000req/min(=50/s)인데 이 간격은 20/s로 넉넉히
+// 아래다. 과거 300ms(3.3/s)는 과도하게 보수적이라 배치 시간을 30% 넘게 늘렸다.
+const INTER_TICKER_SLEEP_MS = 50;
+
 // FMP stable 엔드포인트(/stable/historical-price-eod/full)는 배열을 직접
 // 반환한다 (v3의 { symbol, historical: [] } 구조가 아님). f0661a3 커밋(Yahoo→FMP
 // 전환) 때 이 차이를 놓쳐 6/28부터 모든 티커가 "no data"로 스킵되던 회귀
@@ -79,9 +88,7 @@ export async function runPricesCollect(
   const adminClient = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adminAny = adminClient as any;
-  // 티커당 실측 평균 826ms(FMP 3,000req/min 한도 대비 여유 큼) 기준,
-  // Vercel maxDuration=300s 대비 약 31% 안전 마진을 두고 산정 (250 × 826ms ≈ 207s).
-  const BATCH_SIZE = 250;
+  const BATCH_SIZE = PRICES_BATCH_SIZE;
   const offset = offsetParam ?? 0;
   let firstError: string | undefined;
   let total = 0;
@@ -150,7 +157,7 @@ export async function runPricesCollect(
       .eq("ticker", ticker);
 
     processed++;
-    if (tickers.length > 1) await new Promise((r) => setTimeout(r, 300));
+    if (tickers.length > 1) await new Promise((r) => setTimeout(r, INTER_TICKER_SLEEP_MS));
   }
 
   const nextOffset = offset + processed < total ? offset + processed : 0;
