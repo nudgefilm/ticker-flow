@@ -60,7 +60,7 @@ function fmtDate(iso: string): string {
 
 function FilingFeedSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
@@ -130,7 +130,7 @@ async function FilingFeedList({ page, type }: { page: number; type: string }) {
   return (
     <>
       <FeedScrollAnchor watch={page} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filings.map((filing, i) => (
           <FilingFeedCard
             key={filing.id}
