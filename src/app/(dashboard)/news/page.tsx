@@ -54,11 +54,11 @@ function fmtDate(iso: string): string {
 
 function NewsFeedSkeleton() {
   return (
-    <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className="mb-4 break-inside-avoid rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
+          className="rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5 animate-pulse"
         >
           <div className="flex items-center justify-between">
             <div className="h-3 w-16 rounded bg-white/[0.06]" />
@@ -127,15 +127,14 @@ async function NewsFeedList({ page, ticker }: { page: number; ticker?: string })
   return (
     <>
       <FeedScrollAnchor watch={page} />
-      <div className="columns-1 gap-4 sm:columns-2 lg:columns-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item, i) => (
-          <div key={item.id} className="mb-4 break-inside-avoid">
-            <NewsFeedCard
-              news={item}
-              badges={item.ticker ? getBadgeReasons(item.ticker, badgeSets) : undefined}
-              className={i % 2 === 0 ? "bg-[#111820]" : undefined}
-            />
-          </div>
+          <NewsFeedCard
+            key={item.id}
+            news={item}
+            badges={item.ticker ? getBadgeReasons(item.ticker, badgeSets) : undefined}
+            className={i % 2 === 0 ? "bg-[#111820]" : undefined}
+          />
         ))}
       </div>
       <div className="mt-6">

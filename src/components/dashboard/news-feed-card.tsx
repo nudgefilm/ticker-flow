@@ -38,13 +38,22 @@ export default function NewsFeedCard({
 }) {
   const { ticker, headline, source, published_at, url, summary_kr } = news;
   const content = summary_kr ?? headline;
+  const publishedLabel = formatPublishedAt(published_at);
+  const isToday = publishedLabel === "오늘";
 
   return (
     <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5", className)}>
       {/* Row 1: 출처 + 날짜 */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[#a6a6a6]">{source ?? "—"}</span>
-        <span className="shrink-0 text-xs text-[#a6a6a6]">{formatPublishedAt(published_at)}</span>
+        <span
+          className={cn(
+            "shrink-0 text-xs",
+            isToday ? "font-semibold text-green-400" : "text-[#a6a6a6]"
+          )}
+        >
+          {publishedLabel}
+        </span>
       </div>
 
       {/* Row 2: 헤드라인 (한국어 요약 있을 때 흐리게) */}
