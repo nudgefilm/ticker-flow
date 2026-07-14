@@ -119,7 +119,6 @@ export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
     const canvas = canvasRef.current;
     const wrap = wrapRef.current;
 
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
@@ -279,7 +278,7 @@ export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
       const vu = velVar.material.uniforms;
       vu.uTime.value = clock.getElapsedTime();
       const p = pointerRef.current;
-      vu.uMouseActive.value = p.active && !reduce ? 1 : 0;
+      vu.uMouseActive.value = p.active ? 1 : 0;
       (vu.uMouse.value as THREE.Vector2).set(p.x, p.y);
       const scatterTarget = modeRef.current === "scatter" ? 1 : 0;
       scatterCur += (scatterTarget - scatterCur) * 0.08;
@@ -290,18 +289,8 @@ export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
       raf = requestAnimationFrame(frame);
     }
 
-    function renderStaticFrame() {
-      for (let i = 0; i < 60; i++) gpu.compute();
-      material.uniforms.texturePosition.value = gpu.getCurrentRenderTarget(posVar).texture;
-      renderer.render(scene, camera);
-    }
-
     init();
-    if (reduce) {
-      renderStaticFrame();
-    } else {
-      raf = requestAnimationFrame(frame);
-    }
+    raf = requestAnimationFrame(frame);
 
     if ("fonts" in document) {
       document.fonts.ready.then(() => {
@@ -310,11 +299,7 @@ export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
         geometry.dispose();
         material.dispose();
         init();
-        if (reduce) {
-          renderStaticFrame();
-        } else {
-          raf = requestAnimationFrame(frame);
-        }
+        raf = requestAnimationFrame(frame);
       });
     }
 
@@ -327,11 +312,7 @@ export function ParticleCanvas({ mode }: { mode: ParticleMode }) {
         geometry.dispose();
         material.dispose();
         init();
-        if (reduce) {
-          renderStaticFrame();
-        } else {
-          raf = requestAnimationFrame(frame);
-        }
+        raf = requestAnimationFrame(frame);
       }, 200);
     };
     window.addEventListener("resize", onResize);
