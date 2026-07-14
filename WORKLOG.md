@@ -7,6 +7,55 @@
 
 ---
 
+## 2026-07-14 · 세션 105
+
+### 히어로 파티클 캔버스 — 모바일 실기기 정지 버그 원인 확정·수정
+
+**배경**: 사용자가 안드로이드 갤럭시 크롬 실기기에서 히어로 파티클이
+"TickerFlow" 글자로 모이지 못한 채 가로로 긴 흐릿한 타원형 얼룩 상태로
+완전히 정지되고, 터치해도 반응이 없다고 스크린샷과 함께 제보. 이전 세션
+104의 Playwright 헤드리스 모바일(390px) 테스트에서는 재현되지 않았던 문제.
+
+**원인 조사** (수정 없이 원인 확정까지 별도 요청)
+- Playwright `reducedMotion: 'reduce'` 컨텍스트 옵션으로 모바일 프로필(Pixel
+  7) + 프로덕션(tickerflow.net)을 접속해 사용자 스크린샷과 픽셀 단위로
+  거의 동일한 결과 재현. 같은 조건에서 `reducedMotion` 옵션만 뺀 대조
+  테스트는 정상적으로 "TickerFlow" 글자로 수렴 — `prefers-reduced-motion:
+  reduce`가 유일한 트리거임을 확정.
+- `particle-canvas.tsx`가 `reduce=true`일 때 `renderStaticFrame()`(gpu.compute()
+  60회)만 실행하고 `requestAnimationFrame(frame)` 루프를 아예 시작하지
+  않는 구조였음. 60스텝으로는 전체 폭에 균등 분산된 초기 위치가 글자
+  모양까지 수렴하지 못해 얼룩으로 보이고, 이후 루프가 없어 그 상태로 영구
+  고정됨. `frame()` 내부에서만 터치/마우스 유니폼이 갱신되므로 터치 무반응도
+  같은 원인의 증상(별개 버그 아님)으로 판명.
+- 이전 헤드리스 테스트가 못 잡은 이유: Playwright 컨텍스트의 `reducedMotion`
+  기본값이 `'no-preference'`라 명시적으로 켜지 않으면 이 경로를 안 탐.
+- 참고: 세션 104에서 고친 "renderer.dispose() 후 재생성" 버그와는 별개의,
+  같은 `reduce` 분기 아래 있던 **두 번째** reduced-motion 버그였음.
+
+**결정 및 수정** (커밋 `b30de59`)
+- 사용자 판단: "reduced-motion 배려 로직이 오히려 버그로 실사용에 역효과를
+  냈고(터치 반응 상실, 브랜드 워드마크가 미완성 상태로 노출), 그 영향이
+  접근성 배려보다 크다" — `prefers-reduced-motion` 분기 자체를 제거하기로
+  결정. `reduce` 변수 선언, `renderStaticFrame()` 죽은 코드, 마운트/폰트로딩
+  완료/리사이즈 3곳의 `if (reduce) {...} else {...}` 분기를 모두 제거하고
+  모든 환경에서 동일하게 `requestAnimationFrame(frame)`만 실행하도록 통일.
+- **PC 회귀 없음이 반드시 확인되어야 하는 제약**이 있었음 — 이 파일은
+  데스크톱/모바일 공통 코드이기 때문. PC는 원래 `reduce=false` 경로만
+  탔으므로 이번 변경이 논리적으로 영향 없어야 한다는 예상을 실제
+  테스트로 재확인.
+
+**검증**
+- `tsc --noEmit`/`eslint` 에러 0, `pnpm build`(prebuild 카피 감사 →
+  next build → postbuild 웹훅검증) 전체 통과.
+- 로컬 dev 서버 대상 Playwright 재검증: 모바일+`reduce` — 애니메이션 정상
+  진행되어 "TickerFlow" 글자로 수렴, 터치 시 반발 인터랙션 정상 작동.
+  데스크톱(1440px) 일반 상태 — 파티클 렌더링/마우스 반발/GATHER↔SCATTER
+  토글 모두 세션 104 검증 결과와 동일(회귀 없음). 데스크톱+`reduce` 조합도
+  이제 정상 애니메이션(의도된 변경 그대로).
+- `main`에 푸시(`a7ea2c8..b30de59`)해 Vercel 배포, 사용자가 실기기(갤럭시
+  크롬)에서 정상 동작 확인 완료.
+
 ## 2026-07-14 · 세션 104
 
 ### 히어로 파티클 캔버스 + LIVE 위젯 통합, 랜딩 리디자인 시도/롤백, 잡다한 정리
