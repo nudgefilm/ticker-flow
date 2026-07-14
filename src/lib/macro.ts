@@ -5,6 +5,8 @@ export interface MacroIndicator {
   desc: string;
   value: number | null;
   previousValue: number | null;
+  /** pct_change 타입에서 "이전"(전월비) 계산용 — t-1 대비 t-2 원값. 그 외 타입은 미사용. */
+  prevPreviousValue?: number | null;
   unit: string;
   valueType?: "pct_change" | "million_to_eok" | "billion_to_jo_eok" | "thousand_to_man";
   releasedAt: string;
@@ -160,9 +162,18 @@ export function formatMainValue(ind: MacroIndicator): string {
 }
 
 export function formatPrevValue(ind: MacroIndicator): string {
-  const { previousValue, unit, valueType } = ind;
+  const { previousValue, prevPreviousValue, unit, valueType } = ind;
   if (previousValue == null) return "—";
 
+  if (valueType === "pct_change") {
+    // "이전"은 원값(지수)이 아니라, 한 스텝 전(t-1 vs t-2)의 전월비 변화율이어야
+    // formatMainValue(현재 전월비)와 같은 단위로 비교된다. 원값에 "%"만 붙이면
+    // CPI 지수 332.41을 "332.41%"로 보여주는 등 물리적으로 불가능한 값이 나온다.
+    if (prevPreviousValue == null || prevPreviousValue === 0) return "—";
+    const change = ((previousValue - prevPreviousValue) / prevPreviousValue) * 100;
+    const sign = change >= 0 ? "+" : "";
+    return `${sign}${change.toFixed(2)}%`;
+  }
   if (valueType === "million_to_eok") return fmtMillionToEok(previousValue);
   if (valueType === "billion_to_jo_eok") return fmtBillionToJoEok(previousValue);
   if (valueType === "thousand_to_man") return fmtThousandToMan(previousValue);

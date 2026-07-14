@@ -53,6 +53,7 @@ export default async function MacroPage() {
       desc: meta.desc,
       value: latest.value,
       previousValue: latest.previous_value,
+      prevPreviousValue: records[2]?.value ?? null,
       unit: meta.unit,
       valueType: meta.valueType,
       releasedAt: latest.released_at,
