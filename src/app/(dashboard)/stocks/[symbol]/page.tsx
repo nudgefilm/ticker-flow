@@ -115,7 +115,7 @@ export default async function StockPage({
   const watchlistLimit = isPro ? 30 : 5;
   const watchlistAtLimit = watchlistCount >= watchlistLimit;
 
-  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, insiderRecentCountRes, earnings, nextEarningsRes, splitsRes, badgeSets] =
+  const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, insiderRecentCountRes, earnings, nextEarningsRes, splitsRes, badgeSets, globalPriceDateRes] =
     await Promise.all([
       supabase
         .from("tickers")
@@ -170,6 +170,13 @@ export default async function StockPage({
         .eq("ticker", ticker)
         .order("split_date", { ascending: false }),
       getTargetTickerSets(),
+      // 온디맨드 가격 갱신(옵션 A) 판단용 — 우리가 보유한 전체 최신 거래일
+      supabase
+        .from("stock_prices")
+        .select("date")
+        .order("date", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
   const info            = tickerRes.data;
@@ -302,6 +309,42 @@ export default async function StockPage({
           } catch (err) {
             const message = err instanceof Error ? err.message : "Unknown error";
             await finishRunRecord(runId, null, message);
+          }
+        });
+      }
+    }
+  }
+
+  // ── 가격 온디맨드 갱신 (옵션 A) ──────────────────────────────────────────────
+  // 배경 라운드로빈(옵션 C) 자기연쇄가 불안정해 hop 하나만 끊겨도 전 종목 갱신이
+  // 밀릴 수 있다. 그래서 사용자가 실제로 보는 종목만큼은 체인 상태와 무관하게
+  // 항상 최신을 보장한다: 이 종목의 최신 가격일(quote.dataDate)이 우리가 보유한
+  // 전체 최신 거래일(globalLatestPriceDate)보다 뒤처졌거나(또는 가격이 아예 없으면)
+  // 단일 티커 가격 수집을 백그라운드로 트리거한다. 고정 "N일" 대신 전체 최신
+  // 거래일과 비교해 주말·휴장으로 인한 헛트리거를 피한다. 위 isStale(공시/뉴스/
+  // 내부자)과는 완전히 독립적으로 "가격이 뒤처졌는지"만 본다.
+  const globalLatestPriceDate = globalPriceDateRes.data?.date ?? null;
+  const priceStale =
+    !quote?.dataDate ||
+    (globalLatestPriceDate != null && quote.dataDate < globalLatestPriceDate);
+
+  if (priceStale) {
+    const { findRecentRun, createRunRecord, finishRunRecord } = await import("@/lib/collect/log-run");
+    const priceJob = `prices-ondemand:${ticker}`;
+    // 같은 종목 1시간 이내 중복 트리거 방지 (기존 findRecentRun 패턴 재사용).
+    // done/error/running 무엇이든 최근 실행이 있으면 재트리거하지 않는다.
+    const recentPriceRun = await findRecentRun(priceJob, 60 * 60 * 1000);
+    if (!recentPriceRun) {
+      const priceRunId = await createRunRecord(priceJob, "user");
+      if (priceRunId) {
+        after(async () => {
+          const { collectTickerPrices } = await import("@/lib/collect/collect-ticker");
+          try {
+            const result = await collectTickerPrices(ticker);
+            await finishRunRecord(priceRunId, result);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            await finishRunRecord(priceRunId, null, message);
           }
         });
       }

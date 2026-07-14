@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runInsiderCollect } from "./insider";
+import { runPricesCollect } from "./prices";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
 const ALLOWED_FORMS = new Set(["8-K", "10-K", "10-Q", "4", "S-1", "DEF 14A", "DEF14A"]);
@@ -131,6 +132,16 @@ export async function collectTickerData(ticker: string): Promise<TickerData> {
     news: newsInserted,
     ...(cikNotFound && { cikNotFound }),
   };
+}
+
+/**
+ * 단일 종목의 가격만 온디맨드로 갱신한다(스냅샷 방문 시 가격이 뒤처졌을 때, 옵션 A).
+ * 공시/뉴스/내부자를 묶는 collectTickerFull과 달리, isStale(그 3종이 모두 빈 상태)과는
+ * 무관하게 "가격 신선도"만 보고 독립적으로 호출된다. 이미 검증된 단일 티커 동기 수집
+ * 경로(runPricesCollect(ticker))를 그대로 재사용한다.
+ */
+export async function collectTickerPrices(ticker: string) {
+  return runPricesCollect(ticker);
 }
 
 /** 공시(30일)+뉴스(7일)+내부자거래를 한 종목에 대해 함께 수집한다. */
