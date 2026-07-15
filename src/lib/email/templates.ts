@@ -381,7 +381,7 @@ function digestFeaturedSection(featured: FeaturedCompany | null): string {
     .map((s) => escapeHtml(s))
     .join("<br><br>");
   return `
-    ${digestSecTitle("이 기업")}
+    ${digestSecTitle("이번 주 활동이 많은 기업 소개")}
     ${digestCard(`
       <p style="margin:0 0 12px;font-size:15px">${digestStockLink(featured.ticker, featured.name)}</p>
       ${chart ? `<div style="margin:0 0 14px">${chart}</div>` : ""}

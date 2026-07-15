@@ -188,6 +188,35 @@ export type Database = {
         }
         Relationships: []
       }
+      digest_featured_log: {
+        Row: {
+          created_at: string
+          featured_date: string
+          id: string
+          ticker: string
+        }
+        Insert: {
+          created_at?: string
+          featured_date: string
+          id?: string
+          ticker: string
+        }
+        Update: {
+          created_at?: string
+          featured_date?: string
+          id?: string
+          ticker?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "digest_featured_log_ticker_fkey"
+            columns: ["ticker"]
+            isOneToOne: false
+            referencedRelation: "tickers"
+            referencedColumns: ["ticker"]
+          },
+        ]
+      }
       dividends: {
         Row: {
           collected_at: string | null

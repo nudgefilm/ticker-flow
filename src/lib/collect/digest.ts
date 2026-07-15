@@ -14,7 +14,7 @@ import type {
   MarketChangeCounts,
   MacroItem,
 } from "@/lib/email/templates";
-import { computeRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/watchlist-brief";
+import { computeRange, computeThisWeekRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/watchlist-brief";
 import { neutralizeRankLanguage } from "./rank-language";
 
 // 2026-07-11: gatherDigestData()는 이전에는 top30_daily(TickerFlow 자체
@@ -331,8 +331,22 @@ export async function gatherDigestData(): Promise<DigestData | null> {
   for (const item of insiderBuyToday) item.name = nameMap.get(item.ticker) ?? item.name;
   for (const item of earningsBeatToday) item.name = nameMap.get(item.ticker) ?? item.name;
 
-  // 4. 오늘의 한 기업 — 활동 상위 기업 중 description_kr 있는 첫 종목
-  const featuredRow = topCompanies.find((c) => descMap.has(c.ticker));
+  // 4. 이번 주 활동이 많은 기업 소개 — 활동 상위 기업 중 description_kr이 있고
+  // 이번 주(월요일 00:00 UTC~)에 아직 소개되지 않은 종목을 활동 순위대로 우선
+  // 탐색한다(활동 1위가 매일 반복 노출되던 문제 방지). 상위 10개 전부 이번 주에
+  // 이미 소개됐다면 기존 로직(설명 있는 종목 중 활동 1위, 반복 허용)으로 폴백한다.
+  // 실제 로그 insert는 이 함수를 공유하는 blog-draft.ts까지 "소개됨"으로 잘못
+  // 기록하지 않도록 runDigestCollect()에서만 수행한다.
+  const weekRange = computeThisWeekRange();
+  const { data: featuredLogRows } = await admin
+    .from("digest_featured_log")
+    .select("ticker")
+    .gte("featured_date", weekRange.startDateOnly) as { data: { ticker: string }[] | null };
+  const featuredThisWeek = new Set((featuredLogRows ?? []).map((r) => r.ticker));
+
+  const featuredRow =
+    topCompanies.find((c) => descMap.has(c.ticker) && !featuredThisWeek.has(c.ticker)) ??
+    topCompanies.find((c) => descMap.has(c.ticker));
   let featured: FeaturedCompany | null = null;
 
   if (featuredRow) {
@@ -492,6 +506,16 @@ export async function runDigestCollect(): Promise<CollectResult> {
 
   const digestData = await gatherDigestData();
   if (!digestData) return { ok: true, sent: 0, message: "오늘 활동 데이터 없음" };
+
+  // 실제 이메일 발송이 확정된 경우에만 "이번 주 소개됨"으로 기록한다(공유 함수인
+  // gatherDigestData()는 blog-draft.ts에서도 호출되므로 그 안에서 기록하면 안 됨).
+  if (digestData.featured) {
+    const featuredDate = new Date().toISOString().slice(0, 10);
+    const { error: logErr } = await admin
+      .from("digest_featured_log")
+      .insert({ ticker: digestData.featured.ticker, featured_date: featuredDate });
+    if (logErr) console.error("[digest] digest_featured_log insert 실패:", logErr.message);
+  }
 
   // 2. HTML 생성 및 발송
   // Resend 기본 rate limit(2req/s)을 준수하기 위해 발송 간 550ms 간격을 둔다.

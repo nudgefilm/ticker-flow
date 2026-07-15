@@ -604,3 +604,29 @@ ALTER TABLE public.profiles
 
 COMMENT ON COLUMN public.profiles.pro_expires_at IS
   '어드민 "Pro 수동 부여"로 설정한 만료 시각. null=무기한. src/lib/collect/pro-expiry.ts의 매일 1회 강등 잡이 지난 시각의 pro 유저를 free로 되돌린다.';
+
+-- ============================================================
+-- 20. digest_featured_log — 데일리 다이제스트 "이번 주 활동이 많은 기업 소개"
+--     섹션의 주간 로테이션 이력
+-- ============================================================
+-- 실행용 SQL은 supabase/digest-featured-log.sql 참고
+-- 같은 종목이 매일 반복 노출되는 문제(활동 1위가 매번 descMap 조건에서 스킵되며
+-- 2위가 고정적으로 뽑히던 사례)를 막기 위해, 이번 주(월요일 00:00 UTC~) 안에
+-- 이미 소개된 ticker를 이 테이블로 추적하고 digest.ts가 제외 대상으로 조회한다.
+CREATE TABLE IF NOT EXISTS public.digest_featured_log (
+  id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker        TEXT        NOT NULL REFERENCES public.tickers(ticker) ON DELETE CASCADE,
+  featured_date DATE        NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_digest_featured_log_featured_date
+  ON public.digest_featured_log (featured_date DESC);
+
+ALTER TABLE public.digest_featured_log ENABLE ROW LEVEL SECURITY;
+
+GRANT SELECT ON public.digest_featured_log TO authenticated;
+GRANT ALL    ON public.digest_featured_log TO service_role;
+
+CREATE POLICY "authenticated can select digest_featured_log"
+  ON public.digest_featured_log FOR SELECT TO authenticated USING (true);
