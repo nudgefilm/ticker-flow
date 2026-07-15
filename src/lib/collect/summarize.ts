@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchFilingBodyForSummary } from "./filing-document";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 // company-news 수집 추가(2026-07-08)로 뉴스 유입량이 급증해 기존 20건/회로는
@@ -10,6 +11,11 @@ const BATCH_LIMIT = 40;
 // 와치리스트 종목 뉴스 백로그가 40건을 다 채우면 티커 없는 일반 시장 뉴스(지수
 // 동향, 거시경제 전망 등)가 무기한 밀리는 문제(2026-07-09 확인) 방지용 최소 예약 슬롯.
 const MIN_GENERAL_NEWS_SLOTS = 10;
+// 공시 요약(summarizeFilings)은 2026-07-15부터 8-K/10-K/10-Q에 대해 SEC 원문
+// fetch + Haiku 호출을 1건마다 수행해 news보다 건당 처리 시간이 길다(10-K 원문은
+// 수 MB에 달할 수 있음). /api/collect/filings의 maxDuration(300초) 안에서
+// EFTS 전체수집 시간까지 더해도 안전하도록 BATCH_LIMIT(40)보다 낮은 값을 쓴다.
+const FILING_SUMMARY_BATCH_LIMIT = 20;
 
 type AdminClient = SupabaseClient<any, any, any>;
 
@@ -47,9 +53,12 @@ function subjectParticle(name: string): "이" | "가" {
 
 /**
  * "NVDA(엔비디아)가 8-K(주요 경영 이벤트 보고서)를 제출했습니다." 형태 생성
- * Haiku 호출 없이 코드에서 직접 생성
+ * Haiku 호출 없이 코드에서 직접 생성. 8-K/10-K/10-Q 외 form_type(Form 4,
+ * S-1, DEF 14A 등)의 요약은 이 템플릿을 그대로 사용한다(원문 요약 대상 아님).
+ * scripts/reset-filing-template-summaries.ts가 백필 대상 판별에 재사용하므로
+ * export 유지.
  */
-function buildFilingSummary(ticker: string, companyName: string, formType: string): string {
+export function buildFilingSummary(ticker: string, companyName: string, formType: string): string {
   const info = FORM_TYPE_INFO[formType];
   const displayLabel  = info?.displayLabel  ?? formType;
   const koreanName    = info?.koreanName    ?? formType;
@@ -58,7 +67,7 @@ function buildFilingSummary(ticker: string, companyName: string, formType: strin
   return `${ticker}(${companyName})${subjParticle} ${displayLabel}(${koreanName})${objParticle} 제출했습니다.`;
 }
 
-// ─── Anthropic Haiku 호출 (뉴스 전용) ─────────────────────────────────────────
+// ─── Anthropic Haiku 호출 (뉴스·공시 원문 요약 공용) ──────────────────────────
 
 async function callHaiku(prompt: string, maxTokens = 256): Promise<string | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -95,7 +104,7 @@ async function fetchFilingRows(
 ) {
   const base = adminClient
     .from("filings")
-    .select("id, ticker, form_type")
+    .select("id, ticker, form_type, url")
     .is("summary_kr", null)
     .not("form_type", "eq", "");
 
@@ -115,7 +124,7 @@ async function fetchFilingRows(
 
   const { data: fill } = await adminClient
     .from("filings")
-    .select("id, ticker, form_type")
+    .select("id, ticker, form_type, url")
     .is("summary_kr", null)
     .not("form_type", "eq", "")
     .not("ticker", "in", `(${priorityTickers.join(",")})`)
@@ -163,38 +172,140 @@ async function fetchNewsRows(
   return [...priorityRows, ...(fill ?? [])];
 }
 
+async function fetchTickerNames(adminClient: AdminClient, tickers: string[]): Promise<Map<string, string>> {
+  const nameMap = new Map<string, string>();
+  if (tickers.length === 0) return nameMap;
+
+  const { data } = await adminClient
+    .from("tickers")
+    .select("ticker, name_kr, name_en")
+    .in("ticker", tickers);
+
+  for (const t of data ?? []) {
+    nameMap.set(t.ticker, (t.name_kr as string | null) ?? (t.name_en as string) ?? t.ticker);
+  }
+  return nameMap;
+}
+
+// 원문을 fetch해 Haiku로 요약하는 form_type. 그 외(Form 4, S-1, DEF 14A 등)는
+// buildFilingSummary 템플릿을 그대로 사용한다.
+const FILING_TEXT_FORM_TYPES = new Set(["8-K", "10-K", "10-Q"]);
+
+function buildFilingHaikuPrompt(formType: string, ticker: string, companyName: string, body: string): string {
+  const lengthRule = formType === "8-K" ? "분량: 3~5문장, 200자 내외" : "분량: 4~6문장, 300자 내외";
+  const docLabel =
+    formType === "8-K" ? "SEC 8-K(주요 경영 이벤트 보고서) 본문" :
+    formType === "10-K" ? "SEC 10-K(연간 실적 보고서) 중 경영진 논의 및 분석(MD&A) 구간" :
+    "SEC 10-Q(분기 실적 보고서) 중 경영진 논의 및 분석(MD&A) 구간";
+
+  return `다음은 ${ticker}(${companyName})가 제출한 ${docLabel} 원문입니다. 한국어로 요약해주세요.
+
+원칙
+- 원문에 명시된 사실만 서술하세요.
+- 분석, 해설, 의견, 전망은 추가하지 마세요.
+- "~했습니다", "~발표했습니다" 형태의 사실 서술체로만 작성하세요.
+- 투자 판단과 관련된 표현은 중립적으로 서술하세요.
+- ${lengthRule}
+- plain text로만 응답하고 마크다운 기호(#, **, - 등)는 사용하지 마세요.
+
+원문:
+${body}`;
+}
+
+/**
+ * 공시 1건의 summary_kr을 결정한다. 8-K/10-K/10-Q는 SEC 원문을 fetch해 Haiku로
+ * 요약하고(원문은 저장하지 않고 버림), 그 외 form_type은 기존 템플릿을 사용한다.
+ * 원문 fetch 실패 또는 Haiku 호출 실패 시 null을 반환해 호출자가 스킵(재시도
+ * 대상으로 summary_kr을 null로 남김) 처리하도록 한다.
+ */
+async function resolveFilingSummary(
+  ticker: string,
+  companyName: string,
+  formType: string,
+  url: string | null
+): Promise<string | null> {
+  if (!FILING_TEXT_FORM_TYPES.has(formType) || !url) {
+    return buildFilingSummary(ticker, companyName, formType);
+  }
+
+  const body = await fetchFilingBodyForSummary(url, formType);
+  if (!body) return null;
+
+  const prompt = buildFilingHaikuPrompt(formType, ticker, companyName, body);
+  const summary = await callHaiku(prompt, formType === "8-K" ? 300 : 400);
+  return summary ? summary.trim() : null;
+}
+
 // ─── 공개 API ─────────────────────────────────────────────────────────────────
 
 /**
- * 공시 요약 — Haiku 미사용.
- * ticker + form_type + tickers 테이블 회사명으로 문자열 직접 생성.
- * 예: "NVDA(엔비디아)가 8-K(주요 경영 이벤트 보고서)를 제출했습니다."
+ * 공시 요약. 8-K/10-K/10-Q는 SEC 원문을 fetch해 Haiku로 사실 서술 요약을
+ * 생성하고, 그 외 form_type은 ticker+form_type+회사명 템플릿을 그대로 쓴다.
  */
 export async function summarizeFilings(
   adminClient: AdminClient,
-  { limit = BATCH_LIMIT, priorityTickers = [] }: SummarizeOpts = {}
+  { limit = FILING_SUMMARY_BATCH_LIMIT, priorityTickers = [] }: SummarizeOpts = {}
 ): Promise<{ done: number; failed: number }> {
   const rows = await fetchFilingRows(adminClient, limit, priorityTickers);
   if (!rows.length) return { done: 0, failed: 0 };
 
-  // 배치 내 고유 ticker로 회사명 일괄 조회
   const uniqueTickers = [...new Set(rows.map((r) => r.ticker).filter(Boolean))];
-  const { data: tickerRows } = await adminClient
-    .from("tickers")
-    .select("ticker, name_kr, name_en")
-    .in("ticker", uniqueTickers);
-
-  const nameMap = new Map<string, string>();
-  for (const t of tickerRows ?? []) {
-    nameMap.set(t.ticker, (t.name_kr as string | null) ?? (t.name_en as string) ?? t.ticker);
-  }
+  const nameMap = await fetchTickerNames(adminClient, uniqueTickers);
 
   let done = 0;
   let failed = 0;
 
   for (const row of rows) {
     const companyName = nameMap.get(row.ticker) ?? row.ticker;
-    const summary = buildFilingSummary(row.ticker, companyName, row.form_type);
+    const summary = await resolveFilingSummary(row.ticker, companyName, row.form_type, row.url ?? null);
+    if (!summary) { failed++; continue; }
+
+    const { error } = await adminClient
+      .from("filings")
+      .update({ summary_kr: summary })
+      .eq("id", row.id);
+
+    error ? failed++ : done++;
+  }
+
+  return { done, failed };
+}
+
+// 온디맨드(신규 와치리스트 종목 등록) 트리거가 한 번에 처리하는 최대 공시 수.
+// EDGAR 30일 조회 범위 안에서 8-K/10-K/10-Q 건수는 종목당 이 값을 넘기지 않는
+// 것이 일반적이며, maxDuration(300초) 내에서 안전하게 끝나도록 상한을 둔다.
+const ON_DEMAND_FILING_LIMIT = 40;
+
+/**
+ * 신규 와치리스트 종목 등록 시 collectTickerData()가 공시를 upsert한 직후
+ * 호출된다. 방금 수집된(또는 이전에 요약이 비어 있던) 해당 종목 공시만 대상으로
+ * 즉시 요약을 생성해, 사용자가 새로고침 없이 화면에서 바로 요약을 볼 수 있게 한다.
+ */
+export async function summarizeFilingsForTicker(
+  adminClient: AdminClient,
+  ticker: string,
+  limit = ON_DEMAND_FILING_LIMIT
+): Promise<{ done: number; failed: number }> {
+  const { data: rows } = await adminClient
+    .from("filings")
+    .select("id, ticker, form_type, url")
+    .eq("ticker", ticker)
+    .is("summary_kr", null)
+    .not("form_type", "eq", "")
+    .order("filed_at", { ascending: false })
+    .limit(limit);
+
+  if (!rows || rows.length === 0) return { done: 0, failed: 0 };
+
+  const nameMap = await fetchTickerNames(adminClient, [ticker]);
+  const companyName = nameMap.get(ticker) ?? ticker;
+
+  let done = 0;
+  let failed = 0;
+
+  for (const row of rows) {
+    const summary = await resolveFilingSummary(ticker, companyName, row.form_type, row.url ?? null);
+    if (!summary) { failed++; continue; }
 
     const { error } = await adminClient
       .from("filings")

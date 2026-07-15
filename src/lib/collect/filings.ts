@@ -124,7 +124,13 @@ export async function runFilingsCollect(dateParam?: string | null): Promise<Coll
     const briefTickers = new Set<string>();
 
     for (const hit of hits) {
-      const { _id: accessionId, _source: src } = hit;
+      const { _id: hitId, _source: src } = hit;
+      // EFTS hit._id는 "{accession-number}:{primary-document-filename}" 형태다
+      // (문서 단위 히트 — 같은 accession의 exhibit마다 별도 히트가 온다). 이를
+      // accession-number 그대로로 오인해 index.htm URL을 조립하면 파일명이 붙어
+      // 깨진 URL이 생성되고, exhibit별로 URL이 달라져 onConflict(url) dedup도
+      // 무력화된다(2026-07-15 발견 — filings.url 244/306건 malformed 확인).
+      const accessionId = hitId.split(":")[0];
       const { ticker, paddedCik } = parseFiler(src.display_names);
       if (!ticker) { skipNoTicker++; continue; }
 

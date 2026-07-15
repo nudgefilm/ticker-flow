@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runInsiderCollect } from "./insider";
 import { runPricesCollect } from "./prices";
+import { summarizeFilingsForTicker } from "./summarize";
 
 const USER_AGENT = "TickerFlow support@tickerflow.net";
 const ALLOWED_FORMS = new Set(["8-K", "10-K", "10-Q", "4", "S-1", "DEF 14A", "DEF14A"]);
@@ -95,6 +96,16 @@ export async function collectTickerData(ticker: string): Promise<TickerData> {
       }
     } catch (err) {
       console.error("[collect-ticker] EDGAR:", ticker, err);
+    }
+  }
+
+  // 방금 수집된(또는 이전에 요약이 비어 있던) 이 종목 공시를 즉시 요약 —
+  // 새로고침 요구 없이 화면에 바로 반영되도록 수집 직후 처리한다.
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      await summarizeFilingsForTicker(adminClient, ticker);
+    } catch (err) {
+      console.error("[collect-ticker] summarize:", ticker, err);
     }
   }
 
