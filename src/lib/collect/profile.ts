@@ -133,13 +133,16 @@ export async function runProfileCollect(limit = 20): Promise<CollectResult> {
         const res = await fetch(
           `https://finnhub.io/api/v1/stock/profile2?symbol=${ticker}&token=${finnhubKey}`
         );
-        if (res.ok) {
-          const profile: FinnhubProfile = await res.json();
-          if (profile.finnhubIndustry) {
-            const industry = profile.finnhubIndustry;
-            update.sector = INDUSTRY_TO_SECTOR[industry] ?? industry;
-            update.industry = industry;
-          }
+        // 2026-07-15: !res.ok(429/5xx 등)를 조용히 지나치면 "일시적 API 실패"와
+        // "이 종목에 원래 데이터가 없음"이 skipped 한 버킷에 뭉뚱그려져 구분이
+        // 안 됐다(seed-profiles-full.ts는 throw로 errors에 분리 집계 — 그 패턴과
+        // 통일). 실패 시 throw해 아래 catch에서 errors로 명확히 집계한다.
+        if (!res.ok) throw new Error(`Finnhub HTTP ${res.status}`);
+        const profile: FinnhubProfile = await res.json();
+        if (profile.finnhubIndustry) {
+          const industry = profile.finnhubIndustry;
+          update.sector = INDUSTRY_TO_SECTOR[industry] ?? industry;
+          update.industry = industry;
         }
         await delay(200);
       }
@@ -149,24 +152,23 @@ export async function runProfileCollect(limit = 20): Promise<CollectResult> {
           `${FMP_BASE}/stable/profile?symbol=${ticker}&apikey=${fmpKey}`,
           { signal: AbortSignal.timeout(8000) }
         );
-        if (fmpRes.ok) {
-          const raw = await fmpRes.json();
-          const p: FmpProfile | undefined = Array.isArray(raw) ? raw[0] : raw;
-          if (p) {
-            if (p.description) {
-              update.description = p.description;
-              newDescription = p.description;
-            }
-            if (p.ceo) update.ceo = p.ceo;
-            const employees = parseEmployees(p.fullTimeEmployees);
-            if (employees != null) update.full_time_employees = employees;
-            if (p.website) update.website = p.website;
-            if (p.image) update.image = p.image;
-            if (p.ipoDate) update.ipo_date = p.ipoDate;
-            const headquarters = buildHeadquarters(p.city, p.state, p.country);
-            if (headquarters) update.headquarters = headquarters;
-            if (p.marketCap != null) update.market_cap = p.marketCap;
+        if (!fmpRes.ok) throw new Error(`FMP HTTP ${fmpRes.status}`);
+        const raw = await fmpRes.json();
+        const p: FmpProfile | undefined = Array.isArray(raw) ? raw[0] : raw;
+        if (p) {
+          if (p.description) {
+            update.description = p.description;
+            newDescription = p.description;
           }
+          if (p.ceo) update.ceo = p.ceo;
+          const employees = parseEmployees(p.fullTimeEmployees);
+          if (employees != null) update.full_time_employees = employees;
+          if (p.website) update.website = p.website;
+          if (p.image) update.image = p.image;
+          if (p.ipoDate) update.ipo_date = p.ipoDate;
+          const headquarters = buildHeadquarters(p.city, p.state, p.country);
+          if (headquarters) update.headquarters = headquarters;
+          if (p.marketCap != null) update.market_cap = p.marketCap;
         }
         await delay(300);
       }
