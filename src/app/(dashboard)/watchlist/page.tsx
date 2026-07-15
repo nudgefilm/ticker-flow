@@ -130,12 +130,17 @@ async function WatchlistContent() {
   // 2. 주간 요약 배치 쿼리 + 종목별 통계 병렬 실행
   const [batchResults, stocks] = await Promise.all([
     Promise.all([
-      // 쿼리 1: 최근 7일 공시 (와치리스트 ticker 한정)
+      // 쿼리 1: 최근 7일 공시 (와치리스트 ticker 한정) — 요일별 시리즈(스파크라인)용 행 데이터.
+      // PostgREST 기본 1,000행 제한이 있어 실제 총건수 집계에는 쓰지 않는다(아래 count 쿼리 참고).
       supabase.from("filings").select("filed_at").in("ticker", tickers).gte("filed_at", sevenDaysAgo),
-      // 쿼리 2: 최근 7일 뉴스 (와치리스트 ticker 한정)
+      // 쿼리 2: 최근 7일 뉴스 (와치리스트 ticker 한정) — 시리즈용, 위와 동일한 이유로 총건수엔 미사용.
       supabase.from("news").select("published_at").in("ticker", tickers).gte("published_at", sevenDaysAgo),
       // 쿼리 3: 오늘~7일 이내 실적 (와치리스트 ticker 한정)
       supabase.from("earnings").select("report_date, ticker").in("ticker", tickers).gte("report_date", today).lte("report_date", sevenDaysLater),
+      // 쿼리 4·5: 개별 종목 카드와 동일하게 { count: "exact", head: true }로 정확한 총건수 조회
+      // (행을 fetch하지 않으므로 1,000행 제한과 무관 — "신규 뉴스 1000건 고정" 버그 수정).
+      supabase.from("filings").select("*", { count: "exact", head: true }).in("ticker", tickers).gte("filed_at", sevenDaysAgo),
+      supabase.from("news").select("*", { count: "exact", head: true }).in("ticker", tickers).gte("published_at", sevenDaysAgo),
     ]),
     Promise.all(
       rows.map(async (row): Promise<WatchlistStock> => {
@@ -178,7 +183,7 @@ async function WatchlistContent() {
     ),
   ]);
 
-  const [filingsWeekRes, newsWeekRes, earningsWeekRes] = batchResults;
+  const [filingsWeekRes, newsWeekRes, earningsWeekRes, filingsWeekCountRes, newsWeekCountRes] = batchResults;
 
   // 3. 주간 요약 집계
   const filingsByDay = Object.fromEntries(pastKeys.map(k => [k, 0])) as Record<string, number>;
@@ -206,14 +211,14 @@ async function WatchlistContent() {
       label: "신규 공시",
       color: "#60a5fa",
       unit: "건",
-      value: (filingsWeekRes.data ?? []).length,
+      value: filingsWeekCountRes.count ?? 0,
       series: pastKeys.map(k => filingsByDay[k]),
     },
     {
       label: "신규 뉴스",
       color: "#93c5fd",
       unit: "건",
-      value: (newsWeekRes.data ?? []).length,
+      value: newsWeekCountRes.count ?? 0,
       series: pastKeys.map(k => newsByDay[k]),
     },
     {
@@ -571,17 +576,17 @@ export default function WatchlistPage() {
       <Suspense fallback={<DataStatusSkeleton />}>
         <DataStatusContent />
       </Suspense>
+      <Suspense fallback={<WatchlistSkeleton />}>
+        <WatchlistContent />
+      </Suspense>
+      <Suspense fallback={<TrendingSkeleton />}>
+        <TrendingContent />
+      </Suspense>
       <Suspense fallback={<BriefSkeleton />}>
         <WeeklyBriefSection />
       </Suspense>
       <Suspense fallback={<BriefSkeleton />}>
         <MonthlyBriefSection />
-      </Suspense>
-      <Suspense fallback={<TrendingSkeleton />}>
-        <TrendingContent />
-      </Suspense>
-      <Suspense fallback={<WatchlistSkeleton />}>
-        <WatchlistContent />
       </Suspense>
       <DashboardDisclaimer />
     </div>
