@@ -10,6 +10,7 @@ export interface WatchlistStock {
   company: string;
   newFilings: number;
   earningsDday: string;
+  earningsImminent: boolean;
   newNews: number;
   badges?: TickerBadgeReason[];
 }

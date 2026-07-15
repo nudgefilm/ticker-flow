@@ -73,6 +73,7 @@ async function WatchlistContent() {
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const today = new Date().toISOString().slice(0, 10);
+  const sevenDaysLater = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
 
   // 1. watchlist + 회사명 + plan + 뱃지 판정용 티커 풀 병렬 조회
   const [{ data: wl }, { data: profile }, badgeSets] = await Promise.all([
@@ -131,12 +132,19 @@ async function WatchlistContent() {
       if (newsRes.error)    console.error(`[watchlist] news count ${row.ticker}:`, newsRes.error.message);
       if (earningsRes.error) console.error(`[watchlist] earnings ${row.ticker}:`, earningsRes.error.message);
 
+      const reportDate = earningsRes.data?.report_date ?? null;
+      // earningsRes 쿼리가 이미 report_date >= today로 필터링돼 있으므로,
+      // sevenDaysLater(today+7일, D-7 포함) 이하인지만 확인하면 "오늘~7일 이내"가
+      // 된다(새 쿼리 불필요).
+      const earningsImminent = reportDate !== null && reportDate <= sevenDaysLater;
+
       return {
         ticker: row.ticker,
         company: t?.name_kr ?? t?.name_en ?? row.ticker,
         newFilings: filingsRes.count ?? 0,
         newNews: newsRes.count ?? 0,
-        earningsDday: formatDday(earningsRes.data?.report_date ?? null),
+        earningsDday: formatDday(reportDate),
+        earningsImminent,
         badges: getBadgeReasons(row.ticker, badgeSets),
       };
     })

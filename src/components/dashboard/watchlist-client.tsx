@@ -34,7 +34,7 @@ export default function WatchlistClient({
 
   const totalFilings = stocks.reduce((sum, s) => sum + s.newFilings, 0);
   const totalNews = stocks.reduce((sum, s) => sum + s.newNews, 0);
-  const earningsImminentCount = stocks.filter((s) => s.earningsDday !== "—").length;
+  const earningsImminentCount = stocks.filter((s) => s.earningsImminent).length;
   const atLimit = isPro ? stocks.length >= PRO_LIMIT : stocks.length >= FREE_LIMIT;
 
   async function handleDelete(ticker: string) {
