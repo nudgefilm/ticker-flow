@@ -3,12 +3,14 @@
  *
  * summarizeFilings()가 원문 미참조 템플릿("...를 제출했습니다." 등)으로 생성한
  * 기존 filings.summary_kr을 null로 리셋한다. 리셋된 행은 이후 정규 크론
- * (summarizeFilings)이 새 SEC 원문 기반 Haiku 요약으로 자연스럽게 채운다.
+ * (summarizeFilings)이 새 로직(8-K/10-K/10-Q/S-1/DEF14A는 원문 기반 Haiku 요약,
+ * Form 4는 insider_trades 구조화 데이터 기반 사실 요약)으로 자연스럽게 채운다.
  * 이 스크립트 자체는 요약을 생성하지 않는다 — 리셋만 수행한다.
  *
- * 대상: filings.filed_at이 --days 이내이고, form_type이 8-K/10-K/10-Q이며,
- * summary_kr이 buildFilingSummary()가 생성했을 값과 정확히 일치하는 행.
- * (Haiku가 생성한 진짜 원문 요약은 이 템플릿 문자열과 구조가 달라 오탐되지 않는다.)
+ * 대상: filings.filed_at이 --days 이내이고, form_type이 TEXT_FORM_TYPES 중
+ * 하나이며, summary_kr이 buildFilingSummary()가 생성했을 값과 정확히 일치하는
+ * 행. (Haiku가 생성한 진짜 원문 요약이나 Form 4 구조화 요약은 이 템플릿
+ * 문자열과 구조가 달라 오탐되지 않는다.)
  *
  * 실행:
  *   npx tsx scripts/reset-filing-template-summaries.ts               # 30일/10일 대상 건수만 카운트(기본, 안전)
@@ -53,7 +55,7 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-const TEXT_FORM_TYPES = ["8-K", "10-K", "10-Q"];
+const TEXT_FORM_TYPES = ["8-K", "10-K", "10-Q", "4", "S-1", "DEF 14A", "DEF14A"];
 
 interface FilingRow {
   id: string;
@@ -156,15 +158,18 @@ async function main() {
   console.log("\n=== TickerFlow reset-filing-template-summaries ===");
   console.log("대상 form_type:", TEXT_FORM_TYPES.join(", "));
 
-  // 30일/10일 두 기준 모두 카운트해서 함께 보고 (승인 판단용)
-  const rows30 = await fetchCandidateRows(daysAgoIso(30));
-  const matched30 = await findTemplateMatchIds(rows30);
-
-  const rows10 = await fetchCandidateRows(daysAgoIso(10));
-  const matched10 = await findTemplateMatchIds(rows10);
-
-  console.log(`\n[30일 기준] summary_kr 존재(8-K/10-K/10-Q): ${rows30.length}건 / 템플릿 패턴 일치(리셋 대상): ${matched30.length}건`);
-  console.log(`[10일 기준] summary_kr 존재(8-K/10-K/10-Q): ${rows10.length}건 / 템플릿 패턴 일치(리셋 대상): ${matched10.length}건`);
+  // 30일/10일/60일 세 기준 모두 카운트해서 함께 보고 (승인 판단용). 60일은
+  // Form 4/S-1 전체 히스토리를 커버하기 위한 체크포인트(2026-07-16 기준 최고
+  // 오래된 행이 51일 전 — 8-K/10-K/10-Q처럼 매일 대량 유입되는 유형이 아니라
+  // 전체 리셋 비용이 낮다).
+  const checkpoints = [30, 10, 60];
+  const results = new Map<number, { rows: FilingRow[]; matched: string[] }>();
+  for (const days of checkpoints) {
+    const rows = await fetchCandidateRows(daysAgoIso(days));
+    const matched = await findTemplateMatchIds(rows);
+    results.set(days, { rows, matched });
+    console.log(`[${days}일 기준] summary_kr 존재: ${rows.length}건 / 템플릿 패턴 일치(리셋 대상): ${matched.length}건`);
+  }
 
   if (!apply) {
     console.log("\n--apply 플래그 없음 — 카운트만 수행하고 종료합니다. (리셋 없음)");
@@ -172,12 +177,13 @@ async function main() {
     return;
   }
 
-  if (applyDays !== 30 && applyDays !== 10) {
-    console.error("\n--apply 사용 시 --days=30 또는 --days=10을 명시해야 합니다.");
+  if (!applyDays || !Number.isInteger(applyDays) || applyDays <= 0) {
+    console.error("\n--apply 사용 시 --days=N(양의 정수)을 명시해야 합니다.");
     process.exit(1);
   }
 
-  const targetIds = applyDays === 30 ? matched30 : matched10;
+  const target = results.get(applyDays);
+  const targetIds = target ? target.matched : (await findTemplateMatchIds(await fetchCandidateRows(daysAgoIso(applyDays))));
   console.log(`\n--days=${applyDays} 기준으로 ${targetIds.length}건을 summary_kr = null로 리셋합니다...`);
 
   const { done, failed } = await resetIds(targetIds);

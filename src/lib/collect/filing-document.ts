@@ -16,6 +16,13 @@ function htmlToText(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    // 인라인 XBRL 문서 상단의 <ix:header>(문맥·단위 정의 등 숫자/코드 위주 메타데이터,
+    // 화면에는 보이지 않음)를 제거하지 않으면, 본문 섹션 추출이 실패했을 때 쓰는
+    // "문서 앞부분" 폴백이 이 메타데이터 덩어리를 그대로 요약 입력으로 넘기게 된다
+    // (2026-07-16 ARTW 10-Q 등에서 Haiku가 "이건 XBRL 메타데이터라 요약할 수 없다"고
+    // 응답하는 사례로 확인).
+    .replace(/<ix:header[\s\S]*?<\/ix:header>/gi, " ")
+    .replace(/<ix:hidden[\s\S]*?<\/ix:hidden>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&#39;|&apos;/gi, "'")
@@ -37,10 +44,15 @@ function resolveHref(href: string): string {
   return path.startsWith("http") ? path : `https://www.sec.gov${path}`;
 }
 
+/** "DEF 14A" vs "DEF14A"처럼 공백 유무만 다른 표기를 동일하게 취급 */
+function normalizeFormType(s: string): string {
+  return s.toUpperCase().replace(/\s+/g, "");
+}
+
 /** 인덱스 페이지(-index.htm)에서 form_type과 일치하는 본문 문서 URL을 찾는다. */
 function extractPrimaryDocUrl(indexHtml: string, formType: string): string | null {
   const rows = indexHtml.match(/<tr[\s\S]*?<\/tr>/gi) ?? [];
-  const wantedType = formType.toUpperCase();
+  const wantedType = normalizeFormType(formType);
   let fallbackHref: string | null = null;
 
   for (const row of rows) {
@@ -51,7 +63,7 @@ function extractPrimaryDocUrl(indexHtml: string, formType: string): string | nul
       c.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim()
     );
     const seqCell = cells[0] ?? "";
-    const typeCell = (cells[3] ?? "").toUpperCase();
+    const typeCell = normalizeFormType(cells[3] ?? "");
 
     if (!fallbackHref && seqCell === "1") fallbackHref = hrefMatch[1];
     if (typeCell === wantedType || typeCell.startsWith(wantedType)) {
@@ -107,9 +119,12 @@ function extractSection(text: string, startRes: RegExp[], endRes: RegExp[]): str
 /** form_type에 맞춰 요약 입력으로 쓸 본문을 정한다. 추출 실패 시 문서 앞부분으로 폴백. */
 function pickBody(text: string, formType: string): string {
   if (formType === "10-K") {
+    // management\s*['’]?\s*s?: SEC 필러가 "Management's"를 문자 단위 인라인
+    // 태그(span/font)로 감싸는 경우, 태그 제거 후 "Management ’ s"처럼 어포스트로피
+    // 앞뒤에 공백이 끼어드는 경우가 실제로 있다(ARTW 10-Q에서 확인, 2026-07-16).
     const section = extractSection(
       text,
-      [/item\s*7\.?\s*management['’]?s?\s+discussion/i],
+      [/item\s*7\.?\s*management\s*['’]?\s*s?\s+discussion/i],
       [/item\s*7a\.?/i, /item\s*8\.?/i]
     );
     if (section) return section.slice(0, MAX_BODY_CHARS);
@@ -117,8 +132,32 @@ function pickBody(text: string, formType: string): string {
     // 10-Q의 MD&A는 10-K와 달리 Item 7이 아니라 Part I Item 2다.
     const section = extractSection(
       text,
-      [/item\s*2\.?\s*management['’]?s?\s+discussion/i],
+      [/item\s*2\.?\s*management\s*['’]?\s*s?\s+discussion/i],
       [/item\s*3\.?/i, /item\s*4\.?/i]
+    );
+    if (section) return section.slice(0, MAX_BODY_CHARS);
+  } else if (formType === "S-1") {
+    // S-1은 10-K/10-Q와 달리 Item 번호가 없어 자유 서식 제목에 의존한다. 실측
+    // 결과(2026-07-16): 신규 IPO 성격의 S-1은 "Prospectus Summary" 뒤에
+    // "The Offering"이 이어지는 구조가 실제로 확인됨. 반면 재판매(resale/shelf)
+    // 성격의 S-1은 "Prospectus Summary"라는 문구가 본문 교차 참조("~ 섹션
+    // 참고")로만 등장해 이 패턴이 안 맞고, 그 경우 200자 미만으로 걸러져
+    // 자동으로 문서 앞부분 폴백으로 넘어간다(안전).
+    const section = extractSection(
+      text,
+      [/prospectus\s+summary/i],
+      [/the\s+offering/i, /risk\s+factors/i]
+    );
+    if (section) return section.slice(0, MAX_BODY_CHARS);
+  } else if (formType === "DEF 14A" || formType === "DEF14A") {
+    // DEF 14A(위임장 권유서)는 S-1보다 서식이 더 자유로워 검증할 실제 표본이
+    // 없었다(2026-07-16 기준 filings 테이블에 DEF 14A 행 0건). SEC 관행상
+    // 흔한 "Proxy Statement Summary" 섹션을 시도하고, 못 찾으면 문서 앞부분
+    // 폴백으로 안전하게 떨어진다.
+    const section = extractSection(
+      text,
+      [/proxy\s+statement\s+summary/i],
+      [/questions\s+and\s+answers/i, /table\s+of\s+contents/i, /proposal\s+(?:no\.?\s*)?1\b/i]
     );
     if (section) return section.slice(0, MAX_BODY_CHARS);
   }
