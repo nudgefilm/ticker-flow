@@ -42,7 +42,7 @@ export default function NewsFeedCard({
   const isToday = publishedLabel === "오늘";
 
   return (
-    <article className={cn("rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5", className)}>
+    <article className={cn("mb-4 break-inside-avoid rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] p-5", className)}>
       {/* Row 1: 출처 + 날짜 */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-[#a6a6a6]">{source ?? "—"}</span>
