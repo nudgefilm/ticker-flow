@@ -477,15 +477,37 @@ export interface EarningsHighlight {
 }
 
 export async function fetchEarningsHighlights(supabase: Supabase, range: BriefRange, limit: number): Promise<EarningsHighlight[]> {
+  // actual_eps가 채워졌다는 건 이미 발표된 실적이라 report_date가 오늘보다
+  // 미래일 수 없어야 하는데, earnings 테이블의 두 수집기 date 표기 불일치
+  // (아래 주석) 때문에 실제로는 미래 날짜에 actual_eps가 잘못 붙는 행이
+  // 있었다(2026-07-18 PKE 확인 — report_date=2027-01-11인데 actual_eps
+  // 존재). 상한을 두지 않으면 이런 행이 "이번 주 실적"으로 잘못 노출된다.
+  const todayDateOnly = new Date().toISOString().slice(0, 10);
+
   const { data } = await supabase
     .from("earnings")
     .select("ticker, actual_eps, eps_estimate, actual_revenue, revenue_estimate, report_date")
     .gte("report_date", range.startDateOnly)
+    .lte("report_date", todayDateOnly)
     .not("actual_eps", "is", null)
     .order("report_date", { ascending: false })
     .limit(500);
 
+  // earnings 테이블은 캘린더 수집(runEarningsCollect, report_date=발표일)과
+  // 실적치 수집(runEarningsActualCollect, report_date=Finnhub의 회계
+  // 기간(period) 값)이 서로 다른 report_date 표기로 같은 실적 이벤트를 각자
+  // upsert한다 — 두 표기가 거의 항상 달라 (ticker, report_date) 충돌 키로는
+  // 절대 병합되지 않고 한 종목이 여러 행으로 쌓인다(2026-07-18 PKE/POCI 중복
+  // 표시 사고에서 확인. 근본 원인은 두 수집기의 upsert 키 불일치이고 테이블
+  // 전체에 걸친 문제라 이번 범위에서는 고치지 않음 — 여기서는 화면에 같은
+  // 종목이 중복 노출되지 않도록 종목당 1건(가장 최근 report_date)만 남긴다.
+  const seenTickers = new Set<string>();
   const highlights = (data ?? [])
+    .filter((e) => {
+      if (seenTickers.has(e.ticker)) return false;
+      seenTickers.add(e.ticker);
+      return true;
+    })
     .map((e) => ({
       ticker: e.ticker,
       epsBeat: e.actual_eps != null && e.eps_estimate != null && e.actual_eps > e.eps_estimate,
