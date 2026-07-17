@@ -40,6 +40,7 @@ loadEnvLocal();
 import { createClient } from "@supabase/supabase-js";
 import { collectForTicker } from "@/lib/collect/insider";
 import { acquireLock } from "./lib/pid-lock";
+import { invalidateInsiderDerivedCaches } from "@/lib/collect/cache-invalidation";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -78,6 +79,9 @@ async function main() {
   const remaining = readJsonArray(REMAINING_PATH);
   const done = readJsonArray(DONE_PATH);
   const total = remaining.length;
+  // 캐시 무효화 대상은 "이번 실행에서 실제로 처리한 종목"만 — 이전 실행에서
+  // 이미 처리·무효화된 종목까지 다시 돌릴 필요는 없다.
+  const processedThisRun = [...remaining];
 
   console.log("\n=== TickerFlow resume-refetch-insider-trades ===");
   console.log(`이미 완료: ${done.length}개 종목`);
@@ -118,6 +122,16 @@ async function main() {
   console.log(`삽입: ${totalInserted}`);
   console.log(`스킵: ${totalSkipped}`);
   console.log(`오류 종목: ${errorTickers}`);
+
+  // insider_trades 대량 보정 스크립트는 끝에 캐시 무효화가 필수다(CLAUDE.md
+  // 5항, 2026-07-18 NVDA 종목 스냅샷 사고 참고).
+  console.log("\n관련 캐시(stock_briefs·Form 4 요약) 무효화...");
+  const cacheResult = await invalidateInsiderDerivedCaches(processedThisRun);
+  console.log(
+    `Form 4 리셋 ${cacheResult.form4Reset}건 → 재생성 ${cacheResult.form4Regenerated}건 ` +
+    `(멀티필자 날짜라 건너뜀 ${cacheResult.form4MultiFilerSkipped}건) / ` +
+    `BRIEF 재생성 ${cacheResult.briefsRegenerated}건(스킵 ${cacheResult.briefsSkipped}, 실패 ${cacheResult.briefsFailed})`
+  );
 
   lock.release();
 }

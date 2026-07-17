@@ -44,6 +44,7 @@ loadEnvLocal();
 import { createClient } from "@supabase/supabase-js";
 import { collectForTicker } from "@/lib/collect/insider";
 import { acquireLock } from "./lib/pid-lock";
+import { invalidateInsiderDerivedCaches } from "@/lib/collect/cache-invalidation";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -175,6 +176,17 @@ async function main() {
   console.log(`삽입: ${totalInserted}`);
   console.log(`스킵: ${totalSkipped}`);
   console.log(`오류 종목: ${errorTickers}`);
+
+  // insider_trades 대량 보정 스크립트는 끝에 캐시 무효화가 필수다(CLAUDE.md
+  // 5항, 2026-07-18 NVDA 종목 스냅샷 사고 — stock_briefs·Form 4 요약 문장이
+  // 재수집 이전 오염된 데이터로 캐싱된 채 남아있었음).
+  console.log("\n4단계: 관련 캐시(stock_briefs·Form 4 요약) 무효화...");
+  const cacheResult = await invalidateInsiderDerivedCaches(recollectTickers);
+  console.log(
+    `Form 4 리셋 ${cacheResult.form4Reset}건 → 재생성 ${cacheResult.form4Regenerated}건 ` +
+    `(멀티필자 날짜라 건너뜀 ${cacheResult.form4MultiFilerSkipped}건) / ` +
+    `BRIEF 재생성 ${cacheResult.briefsRegenerated}건(스킵 ${cacheResult.briefsSkipped}, 실패 ${cacheResult.briefsFailed})`
+  );
 
   lock.release();
 }

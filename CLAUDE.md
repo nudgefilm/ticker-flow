@@ -196,6 +196,44 @@ SEC 공시, 뉴스, 실적 일정은 이러한 변화를 탐지하기 위한 데
     영속 캐시하는 안 — 현재는 한 번의 `collectForTicker` 호출 내에서만
     캐시되고 다음 날 실행에서는 다시 SEC를 조회함. 다음 병목 후보.
 
+## insider_trades 대량 보정 스크립트 = 캐시 무효화 단계 필수 (2026-07-18)
+
+* **규칙**: `insider_trades`를 대량으로 삭제·재수집하는 스크립트(예:
+  `scripts/refetch-insider-trades.ts`, `scripts/resume-refetch-insider-trades.ts`,
+  향후 만들 동일 계열 스크립트 포함)는 작업 끝에 반드시
+  `src/lib/collect/cache-invalidation.ts`의 `invalidateInsiderDerivedCaches(tickers)`
+  를 호출해야 한다. 새 대량 보정 스크립트를 만들 때 이 호출을 빠뜨리지 말 것.
+* **사고 배경**: `stock_briefs`(종목 BRIEF)와 `filings.summary_kr`(Form 4 요약
+  문장)은 생성 시점에 `insider_trades`를 읽어 자연어로 캐싱한 뒤, 이후
+  `insider_trades`가 바뀌어도 저절로 재생성되지 않는다. 정기 크론(`insider.ts`의
+  `runInsiderCollect`)은 신규 삽입 시 BRIEF를 갱신하는 경로가 이미 있지만, 대량
+  보정 스크립트는 `collectForTicker()`를 직접 호출해 그 경로를 타지 않는다.
+  2026-07-16 `insider_trades` 전체 재수집(share/change 오독 버그 수정) 이후, NVDA
+  종목 스냅샷에서 BRIEF가 "2306.4백만 달러"(실제 $186.0M, 12.4배 오차)를,
+  Form 4 카드가 "10,980,157주"(실제 885,000주)를 그대로 보여주는 사고로 발견됨
+  — 둘 다 재수집 이전에 생성된 캐시가 그대로 남아있던 것.
+* **감지 방식**: 이 종류의 캐시 노후화는 자유 문장(Haiku 생성)에 숫자가 박혀
+  있어 `audit-data-sanity.ts`식 상시 자동 감지가 fragile하다(한글 숫자 표기
+  "백만 달러"/"만 달러"/"억 달러" 혼재, 건수는 맞는데 금액만 틀린 경우 등,
+  2026-07-18 실측으로 확인). 그래서 감지가 아니라 **예방**(보정 스크립트 종료
+  시 무효화 호출 의무화)으로 막는다.
+* **`invalidateInsiderDerivedCaches`가 하는 일**: 대상 종목의 Form 4
+  `filings.summary_kr`을 리셋 후 `summarizeFilingsForTicker()`로, `stock_briefs`는
+  `runStockBriefCollect(ticker, "snapshot_view")`로 재생성한다(둘 다 기존 함수
+  재사용, 로직 복제 없음).
+* **알아둘 잔여 위험(별도 미해결 이슈)**: `filings`가 어느 SEC 제출자(accession)
+  의 Form 4인지 저장하지 않아, `resolveFilingSummary`의 `fetchMatchingInsiderTrades`
+  는 종목+날짜로만 `insider_trades`를 매칭한다. **같은 종목이 같은 날 여러 명의
+  Form 4를 낸 경우**(이사회 전원의 정기 보고 등), 그중 1명이라도 `insider_trades`
+  에 매칭되면 그 사람의 거래 문장이 **다른 제출자들의 filing에도 그대로
+  복제·오귀속**된다(2026-07-18 실측: NVDA 6명 중 1명, MSFT 11명 중 1명,
+  AMZN 6명 전원이 이렇게 오귀속됨을 확인 후 전부 일반 템플릿으로 원복).
+  `invalidateInsiderDerivedCaches`는 이런 "하루 2명 이상 제출" 종목·날짜는
+  건너뛰도록 방어했지만, **정기 크론(`summarizeFilingsForTicker`)이 새로 들어오는
+  Form 4를 처리할 때는 이 방어가 없어 동일 사고가 재발할 수 있다.** 근본 수정
+  (각 filing의 실제 제출자를 `insider-form4.ts`의 `fetchForm4Owners()`로 조회해
+  이름까지 매칭)은 아직 미착수 — 다음 우선 개선 후보.
+
 ---
 
 # 6. 금융 규제 준수 가이드 (필수)

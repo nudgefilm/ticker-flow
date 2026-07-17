@@ -7,6 +7,88 @@
 
 ---
 
+## 2026-07-18 · 세션 106
+
+### insider_trades 캐시 무효화 도입 + Form 4 오귀속 버그 발견 (수정은 다음 작업 예정으로 이동)
+
+**배경**: NVDA 종목 스냅샷에서 BRIEF·Form 4 캐시가 재수집 이전 오염 데이터로
+남아있던 사고를 조사·수정하는 과정에서, `invalidateInsiderDerivedCaches()`
+(신설, `src/lib/collect/cache-invalidation.ts`)를 만들어 `refetch-insider-trades.ts`/
+`resume-refetch-insider-trades.ts` 종료 시 호출하도록 연결했다(CLAUDE.md 5항에
+규칙 기록). 이 함수를 테스트하는 도중 별개의 새 버그를 발견해 즉시 안전 조치만
+하고 근본 수정은 보류했다 — 자세한 내용은 아래 "다음 작업 예정" 참고.
+
+**다음 작업 예정으로 넘긴 상태**: NVDA 5건, MSFT 10건, AMZN 6건 총 21건의
+Form 4 `filings.summary_kr`이 현재 안전한 일반 템플릿("Form 4(내부자 거래
+공시)를 제출했습니다")으로 되돌려진 채 남아있다. 원래는 실제 거래 내용을
+보여주는 문장이어야 하는데, 아래 버그 때문에 정보량이 줄어든 상태로
+방치돼 있다.
+
+### 다음 작업 예정
+
+```
+Claude Code 요청문
+사용자 원문
+
+Form 4 같은 날 여러 명 제출 시 매칭 오귀속 버그 — 근본 수정 필요.
+현재 NVDA 5건·MSFT 10건·AMZN 6건(총 21건)이 안전한 일반 템플릿으로
+후퇴한 채 남아있음.
+
+배경
+
+resolveFilingSummary()의 fetchMatchingInsiderTrades()(src/lib/collect/
+summarize.ts)가 insider_trades를 ticker+filed_at 날짜로만 매칭하고,
+filing이 실제로 어느 SEC 제출자(accession)의 것인지는 구분하지 않는다.
+같은 종목이 같은 날 여러 명의 Form 4를 낸 경우(이사회 전원 정기 보고
+등), 그중 1명이라도 insider_trades에 데이터가 있으면 그 사람의 거래
+문장이 다른 제출자들의 filing에도 그대로 복제·오귀속된다.
+
+2026-07-18 invalidateInsiderDerivedCaches() 테스트 중 실측 확인:
+- NVDA 2026-06-23: 6명이 제출(Stevens/Teter/Kress/Puri/Shoquist/Huang).
+  insider_trades에는 Stevens 거래만 있어, 나머지 5명의 filing에도
+  Stevens의 "885,000주 매도" 문장이 그대로 복제됨.
+- MSFT 2026-06-12: 11명(이사회) 중 Numoto 1명만 insider_trades에 있어,
+  나머지 10명에게 Numoto의 "4,500주 매도" 문장이 오귀속됨.
+- AMZN 2026-05-26: 6명(Jassy/Garman/Herrington/Zapolsky/Olsavsky/Reynolds)
+  전원의 filing이 5명(Olsavsky 제외)을 나열한 동일한 통합 문장을 그대로
+  복제해서 보여줌 — 어느 filing.id를 봐도 "이 사람 한 명의 거래"가 아니라
+  다른 사람들 거래까지 섞인 문단이 나옴.
+
+위 21건은 발견 즉시 안전한 일반 템플릿으로 원복해뒀다(오귀속된 채로
+방치하지 않음). 근본 수정 없이 재생성하면 같은 오귀속이 재발한다.
+
+작업 지시
+
+filings 테이블에 SEC accession number(또는 최소한 어느 reporting
+person의 filing인지 식별할 값)를 저장할 수 있는지 확인 — 없다면
+insider-form4.ts의 fetchForm4Owners()를 재사용해 filing.url로부터
+직접 조회하는 방식 검토
+fetchMatchingInsiderTrades()가 ticker+날짜뿐 아니라 (가능하다면)
+reporting person 이름까지 매칭하도록 수정 — 이름을 특정할 수 없는
+경우엔 지금처럼 안전하게 일반 템플릿으로 폴백 유지
+근본 수정 완료 후, 위 21건(NVDA 5·MSFT 10·AMZN 6)을 정확한 문장으로
+재생성
+같은 날 2명 이상 제출 케이스가 filings 테이블 전체에 몇 건이나 있는지
+전수 조사해서, 이번에 발견 못한 다른 종목에도 같은 오귀속이 있는지 확인
+정기 크론(summarizeFilingsForTicker) 경로에도 근본 수정이 자동으로
+적용되는지 확인 — invalidateInsiderDerivedCaches()만 방어하고 크론
+경로는 여전히 무방비 상태였음
+
+검증
+
+pnpm build, tsc --noEmit 통과
+수정 후 NVDA/MSFT/AMZN 21건이 각각 실제 제출자 본인의 거래만 정확히
+서술하는지 재확인
+전수조사로 찾은 다른 종목도 샘플 확인
+
+출력 형식
+
+원인 재확인 근거(SEC 원문 대조) 포함해서 보고
+변경 파일명과 diff 요약, 파일 전체 출력 금지
+```
+
+---
+
 ## 2026-07-14 · 세션 105
 
 ### 히어로 파티클 캔버스 — 모바일 실기기 정지 버그 원인 확정·수정
