@@ -20,6 +20,7 @@ import type {
   StockInsight,
 } from "@/lib/insights/types";
 import { fetchPastEarnings } from "@/lib/insights/earnings";
+import { ANALYSIS_INSIDER_WINDOW_DAYS } from "@/lib/collect/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +85,7 @@ export default async function AnalysisPage({
   const today = now.toISOString().slice(0, 10);
   const d30  = new Date(now.getTime() - 30  * 86_400_000).toISOString();
   const d90  = new Date(now.getTime() - 90  * 86_400_000).toISOString();
-  const d180 = new Date(now.getTime() - 180 * 86_400_000).toISOString().slice(0, 10);
+  const d180 = new Date(now.getTime() - ANALYSIS_INSIDER_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
 
   const [tickerRes, pricesRes, filingsRes, newsRes, insiderRes, earnings] =
     await Promise.all([

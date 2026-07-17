@@ -10,6 +10,7 @@ import DataStatusCard from "@/components/dashboard/data-status-card";
 import WeeklyBrief from "@/components/dashboard/weekly-brief";
 import MonthlyBrief from "@/components/dashboard/monthly-brief";
 import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
+import { WATCHLIST_TRENDING_WINDOW_DAYS } from "@/lib/collect/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -367,7 +368,7 @@ function expandFormType(raw: string): string {
 
 async function TrendingContent() {
   const supabase = await createClient();
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const sevenDaysAgo = new Date(Date.now() - WATCHLIST_TRENDING_WINDOW_DAYS * 86_400_000).toISOString();
   const sevenDaysAgoDate = sevenDaysAgo.slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
 

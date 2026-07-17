@@ -24,6 +24,7 @@ import type {
 } from "@/lib/insights/types";
 import { fetchPastEarnings } from "@/lib/insights/earnings";
 import { getTargetTickerSets, getBadgeReasons } from "@/lib/collect/target-tickers";
+import { STOCK_SNAPSHOT_WINDOW_DAYS } from "@/lib/collect/limits";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function StockPage({
   const ticker = symbol.toUpperCase();
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
-  const d30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const d30 = new Date(Date.now() - STOCK_SNAPSHOT_WINDOW_DAYS * 86_400_000).toISOString();
   const oneYearAgo = new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10);
 
   // ── 인증 + BRIEF ─────────────────────────────────────────────────────────────

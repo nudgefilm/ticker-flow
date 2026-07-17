@@ -16,6 +16,7 @@ import type {
 } from "@/lib/email/templates";
 import { computeRange, computeThisWeekRange, fetchTopCompanies, fetchPeriodComparison } from "@/lib/watchlist-brief";
 import { neutralizeRankLanguage } from "./rank-language";
+import { DAILY_DIGEST_WINDOW_DAYS } from "./limits";
 
 // 2026-07-11: gatherDigestData()는 이전에는 top30_daily(TickerFlow 자체
 // 스코어링 결과)를 근거로 "오늘의 기업동향 TOP10/TOP30 신규진입/순위변화"를
@@ -207,7 +208,7 @@ export async function gatherDigestData(): Promise<DigestData | null> {
   // 1시간 뿐이라 그날 수집분을 거의 반영하지 못했다.
   const nowIso = new Date().toISOString();
   const todayStr = nowIso.slice(0, 10); // generateMarketNarrative 프롬프트 표시용 라벨(필터링에는 미사용)
-  const range = computeRange(1); // "오늘" vs "어제" 1일 구간(활동 건수 비교용, rolling 24h)
+  const range = computeRange(DAILY_DIGEST_WINDOW_DAYS); // "오늘" vs "어제" 1일 구간(활동 건수 비교용, rolling 24h)
 
   // 1. 활동 건수 기반 상위 기업 + 기간 비교(신규 관측/활동 감소/건수 변화)
   const [topCompanies, comparison] = await Promise.all([

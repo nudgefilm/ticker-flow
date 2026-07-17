@@ -9,6 +9,7 @@ import InsiderBoard, {
   type InsiderTrade,
 } from "@/components/dashboard/insider-board";
 import DataSources from "@/components/dashboard/insights/data-sources";
+import { INSIDER_BOARD_PAGE_WINDOW_DAYS } from "@/lib/collect/limits";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ export default async function InsiderPage() {
 
   if (isPro && user) {
     const adminClient = createAdminClient();
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000)
+    const ninetyDaysAgo = new Date(Date.now() - INSIDER_BOARD_PAGE_WINDOW_DAYS * 86_400_000)
       .toISOString()
       .slice(0, 10);
 

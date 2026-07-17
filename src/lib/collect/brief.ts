@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "@/lib/collect/types";
+import { STOCK_BRIEF_WINDOW_DAYS } from "@/lib/collect/limits";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 
@@ -122,7 +123,7 @@ export async function runStockBriefCollect(
   }
 
   // 2. 최근 30일 데이터 수집
-  const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const since30d = new Date(Date.now() - STOCK_BRIEF_WINDOW_DAYS * 86_400_000).toISOString();
   const now = new Date().toISOString();
   const since30dDate = since30d.slice(0, 10);
 

@@ -16,3 +16,61 @@ export const INSIDER_LOOKBACK_DAYS = 30;
 // 종목까지 합산해 150개 이상을 반환할 수 있어, 종목당 호출(딜레이 포함)이
 // 누적되어 maxDuration을 넘기지 않도록 상한을 둔다.
 export const MAX_TICKERS_PER_RUN = 30;
+
+// 단일 Form 4 거래(shares × price)의 달러 가치가 이 값을 넘으면 저장은 하되
+// console.warn으로 남긴다(차단하지 않음 — 초대형 실제 거래일 가능성을 배제하지
+// 않음). 실측 분포(2026-07-16, insider_trades 27,649건): 90th percentile
+// $81M, 99th percentile부터 $12.86B로 급격히 뛰는 절벽이 있어 그 이전 구간인
+// 10억 달러를 기준으로 둔다 — 단일 Form 4 공개시장 거래가 10억 달러를 넘는
+// 경우는 극히 이례적이다(참고: 2026-07-16 발견된 사고는 Finnhub의 share
+// 필드를 "이번 거래 주식수"로 오인해 "거래 후 총 보유 주식수"를 그대로
+// 저장한 것 — insider.ts의 change 필드 사용으로 근본 수정, 이 임계값은
+// 재발 방지용 2차 방어선).
+export const INSIDER_VALUE_REVIEW_THRESHOLD = 1_000_000_000;
+
+// ─── 화면·기능별 조회 기간(day-window) 상수 ──────────────────────────────────
+//
+// insider_trades를 비롯한 여러 화면·배치가 각자 "최근 N일" 매직넘버를 개별
+// 하드코딩하고 있었다(2026-07-17 발견 — 같은 날 발견한 섹터 매핑 문제와 동일
+// 유형의 구조적 위험: 같은 개념을 여러 파일이 각자 들고 있다가 한쪽만 갱신되며
+// 어긋남). 값 자체는 바꾸지 않고 위치만 이 파일로 모은다 — 90일(전용 페이지)
+// vs 180일(종합 페이지) 불일치도 조사 결과 각 화면의 UI 목적이 달라 생긴
+// 차이라 그대로 유지한다(아래 각 상수 설명 참고). 대부분은 insider_trades
+// 하나만 위한 창이 아니라 같은 화면의 filings/news 등과 공유하는 창이라,
+// 상수 이름은 "그 화면·기능"을 기준으로 지었다.
+
+// insider/page.tsx(내부자 거래 전용 페이지) — 서버에서 이 기간만큼 미리 가져와
+// InsiderBoard 클라이언트 컴포넌트에 넘긴다. 컴포넌트 내부의 7/30/90일 필터
+// 토글(가장 넓은 옵션이 90일)이 데이터를 가지려면 서버 fetch도 최소 90일이어야
+// 해서, 이 값은 그 필터의 최대 옵션과 결합되어 있다 — 임의로 고른 값이 아니다.
+export const INSIDER_BOARD_PAGE_WINDOW_DAYS = 90;
+
+// analysis/page.tsx(공시 인사이트 종합 페이지)의 내부자거래 위젯 전용 창.
+// 같은 파일의 filings(30일)·news(90일)와는 별개 상수 — 필터 UI가 없는 고정
+// 요약 위젯이라 전용 페이지보다 넓은 기간을 보여준다.
+export const ANALYSIS_INSIDER_WINDOW_DAYS = 180;
+
+// stocks/[symbol]/page.tsx(종목 스냅샷)의 "최근 활동" 창 — 이 파일에서
+// filings·news·insider_trades 세 테이블이 전부 이 값을 공유한다.
+export const STOCK_SNAPSHOT_WINDOW_DAYS = 30;
+
+// watchlist/page.tsx의 "급상승 종목(Trending)" 위젯 창 — filings·news로 순위를
+// 매기고, 선정된 top30 종목의 insider_trades도 같은 창으로 함께 조회한다.
+export const WATCHLIST_TRENDING_WINDOW_DAYS = 7;
+
+// scoring.ts(TOP30 스크리너, 어드민 전용)의 insider_trades 매수 집계 등에 쓰는
+// "최근 N일" 창. filings/news는 별도의 14일 창을 쓰므로 그건 그대로 둔다.
+export const SCORING_RECENT_WINDOW_DAYS = 30;
+
+// brief.ts(종목별 BRIEF 생성)의 "최근 30일" 창 — filings·news·insider_trades가
+// 공유한다.
+export const STOCK_BRIEF_WINDOW_DAYS = 30;
+
+// watchlist-brief.ts의 computeRange(days)를 호출하는 세 브리프 주기(일간/주간/
+// 월간) 각각의 조회 기간 — filings·news·insider_trades·institutional_holdings를
+// 모두 이 값으로 함께 조회한다. watchlist-brief.ts 자체는 이미 days를 매개변수로
+// 받는 공용 함수라 하드코딩이 아니다 — 실제 매직넘버는 호출부(daily/weekly/
+// monthly-brief.ts)에 있다.
+export const DAILY_DIGEST_WINDOW_DAYS = 1;
+export const WEEKLY_BRIEF_WINDOW_DAYS = 7;
+export const MONTHLY_BRIEF_WINDOW_DAYS = 30;

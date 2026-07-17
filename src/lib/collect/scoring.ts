@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SCREENER_WEIGHTS, type FactorLog } from "@/lib/scoring/weights";
+import { SCORING_RECENT_WINDOW_DAYS } from "@/lib/collect/limits";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────────
 
@@ -255,7 +256,7 @@ export async function computeScores(): Promise<ScoredTicker[]> {
   const todayStr = now.toISOString().slice(0, 10);
 
   const d14 = new Date(todayMs - 14 * 86_400_000).toISOString();
-  const d30 = new Date(todayMs - 30 * 86_400_000).toISOString().slice(0, 10);
+  const d30 = new Date(todayMs - SCORING_RECENT_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
 
   const currentQ = (() => {
     const q = Math.floor(now.getUTCMonth() / 3) + 1;

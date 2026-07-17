@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { CollectResult } from "./types";
+import { WEEKLY_BRIEF_WINDOW_DAYS } from "./limits";
 import {
   computeRange,
   fetchTopCompanies,
@@ -24,7 +25,7 @@ function mondayOf(date: Date): string {
 export async function runWeeklyBriefCollect(): Promise<CollectResult> {
   try {
     const adminClient = createAdminClient();
-    const range = computeRange(7);
+    const range = computeRange(WEEKLY_BRIEF_WINDOW_DAYS);
 
     const [topCompanies, marketStats, comparison, sectors, filings, earningsHighlights] = await Promise.all([
       fetchTopCompanies(adminClient, range, 10),
