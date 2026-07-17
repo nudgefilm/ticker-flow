@@ -9,22 +9,18 @@
 
 ## 2026-07-18 · 세션 106
 
-### insider_trades 캐시 무효화 도입 + Form 4 오귀속 버그 발견 (수정은 다음 작업 예정으로 이동)
+### insider_trades 캐시 무효화 도입 + Form 4 오귀속 버그 발견·근본 수정 완료
 
 **배경**: NVDA 종목 스냅샷에서 BRIEF·Form 4 캐시가 재수집 이전 오염 데이터로
 남아있던 사고를 조사·수정하는 과정에서, `invalidateInsiderDerivedCaches()`
 (신설, `src/lib/collect/cache-invalidation.ts`)를 만들어 `refetch-insider-trades.ts`/
 `resume-refetch-insider-trades.ts` 종료 시 호출하도록 연결했다(CLAUDE.md 5항에
-규칙 기록). 이 함수를 테스트하는 도중 별개의 새 버그를 발견해 즉시 안전 조치만
-하고 근본 수정은 보류했다 — 자세한 내용은 아래 "다음 작업 예정" 참고.
+규칙 기록). 이 함수를 테스트하는 도중 별개의 새 버그를 발견해 즉시 안전
+조치(21건을 일반 템플릿으로 원복)만 하고 근본 수정은 별도 요청문으로
+남겼는데, 같은 세션 106 안에서 사용자가 그 요청문을 그대로 다시 제출해
+근본 수정까지 완료했다 — 처리 결과는 요청문 아래 "→ 처리 완료" 참고.
 
-**다음 작업 예정으로 넘긴 상태**: NVDA 5건, MSFT 10건, AMZN 6건 총 21건의
-Form 4 `filings.summary_kr`이 현재 안전한 일반 템플릿("Form 4(내부자 거래
-공시)를 제출했습니다")으로 되돌려진 채 남아있다. 원래는 실제 거래 내용을
-보여주는 문장이어야 하는데, 아래 버그 때문에 정보량이 줄어든 상태로
-방치돼 있다.
-
-### 다음 작업 예정
+### 처리된 요청문 (기록용, 실행 완료)
 
 ```
 Claude Code 요청문
@@ -86,6 +82,19 @@ pnpm build, tsc --noEmit 통과
 원인 재확인 근거(SEC 원문 대조) 포함해서 보고
 변경 파일명과 diff 요약, 파일 전체 출력 금지
 ```
+
+**→ 위 요청문 처리 완료(같은 세션 106 내에서)**: `fetchMatchingInsiderTrades()`가
+같은 (ticker, 날짜)에 filing이 2건 이상이면 `insider-form4.ts`의
+`fetchForm4Owners()`로 이 filing의 실제 SEC 제출자를 조회해 이름까지
+매칭하도록 수정(`summarize.ts`). 제출자를 특정 못하면 안전하게 일반
+템플릿으로 폴백. 전수조사 결과 멀티필자 그룹은 전체 6개(MSFT×3·NVDA×1·
+AMZN×1·AAPL×1) — AAPL은 원래도 오귀속 없었음을 확인, 나머지 5개 그룹
+(NVDA 11건·MSFT 29건·AMZN 7건, 총 47건)을 리셋 후 필자별로 정확히
+재생성해 SEC 원문과 대조 확인했다. `resolveFilingSummary`는
+`summarizeFilings`(정기 크론)와 `summarizeFilingsForTicker`(온디맨드)가
+공유하는 함수라 크론 경로도 자동으로 같은 보호를 받는다.
+`cache-invalidation.ts`의 "멀티필자 날짜 건너뛰기" 임시 방어 로직도
+근본 수정 완료로 제거(커밋 `9d1ee29`).
 
 ---
 
