@@ -1,7 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { IconChevronDown } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 const TABS: { label: string; value: string; tooltip: string | null }[] = [
@@ -12,18 +11,6 @@ const TABS: { label: string; value: string; tooltip: string | null }[] = [
   { label: "Form 4", value: "form4",  tooltip: "내부자 거래 공시 — 임원·대주주 매수/매도" },
   { label: "기타",   value: "other",  tooltip: null },
 ];
-
-function FilterDropdown({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-3 py-1.5 text-sm text-[#cccccc] transition-colors hover:bg-[#262626]"
-    >
-      {label}
-      <IconChevronDown size={14} stroke={1.5} className="text-[#a6a6a6]" />
-    </button>
-  );
-}
 
 export default function FilingFilterBar({ currentType = "all" }: { currentType?: string }) {
   const router = useRouter();
@@ -57,12 +44,6 @@ export default function FilingFilterBar({ currentType = "all" }: { currentType?:
             )}
           </div>
         ))}
-      </div>
-
-      {/* 드롭다운 */}
-      <div className="flex items-center gap-2">
-        <FilterDropdown label="모든 종목" />
-        <FilterDropdown label="오늘" />
       </div>
     </div>
   );

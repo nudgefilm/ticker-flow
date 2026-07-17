@@ -37,10 +37,26 @@ function getDday(reportDateStr: string): { label: string; variant: Earnings["dda
   return { label: `D-${diffDays}`, variant: "far" };
 }
 
-function getSession(timeOfDay: string | null): string {
-  if (timeOfDay === "bmo") return "개장 전";
-  if (timeOfDay === "amc") return "장 마감 후";
-  return "미정";
+// timeOfDay는 Finnhub 실적 캘린더의 hour 필드("bmo"/"amc"/빈 값)를 그대로 반영한다.
+// "미정"은 날짜 자체가 불확실한 게 아니라 발표 시각(개장 전/마감 후 구분)만 아직
+// 공개되지 않았다는 뜻이라, 라벨과 툴팁 모두에서 이 구분을 명확히 한다.
+function getSession(timeOfDay: string | null): { label: string; tooltip: string } {
+  if (timeOfDay === "bmo") {
+    return {
+      label: "개장 전",
+      tooltip: "개장 전(BMO, Before Market Open) — 미국 정규장이 열리기 전에 실적을 발표합니다.",
+    };
+  }
+  if (timeOfDay === "amc") {
+    return {
+      label: "장 마감 후",
+      tooltip: "장 마감 후(AMC, After Market Close) — 미국 정규장이 마감된 뒤에 실적을 발표합니다.",
+    };
+  }
+  return {
+    label: "시각 미정",
+    tooltip: "발표 날짜는 확정되었지만, 발표 시각(개장 전/마감 후 여부)은 아직 공개되지 않았습니다.",
+  };
 }
 
 function formatEps(eps: number | null): string {
@@ -49,11 +65,19 @@ function formatEps(eps: number | null): string {
   return `${sign}$${Math.abs(eps).toFixed(2)}`;
 }
 
-function formatRevenue(revMillion: number | null): string {
-  if (revMillion === null) return "";
-  if (revMillion >= 1_000_000) return `$${(revMillion / 1_000_000).toFixed(1)}T`;
-  if (revMillion >= 1_000)     return `$${(revMillion / 1_000).toFixed(1)}B`;
-  return `$${revMillion.toFixed(0)}M`;
+// revRaw는 실제 매출 금액(달러 단위) 원본값이다 — Finnhub 캘린더 응답의
+// revenueEstimate/revenueActual을 가공 없이 그대로 저장한 값(src/lib/collect/
+// earnings.ts)이라 "백만 달러" 단위가 아니다. 과거 코드가 이 값을 이미 백만
+// 단위인 것처럼 다시 1,000,000으로 나눠 "$86.0T"(실제 8,600만 달러) 같은
+// 비정상적으로 큰 값을 표시하던 버그를 수정했다(2026-07-17, HFWA·AAL 등
+// 실제 사례로 확인). CLAUDE.md 15항(초보자 배려 원칙)에 맞춰 T/B/M 축약
+// 대신 "백만 달러/십억 달러/조 달러"로 표기한다.
+function formatRevenue(revRaw: number | null): string {
+  if (revRaw === null) return "";
+  if (revRaw >= 1_000_000_000_000) return `${(revRaw / 1_000_000_000_000).toFixed(1)}조 달러`;
+  if (revRaw >= 1_000_000_000)     return `${(revRaw / 1_000_000_000).toFixed(1)}십억 달러`;
+  if (revRaw >= 1_000_000)         return `${(revRaw / 1_000_000).toFixed(1)}백만 달러`;
+  return `${revRaw.toFixed(0)}달러`;
 }
 
 // ─── DB 타입 + 매핑 ───────────────────────────────────────────────────────────
@@ -78,25 +102,48 @@ type DbDividend = {
   tickers: { name_kr: string | null; name_en: string | null } | null;
 };
 
+// "시장 예상"은 실적 발표 전 여러 증권사 추정치의 평균이라는 사실만 전달한다
+// (투자 의견·추천 표현 없이, CLAUDE.md 6항 준수).
+const MARKET_ESTIMATE_NOTE = "시장 예상치는 여러 증권사 추정치의 평균입니다.";
+
+// formatRevenue()의 "백만 단위 착각" 버그를 고친 뒤에도(2026-07-17) 이 종목들은
+// 실제 기업 규모 대비 비정상적으로 큰 매출 값이 남아 있다 — Finnhub가 현지
+// 통화(BABA는 CNY, KSPI는 KZT로 추정)로 미환산된 값을 반환하는 것으로 의심되나
+// 아직 확정하지 못했다. 원인이 확정되기 전까지 잘못된 숫자를 노출하지 않도록
+// 매출만 숨기고 "확인 중"으로 표시한다 — EPS 등 다른 값은 정상이라 그대로 노출.
+const REVENUE_UNVERIFIED_TICKERS = new Set(["BABA", "KSPI"]);
+
 function mapRow(row: DbEarning): Earnings {
   const { label: dday, variant: ddayVariant } = getDday(row.report_date);
   const company = row.tickers?.name_kr ?? row.tickers?.name_en ?? row.ticker;
   const hasActual = row.actual_eps !== null;
   const epsValue  = hasActual ? row.actual_eps  : row.eps_estimate;
   const revValue  = hasActual ? row.actual_revenue : row.revenue_estimate;
-  const revStr    = formatRevenue(revValue);
+  const revStrRaw = formatRevenue(revValue);
+  const revUnverified = revStrRaw !== "" && REVENUE_UNVERIFIED_TICKERS.has(row.ticker);
+  const revStr = revUnverified ? "확인 중" : revStrRaw;
+  const session   = getSession(row.time_of_day);
 
   return {
     dday,
     ddayVariant,
     ticker: row.ticker,
     company,
-    session: getSession(row.time_of_day),
+    session: session.label,
+    sessionTooltip: session.tooltip,
     epsLabel: hasActual ? "EPS 실적" : "시장 예상 EPS",
     eps: formatEps(epsValue),
+    epsTooltip: hasActual
+      ? "EPS(주당순이익) — 회사가 주식 1주당 벌어들인 순이익입니다."
+      : `EPS(주당순이익) — 회사가 주식 1주당 벌어들인 순이익입니다. ${MARKET_ESTIMATE_NOTE}`,
     ...(revStr ? {
       revenueLabel: hasActual ? "매출 실적" : "시장 예상 매출",
       revenue: revStr,
+      revenueTooltip: revUnverified
+        ? "이 종목은 매출 데이터에 단위 오류가 의심되어 정확한 값을 확인하는 중입니다. 확인되면 다시 표시됩니다."
+        : hasActual
+          ? "매출 — 기업이 해당 기간 동안 판매로 벌어들인 총 금액입니다."
+          : `매출 — 기업이 해당 기간 동안 판매로 벌어들인 총 금액입니다. ${MARKET_ESTIMATE_NOTE}`,
     } : {}),
   };
 }

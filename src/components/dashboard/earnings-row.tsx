@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { IconClock } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -8,11 +9,14 @@ export interface Earnings {
   ticker: string;
   company: string;
   session: string;
+  sessionTooltip?: string;
   time?: string;
   epsLabel: string;
   eps: string;
+  epsTooltip?: string;
   revenueLabel?: string;
   revenue?: string;
+  revenueTooltip?: string;
   beat?: string;
   resultTag?: string;
 }
@@ -22,6 +26,20 @@ const DDAY_STYLES: Record<Earnings["ddayVariant"], string> = {
   far: "bg-white/10 text-white/60 border-white/20",
   done: "bg-green-500/10 text-green-400 border-green-500/20",
 };
+
+// 뉴스/공시 필터 바(filing-filter-bar.tsx)의 CSS 전용 호버 툴팁 패턴을 그대로
+// 재사용 — group/tip 이름은 같은 행 안에서 여러 번 재사용해도 hover는 각자
+// 감싼 조상 요소 기준으로만 발동해 서로 간섭하지 않는다.
+function InfoTooltip({ text, children }: { text: string; children: ReactNode }) {
+  return (
+    <span className="group/tip relative inline-flex cursor-help items-center">
+      {children}
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-[6px] border border-white/[0.08] bg-[#1a1a1a] px-2.5 py-1.5 text-left text-xs leading-relaxed text-[#cccccc] opacity-0 transition-opacity group-hover/tip:opacity-100">
+        {text}
+      </span>
+    </span>
+  );
+}
 
 export default function EarningsRow({
   earnings,
@@ -36,11 +54,14 @@ export default function EarningsRow({
     ticker,
     company,
     session,
+    sessionTooltip,
     time,
     epsLabel,
     eps,
+    epsTooltip,
     revenueLabel,
     revenue,
+    revenueTooltip,
     beat,
     resultTag,
   } = earnings;
@@ -71,7 +92,13 @@ export default function EarningsRow({
       {/* 중: 세션 + 시각 */}
       <div className="flex items-center gap-1.5 text-sm text-[#a6a6a6]">
         <IconClock size={14} stroke={1.5} />
-        <span>{session}</span>
+        {sessionTooltip ? (
+          <InfoTooltip text={sessionTooltip}>
+            <span className="border-b border-dotted border-white/20">{session}</span>
+          </InfoTooltip>
+        ) : (
+          <span>{session}</span>
+        )}
         {!compact && time && (
           <>
             <span>·</span>
@@ -83,13 +110,25 @@ export default function EarningsRow({
       {/* 우: EPS + 매출 + 태그 */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-[#a6a6a6]">{epsLabel}</span>
+          {epsTooltip ? (
+            <InfoTooltip text={epsTooltip}>
+              <span className="border-b border-dotted border-white/20 text-xs text-[#a6a6a6]">{epsLabel}</span>
+            </InfoTooltip>
+          ) : (
+            <span className="text-xs text-[#a6a6a6]">{epsLabel}</span>
+          )}
           <span className="text-sm tabular-nums text-[#cccccc]">{eps}</span>
         </div>
 
         {!compact && revenueLabel && revenue && (
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-[#a6a6a6]">{revenueLabel}</span>
+            {revenueTooltip ? (
+              <InfoTooltip text={revenueTooltip}>
+                <span className="border-b border-dotted border-white/20 text-xs text-[#a6a6a6]">{revenueLabel}</span>
+              </InfoTooltip>
+            ) : (
+              <span className="text-xs text-[#a6a6a6]">{revenueLabel}</span>
+            )}
             <span className="text-sm tabular-nums text-[#cccccc]">{revenue}</span>
           </div>
         )}
