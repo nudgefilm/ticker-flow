@@ -3,13 +3,25 @@ import { runStockBriefCollect } from "./brief";
 import { createInsiderTitleLookup } from "./insider-form4";
 import { getCollectTargetTickers } from "./target-tickers";
 import { classifyHttpSkipReason, type CollectResult, type SkipReason } from "./types";
-import { INSIDER_LOOKBACK_DAYS, MAX_TICKERS_PER_RUN } from "./limits";
+import {
+  INSIDER_LOOKBACK_DAYS,
+  MAX_TICKERS_PER_RUN,
+  INSIDER_VALUE_REVIEW_THRESHOLD,
+  INSIDER_PRICE_PER_SHARE_CEILING,
+} from "./limits";
 
 // ─── Finnhub 응답 타입 ─────────────────────────────────────────────────────────
 
 interface FinnhubInsiderTransaction {
   name: string;
+  // Finnhub 필드명은 "share"지만 실제 값은 SEC Form 4의
+  // sharesOwnedFollowingTransaction(거래 후 총 보유 주식수)이다 — 이번 거래의
+  // 주식수가 아니다(2026-07-16 실제 SEC XML 대조로 확인: STEVENS MARK A의
+  // share=5,772,886은 SEC의 transactionShares=319,385가 아니라
+  // sharesOwnedFollowingTransaction=5,772,886과 정확히 일치). 이번 거래로
+  // 변동된 실제 주식수는 change 필드다(매도는 음수, 매수는 양수).
   share: number;
+  change: number;
   transactionCode: string;
   transactionDate: string;
   transactionPrice: number;
@@ -43,10 +55,16 @@ function mapTransactionType(code: string): "buy" | "sell" | null {
 // 12일간 정체됐다(실측: NVDA/TSLA 각각 100건 이상 처리 시도, 티커 30개 중
 // 20번째도 못 가서 90초+ 소요 확인).
 
-async function collectForTicker(
+// lookbackDays 기본값은 정기 크론 기준(INSIDER_LOOKBACK_DAYS=30). 2026-07-16
+// value 오염 데이터 재수집 백필(scripts/refetch-insider-trades.ts)처럼 더 넓은
+// 창이 필요한 1회성 작업은 이 값을 override해서 동일 로직(안전장치 포함)을
+// 그대로 재사용한다 — 별도 스크립트가 로직을 복제하면 이번 사고처럼 한쪽만
+// 고쳐지는 drift가 재발할 수 있어 이 함수를 export해 공유한다.
+export async function collectForTicker(
   ticker: string,
   apiKey: string,
-  adminClient: ReturnType<typeof createAdminClient>
+  adminClient: ReturnType<typeof createAdminClient>,
+  lookbackDays: number = INSIDER_LOOKBACK_DAYS
 ): Promise<{ inserted: number; skipped: number; skipReason?: SkipReason }> {
   const res = await fetch(
     `https://finnhub.io/api/v1/stock/insider-transactions?symbol=${ticker}&token=${apiKey}`,
@@ -55,7 +73,7 @@ async function collectForTicker(
   if (!res.ok) return { inserted: 0, skipped: 1, skipReason: classifyHttpSkipReason(res.status) };
 
   const data: FinnhubInsiderResponse = await res.json();
-  const cutoff = Date.now() - INSIDER_LOOKBACK_DAYS * 86_400_000;
+  const cutoff = Date.now() - lookbackDays * 86_400_000;
   const transactions = (data.data ?? []).filter((tx) => {
     const dateStr = tx.filingDate || tx.transactionDate;
     return dateStr ? new Date(dateStr).getTime() >= cutoff : false;
@@ -72,8 +90,36 @@ async function collectForTicker(
     // P(매수)/S(매도)만, 파생상품 제외
     if (!transactionType || tx.isDerivative) continue;
 
+    // 실제 거래 주식수는 change의 절대값(부호는 transactionType으로 이미 별도
+    // 표현). share는 "거래 후 총 보유 주식수"라 여기 쓰면 안 됨(위 인터페이스
+    // 주석 참고).
+    const transactionShares = tx.change != null ? Math.abs(tx.change) : null;
+
+    // 주당 가격 자체가 물리적으로 불가능한 수준이면(예: 주당 $2,400만) 원천
+    // SEC Form 4 필자 오류로 확정할 수 있다(2026-07-17 REEMF·FINS·STNG 실측
+    // 확인 — limits.ts의 INSIDER_PRICE_PER_SHARE_CEILING 주석 참고: 필자가
+    // "거래 총액"을 주당가 필드에 잘못 입력한 사례들). 이 경우 shares는 그대로
+    // 믿을 수 있는 값이라 유지하되, price·value는 계산하지 않고 null로 남겨
+    // "$16억×10^6" 같은 의미 없는 값이 저장되는 걸 막는다.
+    const priceUnreliable =
+      tx.transactionPrice != null && tx.transactionPrice > INSIDER_PRICE_PER_SHARE_CEILING;
+    const reliablePrice = priceUnreliable ? null : tx.transactionPrice || null;
     const value =
-      tx.share && tx.transactionPrice ? tx.share * tx.transactionPrice : null;
+      transactionShares && reliablePrice ? transactionShares * reliablePrice : null;
+
+    if (priceUnreliable) {
+      console.warn(
+        `[collect/insider] 주당 가격이 비정상적으로 큼(필자 오류로 추정) — ${ticker} ${tx.name} ` +
+        `${transactionType} shares=${transactionShares} price=${tx.transactionPrice} ` +
+        `— price/value를 null로 저장함(shares는 유지)`
+      );
+    } else if (value != null && value > INSIDER_VALUE_REVIEW_THRESHOLD) {
+      console.warn(
+        `[collect/insider] 비정상적으로 큰 거래 가치 감지 — ${ticker} ${tx.name} ` +
+        `${transactionType} shares=${transactionShares} price=${tx.transactionPrice} value=${value} ` +
+        `(원본 share=${tx.share}, change=${tx.change}) — 검토 필요, 저장은 진행함`
+      );
+    }
 
     let title = tx.title || null;
     if (!title && tx.name && tx.filingDate) {
@@ -87,8 +133,8 @@ async function collectForTicker(
         name: tx.name || null,
         title,
         transaction_type: transactionType,
-        shares: tx.share || null,
-        price: tx.transactionPrice || null,
+        shares: transactionShares,
+        price: reliablePrice,
         value,
         transaction_date: tx.transactionDate || null,
         filed_at: tx.filingDate ? `${tx.filingDate}T00:00:00Z` : null,

@@ -28,6 +28,20 @@ export const MAX_TICKERS_PER_RUN = 30;
 // 재발 방지용 2차 방어선).
 export const INSIDER_VALUE_REVIEW_THRESHOLD = 1_000_000_000;
 
+// 단일 거래의 "주당 가격"이 이 값을 넘으면 price/value를 신뢰하지 않고 null로
+// 저장한다(shares는 그대로 유지 — 이건 정상 값). INSIDER_VALUE_REVIEW_THRESHOLD와
+// 다른 종류의 방어선이다: 그건 "총액"이 커도 초대형 실거래일 수 있어 경고만
+// 남기고 그대로 저장하지만, 이건 "주당 가격" 자체가 물리적으로 불가능한
+// 수준이라 원천 데이터 오류로 확정할 수 있는 경우다. 실측 확인(2026-07-17,
+// REEMF·FINS·STNG 3건): SEC Form 4 원문의 transactionPricePerShare 필드에
+// 필자가 "거래 총액"을 잘못 입력한 사례(STNG는 footnote에 "The price of the
+// 15,000.00 shares... is 1,230,435.00"라고 명시 — 이게 주당가가 아니라
+// 총액이라는 뜻. FINS는 채권(Note) 거래라 Form 4의 shares/price 스키마 자체가
+// 주식에 맞지 않음. REEMF는 같은 종목의 동시기 다른 Form 4가 실제 주당가
+// $0.24를 보여줘 대조 확인). 미국 상장 주식 중 가장 비싼 종목(Berkshire
+// Hathaway Class A)도 주당 100만 달러를 넘지 않으므로 이 값을 기준으로 둔다.
+export const INSIDER_PRICE_PER_SHARE_CEILING = 1_000_000;
+
 // ─── 화면·기능별 조회 기간(day-window) 상수 ──────────────────────────────────
 //
 // insider_trades를 비롯한 여러 화면·배치가 각자 "최근 N일" 매직넘버를 개별

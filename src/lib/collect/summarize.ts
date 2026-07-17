@@ -552,7 +552,15 @@ export async function summarizeNews(
 헤드라인: ${row.headline}
 출처: ${row.source ?? ""}`;
 
-    const summary = await callHaiku(prompt, 256);
+    const raw = await callHaiku(prompt, 256);
+    if (!raw) { failed++; continue; }
+
+    // resolveFilingSummary·summarizeCompanyDescription과 동일한 방어 —
+    // 헤드라인만으로는 요약이 어려운 경우 Haiku가 "죄송하지만 요약할 수
+    // 없습니다" 식으로 응답하는데, 지금까지 이 경로엔 그 응답을 걸러내는
+    // 로직이 전혀 없었다(2026-07-17 audit-data-sanity.ts로 17건 발견).
+    if (looksLikeRefusal(raw)) { failed++; continue; }
+    const summary = ensureCompleteSentences(raw);
     if (!summary) { failed++; continue; }
 
     const { error } = await adminClient
@@ -587,8 +595,18 @@ export async function summarizeCompanyDescription(
 
 영문 개요: ${descriptionEn}`;
 
-  const summary = await callHaiku(prompt, 400);
-  if (!summary) return { ok: false, error: "Haiku 호출 실패" };
+  // 2026-07-17: max_tokens=400은 8-K/10-K와 같은 이유로 부족해 문장이 중간에서
+  // 잘리는 사례가 실제로 다수 확인됐다(audit-data-sanity.ts로 1,416건 발견).
+  // 8-K(300→500)·10-K/10-Q(400→650) 상향과 같은 방식으로 여유 있게 올린다.
+  const raw = await callHaiku(prompt, 600);
+  if (!raw) return { ok: false, error: "Haiku 호출 실패" };
+
+  // resolveFilingSummary와 동일한 방어(거절 응답 배제 + 문장 완결성 보정) —
+  // 지금까지 이 경로엔 이 두 가드가 전혀 붙어있지 않았다(2026-07-17
+  // audit-data-sanity.ts 설계 중 발견).
+  if (looksLikeRefusal(raw)) return { ok: false, error: "Haiku 거절 응답" };
+  const summary = ensureCompleteSentences(raw);
+  if (!summary) return { ok: false, error: "완결된 문장을 찾지 못함" };
 
   const adminClient = createAdminClient();
   const { error } = await adminClient
