@@ -7,7 +7,7 @@
 
 ---
 
-## 2026-07-18 · 세션 106
+## 2026-07-18 · 세션 107
 
 ### insider_trades 캐시 무효화 도입 + Form 4 오귀속 버그 발견·근본 수정 완료
 
@@ -17,7 +17,7 @@
 `resume-refetch-insider-trades.ts` 종료 시 호출하도록 연결했다(CLAUDE.md 5항에
 규칙 기록). 이 함수를 테스트하는 도중 별개의 새 버그를 발견해 즉시 안전
 조치(21건을 일반 템플릿으로 원복)만 하고 근본 수정은 별도 요청문으로
-남겼는데, 같은 세션 106 안에서 사용자가 그 요청문을 그대로 다시 제출해
+남겼는데, 같은 세션 107 안에서 사용자가 그 요청문을 그대로 다시 제출해
 근본 수정까지 완료했다 — 처리 결과는 요청문 아래 "→ 처리 완료" 참고.
 
 ### 처리된 요청문 (기록용, 실행 완료)
@@ -83,7 +83,7 @@ pnpm build, tsc --noEmit 통과
 변경 파일명과 diff 요약, 파일 전체 출력 금지
 ```
 
-**→ 위 요청문 처리 완료(같은 세션 106 내에서)**: `fetchMatchingInsiderTrades()`가
+**→ 위 요청문 처리 완료(같은 세션 107 내에서)**: `fetchMatchingInsiderTrades()`가
 같은 (ticker, 날짜)에 filing이 2건 이상이면 `insider-form4.ts`의
 `fetchForm4Owners()`로 이 filing의 실제 SEC 제출자를 조회해 이름까지
 매칭하도록 수정(`summarize.ts`). 제출자를 특정 못하면 안전하게 일반
@@ -95,6 +95,73 @@ AMZN×1·AAPL×1) — AAPL은 원래도 오귀속 없었음을 확인, 나머지
 공유하는 함수라 크론 경로도 자동으로 같은 보호를 받는다.
 `cache-invalidation.ts`의 "멀티필자 날짜 건너뛰기" 임시 방어 로직도
 근본 수정 완료로 제거(커밋 `9d1ee29`).
+
+---
+
+## 2026-07-16~17 · 세션 106
+
+### insider_trades share/change 오염 데이터 전체 재수집 완료 + PID 락 유틸 + 실적 캘린더 정리
+
+**insider_trades 전체 재수집** (데이터 작업, 커밋 없음): 180일 이내
+insider_trades 3,269개 종목을 삭제 후 고쳐진 로직(`share`→`change` 필드
+수정)으로 전량 재수집. 진행 중 Windows에서 백그라운드 프로세스 "중단"이
+실제로는 프로세스를 안 죽이는 문제로 중복 실행 사고가 있었으나(체크포인트
+정합성·UNIQUE 제약으로 데이터 손상 없이 수습), 재발 방지로 **PID 락
+유틸**(`scripts/lib/pid-lock.ts`, 커밋 `dd27d3f`)을 신설해
+`refetch-insider-trades.ts`/`resume-refetch-insider-trades.ts`에 적용—
+실제로 살아있는 PID가 락을 쥐고 있으면 즉시 차단, 죽은 PID의 락은 자동
+정리되는 것까지 실측 검증.
+
+**실적 캘린더(`/earnings`) 정리** (커밋 `68fad8b`, `105c368`):
+- `earnings-filter-bar.tsx`: `onClick` 없는 "모든 종목"/"이번 주" 죽은
+  버튼 제거, 하드코딩된 `WEEK_DAYS`를 이번 주 실제 `earnings` 집계로
+  교체. `filing-filter-bar.tsx`의 동일한 죽은 버튼도 함께 제거.
+- `formatRevenue()`가 원 달러 값을 이미 백만 단위인 것처럼 다시 나눠
+  "$86.0T" 같은 비정상적으로 큰 값을 표시하던 버그 수정(HFWA·AAL 등
+  실제 Finnhub 값과 대조해 확인). CLAUDE.md 15항에 맞춰 T/B/M 축약 대신
+  "백만/십억/조 달러" 표기로 전환.
+- BABA/KSPI는 단위 버그 수정 후에도 실제 기업 규모 대비 비정상적으로
+  큰 값이 남아(현지 통화 미환산 추정, 원인 미확정) 매출을 "확인 중"으로
+  숨김 처리.
+- EPS·매출·세션(개장전/마감후/시각미정) 라벨에 CSS 전용 호버 툴팁 추가.
+- `insider/page.tsx`(90일) vs `analysis/page.tsx`(180일) 조회 기간
+  불일치는 조사 결과 각 화면의 UI 목적이 다른 의도된 설계로 결론(현행
+  유지) — 9개 파일에 흩어진 조회 기간 하드코딩을 `limits.ts`로 중앙화
+  (값 변경 없음, 위치만 이동).
+
+**데이터 정합성 자동 점검 스크립트 신설** (커밋 `507f2c8`):
+`audit-user-copy.ts`(소스 코드 정적 스캔)와 별개로, 실제 DB 행을 조회해
+"가드가 생기기 전에 이미 저장된 나쁜 데이터"를 잡는 `audit-data-sanity.ts`
+신설 — 섹터 화이트리스트 위반, 내부자거래 금액 이상치, 요약 텍스트의
+거절문구·문장 미완결을 점검. `prebuild`에 연결(경고만, 빌드는 안 막음).
+
+**첫 실행에서 발견된 데이터 3건 원인 확정·수정** (커밋 `ecf695e`):
+- REEMF·FINS·STNG의 `insider_trades.value` 극단값(최대 $2.4천조) — SEC
+  Form 4 원문 대조로 원인 확정: 필자가 거래 총액을 "주당 가격" 필드에
+  잘못 입력한 사례(FINS는 채권 거래, STNG는 footnote로 직접 확인). 주당
+  가격이 $100만을 넘으면 price/value를 null로 저장하는 방어 추가
+  (`INSIDER_PRICE_PER_SHARE_CEILING`).
+- `tickers.description_kr` 미완결 1,416건 + 거절문구 3건 — `max_tokens`
+  상향(400→600) + `ensureCompleteSentences`·`looksLikeRefusal` 가드
+  적용 후 전량(1,419건) 재생성.
+- `tickers.sector`의 "N/A" 문자열 48건 — 활성 코드 우회 경로는 없음(가드
+  도입 이전 레거시 데이터가 `sector IS NULL` 재수집 조건 밖에 갇혀
+  있었을 뿐)으로 확인, null로 정정해 정기 크론이 자연 복구하도록 처리.
+  `news.summary_kr` 거절·미완결도 동일 원인으로 확인 후 리셋.
+
+**와치리스트 "이번 주 실적 하이라이트" PKE/POCI 중복 표시** (수정 완료,
+**커밋 미완료 — 다음에 커밋 필요**): `fetchEarningsHighlights()`
+(`src/lib/watchlist-brief.ts`)가 종목당 중복 제거 없이 조회해 발생.
+근본 원인은 `earnings` 테이블을 쓰는 두 수집기(캘린더 발표일 vs Finnhub
+회계기간)가 서로 다른 `report_date` 표기로 같은 실적 이벤트를 각자
+upsert해 병합이 안 되는 구조적 문제(테이블 전체에 영향, 이번 범위에서는
+안 고침) — 화면에는 종목당 1건(최신 `report_date`)만 남기고, `actual_eps`
+가 있는데 `report_date`가 미래인 오염 행이 새는 것도 상한 필터로 함께
+차단. `weekly-brief.ts`/`monthly-brief.ts`/`weekly-digest.ts` 3곳이 이
+함수 하나를 공유해 한 번 수정으로 전부 해결됨.
+
+**검증**: 각 항목마다 `tsc --noEmit`·`pnpm build` 통과 확인, 직접 쿼리로
+수정 전/후 수치 대조.
 
 ---
 
