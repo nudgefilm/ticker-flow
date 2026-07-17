@@ -205,7 +205,9 @@ const HAIKU_MAX_TOKENS: Record<string, number> = {
   "DEF14A": 500,
 };
 
-function endsWithSentenceTerminator(text: string): boolean {
+// scripts/audit-data-sanity.ts가 그대로 재사용한다(로직 복제 금지 — 섹터
+// 매핑 사고처럼 한쪽만 갱신되는 drift 재발 방지). export만 추가, 동작 변경 없음.
+export function endsWithSentenceTerminator(text: string): boolean {
   return /[.!?]\s*$/.test(text);
 }
 
@@ -377,7 +379,9 @@ function buildForm4SummaryFromTrades(trades: InsiderTradeForSummary[]): string |
 // 입력으로 들어가면, Haiku가 "요약할 내용이 없다"는 취지의 완결된 문장으로
 // 응답해 ensureCompleteSentences를 통과해버린다(2026-07-16 ARTW 10-Q에서
 // 실제 확인). 이런 거절/사과성 응답을 카드에 그대로 노출하지 않도록 방어한다.
-const REFUSAL_MARKERS = [
+// scripts/audit-data-sanity.ts가 그대로 재사용한다(로직 복제 금지). export만
+// 추가, 동작 변경 없음.
+export const REFUSAL_MARKERS = [
   "죄송하지만",
   "요약할 수 없습니다",
   "요약을 작성할 수 없습니다",
@@ -387,7 +391,7 @@ const REFUSAL_MARKERS = [
   "실제 텍스트를 제공",
 ];
 
-function looksLikeRefusal(text: string): boolean {
+export function looksLikeRefusal(text: string): boolean {
   return REFUSAL_MARKERS.some((marker) => text.includes(marker));
 }
 
