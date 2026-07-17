@@ -183,8 +183,7 @@ async function main() {
   console.log("\n4단계: 관련 캐시(stock_briefs·Form 4 요약) 무효화...");
   const cacheResult = await invalidateInsiderDerivedCaches(recollectTickers);
   console.log(
-    `Form 4 리셋 ${cacheResult.form4Reset}건 → 재생성 ${cacheResult.form4Regenerated}건 ` +
-    `(멀티필자 날짜라 건너뜀 ${cacheResult.form4MultiFilerSkipped}건) / ` +
+    `Form 4 리셋 ${cacheResult.form4Reset}건 → 재생성 ${cacheResult.form4Regenerated}건 / ` +
     `BRIEF 재생성 ${cacheResult.briefsRegenerated}건(스킵 ${cacheResult.briefsSkipped}, 실패 ${cacheResult.briefsFailed})`
   );
 

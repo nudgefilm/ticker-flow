@@ -2,6 +2,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchFilingBodyForSummary } from "./filing-document";
+import { fetchForm4Owners, namesMatch } from "./insider-form4";
 
 const HAIKU_MODEL = "claude-haiku-4-5-20251001";
 // company-news 수집 추가(2026-07-08)로 뉴스 유입량이 급증해 기존 20건/회로는
@@ -282,11 +283,19 @@ interface InsiderTradeForSummary {
  * 매칭됨 — 나머지 42%는 insider_trades 수집 범위(INSIDER_LOOKBACK_DAYS,
  * MAX_TICKERS_PER_RUN 등)가 filings보다 좁아 매칭이 안 되는 정상적인 데이터
  * 갭이며, 이 경우 호출자가 기존 템플릿으로 폴백한다.
+ *
+ * ownerNames가 주어지면(같은 날 제출자가 여럿일 때만 채워짐 — 아래
+ * resolveFilingSummary 참고) 그 이름과 일치하는 거래만 남긴다. 2026-07-18
+ * 확인된 사고: 같은 종목이 같은 날 여러 명의 Form 4를 낸 경우(이사회 전원
+ * 정기 보고 등) 날짜만으로 매칭하면 그중 1명의 거래가 다른 제출자들의
+ * filing에도 그대로 복제·오귀속됐다(NVDA 6명 중 1명, MSFT 11명 중 1명,
+ * AMZN 6명 전원이 실제로 이렇게 오귀속됨을 SEC 원문 대조로 확인).
  */
 async function fetchMatchingInsiderTrades(
   adminClient: AdminClient,
   ticker: string,
-  filedAtIso: string
+  filedAtIso: string,
+  ownerNames: string[] | null
 ): Promise<InsiderTradeForSummary[]> {
   const dateOnly = filedAtIso.slice(0, 10);
   const { data } = await adminClient
@@ -296,7 +305,26 @@ async function fetchMatchingInsiderTrades(
     .gte("filed_at", `${dateOnly}T00:00:00Z`)
     .lt("filed_at", `${dateOnly}T23:59:59Z`);
 
-  return (data ?? []) as InsiderTradeForSummary[];
+  const rows = (data ?? []) as InsiderTradeForSummary[];
+  if (!ownerNames || ownerNames.length === 0) return rows;
+  return rows.filter((r) => r.name && ownerNames.some((owner) => namesMatch(owner, r.name!)));
+}
+
+/** 같은 종목·같은 날짜에 form_type='4' filing이 몇 건인지(자기 자신 포함) 센다. */
+async function countSameDayForm4Filings(
+  adminClient: AdminClient,
+  ticker: string,
+  filedAtIso: string
+): Promise<number> {
+  const dateOnly = filedAtIso.slice(0, 10);
+  const { count } = await adminClient
+    .from("filings")
+    .select("id", { count: "exact", head: true })
+    .eq("ticker", ticker)
+    .eq("form_type", "4")
+    .gte("filed_at", `${dateOnly}T00:00:00Z`)
+    .lt("filed_at", `${dateOnly}T23:59:59Z`);
+  return count ?? 0;
 }
 
 function formatShares(n: number): string {
@@ -417,7 +445,28 @@ async function resolveFilingSummary(
 ): Promise<string | null> {
   if (formType === "4") {
     if (filedAt) {
-      const trades = await fetchMatchingInsiderTrades(adminClient, ticker, filedAt);
+      // 같은 날 이 종목의 Form 4가 이 filing 하나뿐이면 제출자가 유일해
+      // 날짜만으로 매칭해도 안전하다. 2건 이상이면 실제 제출자를 특정해야
+      // 오귀속을 피할 수 있다 — SEC 원문에서 이 filing 고유의 제출자를
+      // 조회한다(insider-form4.ts의 fetchForm4Owners 재사용, url은 index.htm
+      // 형식이라 그대로 넘길 수 있음).
+      const siblingCount = await countSameDayForm4Filings(adminClient, ticker, filedAt);
+      let ownerNames: string[] | null = null;
+      if (siblingCount > 1) {
+        try {
+          const owners = url ? await fetchForm4Owners(url) : [];
+          ownerNames = owners.map((o) => o.name);
+        } catch {
+          ownerNames = [];
+        }
+        // 제출자를 특정하지 못하면 다른 사람 거래가 오귀속될 위험이 있으니
+        // 안전하게 일반 템플릿으로 폴백한다(날짜만으로 매칭 시도하지 않음).
+        if (ownerNames.length === 0) {
+          return buildFilingSummary(ticker, companyName, formType);
+        }
+      }
+
+      const trades = await fetchMatchingInsiderTrades(adminClient, ticker, filedAt, ownerNames);
       const structured = buildForm4SummaryFromTrades(trades);
       if (structured) return structured;
     }
