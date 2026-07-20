@@ -1,4 +1,4 @@
 import { Resend } from "resend"
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+export const resend = new Resend(process.env.RESEND_API_KEY || "re_disabled")
 export const FROM = process.env.RESEND_FROM_EMAIL ?? "support@tickerflow.net"
